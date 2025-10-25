@@ -1,0 +1,146 @@
+<div class="bookings-page">
+  <div class="page-header">
+    <h1>📅 Bookings Management</h1>
+    <p class="subtitle">Manage and approve customer bookings</p>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label for="status">Status:</label>
+      <select id="status" (change)="onStatusFilterChange($event)" [value]="selectedStatus">
+        <option value="all">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="in_progress">In Progress</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="search">Search:</label>
+      <input
+        type="text"
+        id="search"
+        placeholder="Search by client, groomer, or ID..."
+        (input)="onSearchChange($event)"
+        [value]="searchTerm"
+      />
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading bookings...</p>
+    </div>
+  }
+
+  @if (error) {
+    <div class="error-message">{{ error }}</div>
+  }
+
+  @if (!isLoading && !error) {
+    <div class="bookings-stats">
+      <span>Showing {{ filteredBookings.length }} of {{ bookings.length }} bookings</span>
+    </div>
+
+    <div class="bookings-table-container">
+      <table class="bookings-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Client</th>
+            <th>Groomer</th>
+            <th>Date & Time</th>
+            <th>Service</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredBookings.length === 0) {
+            <tr>
+              <td colspan="8" class="no-bookings">No bookings found</td>
+            </tr>
+          }
+          @for (booking of filteredBookings; track booking.id) {
+            <tr>
+              <td class="booking-id">{{ booking.id.substring(0, 8) }}...</td>
+              <td>
+                <div class="user-info">
+                  <div class="user-name">
+                    {{ booking.client?.first_name }} {{ booking.client?.last_name }}
+                  </div>
+                </div>
+              </td>
+              <td>
+                @if (booking.groomer) {
+                  <div class="user-info">
+                    <div class="user-name">
+                      {{ booking.groomer.first_name }} {{ booking.groomer.last_name }}
+                    </div>
+                  </div>
+                } @else {
+                  <span class="not-assigned">Not assigned</span>
+                }
+              </td>
+              <td>
+                <div class="date-time">
+                  <div>{{ formatDate(booking.scheduled_date) }}</div>
+                  <div class="time">{{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</div>
+                </div>
+              </td>
+              <td>{{ booking.service?.name || 'N/A' }}</td>
+              <td class="amount">{{ formatCurrency(booking.total_amount) }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
+                  {{ getStatusLabel(booking.status) }}
+                </span>
+              </td>
+              <td class="actions">
+                @if (booking.status === 'pending') {
+                  <button class="btn btn-approve" (click)="approveBooking(booking)">
+                    ✓ Approve
+                  </button>
+                  <button class="btn btn-reject" (click)="rejectBooking(booking)">
+                    ✗ Reject
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Groomer Selection Modal -->
+  @if (showGroomerModal && selectedBooking) {
+    <div class="modal-overlay" (click)="closeGroomerModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Assign Groomer</h2>
+          <button class="close-btn" (click)="closeGroomerModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p>Select a groomer for this booking:</p>
+          <div class="groomer-list">
+            @for (groomer of availableGroomers; track groomer.id) {
+              <div class="groomer-item" (click)="assignGroomerAndApprove(groomer.id)">
+                <div class="groomer-name">
+                  {{ groomer.first_name }} {{ groomer.last_name }}
+                </div>
+              </div>
+            }
+            @if (availableGroomers.length === 0) {
+              <p class="no-groomers">No groomers available</p>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

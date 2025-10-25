@@ -1,0 +1,64 @@
+<div class="dashboard">
+  <h1 class="page-title">Dashboard</h1>
+
+  @if (isLoading) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading dashboard data...</p>
+    </div>
+  }
+
+  @if (error) {
+    <div class="error-message">
+      {{ error }}
+    </div>
+  }
+
+  @if (!isLoading && !error) {
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      @for (kpi of kpis; track kpi.label) {
+        <div class="kpi-card" [style.border-left-color]="kpi.color">
+          <div class="kpi-icon">{{ kpi.icon }}</div>
+          <div class="kpi-content">
+            <div class="kpi-label">{{ kpi.label }}</div>
+            <div class="kpi-value">{{ kpi.value }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Placeholder Content -->
+  <div class="content-section">
+    <div class="card">
+      <h2>Welcome to Royal Pawz Admin Panel</h2>
+      <p>This is the Angular admin application foundation. The following features are ready to be implemented:</p>
+      <ul>
+        <li>✅ Authentication with Supabase (admin-only access)</li>
+        <li>✅ Protected routes with auth guard</li>
+        <li>✅ Admin layout with navigation</li>
+        <li>✅ Type definitions from Next.js app</li>
+        <li>⏳ Dashboard KPIs (ready for data integration)</li>
+        <li>⏳ Bookings Management</li>
+        <li>⏳ Clients Management</li>
+        <li>⏳ Groomers Management</li>
+        <li>⏳ Analytics & Reports</li>
+        <li>⏳ Promotions Management</li>
+        <li>⏳ Complaints Management</li>
+        <li>⏳ Service Areas Configuration</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Next Steps</h2>
+      <ol>
+        <li>Update <code>src/environments/environment.ts</code> with your Supabase credentials</li>
+        <li>Create admin services for each feature module</li>
+        <li>Build out the feature components</li>
+        <li>Connect to Supabase database</li>
+        <li>Test the application</li>
+      </ol>
+    </div>
+  </div>
+</div>
