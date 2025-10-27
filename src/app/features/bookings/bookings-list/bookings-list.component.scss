@@ -257,9 +257,9 @@
 .modal {
   background: white;
   border-radius: 12px;
-  max-width: 500px;
+  max-width: 700px;
   width: 90%;
-  max-height: 80vh;
+  max-height: 90vh;
   overflow: auto;
 }
 
@@ -329,6 +329,256 @@
   text-align: center;
   color: #94a3b8;
   padding: 2rem;
+}
+
+// Enhanced Modal Styles
+.booking-summary {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+
+  h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: #1e293b;
+    font-weight: 600;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+
+    &:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .label {
+      font-weight: 500;
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+
+    .value {
+      color: #1e293b;
+      font-weight: 500;
+    }
+
+    .shift-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+
+      &.morning {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      &.afternoon {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+    }
+  }
+}
+
+.modal-section {
+  margin-bottom: 2rem;
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .help-text {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+}
+
+.groomer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.groomer-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+
+  &:hover {
+    border-color: #6366f1;
+    background: #f8fafc;
+  }
+
+  &.selected {
+    border-color: #6366f1;
+    background: #eef2ff;
+  }
+
+  .groomer-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .groomer-info {
+    flex: 1;
+
+    .groomer-name {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 0.25rem;
+    }
+
+    .groomer-meta {
+      font-size: 0.875rem;
+      color: #059669;
+    }
+  }
+
+  .check-icon {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 24px;
+    height: 24px;
+    background: #6366f1;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+}
+
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.time-slot-card {
+  position: relative;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  text-align: center;
+
+  &:hover:not(.unavailable) {
+    border-color: #6366f1;
+    background: #f8fafc;
+  }
+
+  &.selected {
+    border-color: #6366f1;
+    background: #eef2ff;
+  }
+
+  &.unavailable {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f1f5f9;
+  }
+
+  .slot-time {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.95rem;
+  }
+
+  .check-icon {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 20px;
+    height: 20px;
+    background: #6366f1;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .unavailable-badge {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 600;
+  }
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1.5rem;
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+
+    &.btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+
+      &:hover {
+        background: #e2e8f0;
+      }
+    }
+
+    &.btn-primary {
+      background: #6366f1;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: #4f46e5;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
 }
 
 @media (max-width: 768px) {

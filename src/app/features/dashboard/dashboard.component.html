@@ -27,38 +27,165 @@
         </div>
       }
     </div>
+
+    <!-- Schedule Section -->
+    <div class="schedule-section">
+      <div class="schedule-header">
+        <h2>Schedule</h2>
+        <div class="schedule-controls">
+          <div class="view-toggle">
+            <button
+              class="view-btn"
+              [class.active]="currentView === 'day'"
+              (click)="changeView('day')">
+              Day
+            </button>
+            <button
+              class="view-btn"
+              [class.active]="currentView === 'week'"
+              (click)="changeView('week')">
+              Week
+            </button>
+            <button
+              class="view-btn"
+              [class.active]="currentView === 'month'"
+              (click)="changeView('month')">
+              Month
+            </button>
+          </div>
+          <div class="navigation-controls">
+            <button class="nav-btn" (click)="previousPeriod()">←</button>
+            <button class="today-btn" (click)="goToToday()">Today</button>
+            <button class="nav-btn" (click)="nextPeriod()">→</button>
+          </div>
+          <div class="period-label">{{ getPeriodLabel() }}</div>
+        </div>
+      </div>
+
+      <!-- Day View -->
+      @if (currentView === 'day') {
+        <div class="day-view">
+          @for (slot of scheduleSlots; track slot.date) {
+            <div class="day-column" [class.today]="slot.isToday">
+              <div class="day-header">
+                <div class="day-name">{{ slot.date | date:'EEEE' }}</div>
+                <div class="day-date">{{ slot.date | date:'MMM d, y' }}</div>
+              </div>
+              <div class="day-bookings">
+                @if (slot.bookings.length === 0) {
+                  <div class="no-bookings">No bookings</div>
+                }
+                @for (booking of slot.bookings; track booking.id) {
+                  <div class="booking-card" [ngClass]="getStatusClass(booking.status)">
+                    <div class="booking-time">
+                      {{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end) }}
+                    </div>
+                    <div class="booking-client">
+                      {{ booking.client?.first_name }} {{ booking.client?.last_name }}
+                    </div>
+                    <div class="booking-service">{{ booking.service_name }}</div>
+                    @if (booking.groomer) {
+                      <div class="booking-groomer">
+                        Groomer: {{ booking.groomer.first_name }} {{ booking.groomer.last_name }}
+                      </div>
+                    } @else {
+                      <div class="booking-groomer unassigned">No groomer assigned</div>
+                    }
+                    <div class="booking-status">{{ booking.status }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Week View -->
+      @if (currentView === 'week') {
+        <div class="week-view">
+          <div class="week-header">
+            @for (slot of scheduleSlots; track slot.date) {
+              <div class="week-day-header" [class.today]="slot.isToday">
+                <div class="day-name">{{ slot.date | date:'EEE' }}</div>
+                <div class="day-number">{{ slot.date | date:'d' }}</div>
+              </div>
+            }
+          </div>
+          <div class="week-grid">
+            @for (slot of scheduleSlots; track slot.date) {
+              <div class="week-day-column" [class.today]="slot.isToday">
+                @if (slot.bookings.length === 0) {
+                  <div class="empty-day"></div>
+                }
+                @for (booking of slot.bookings; track booking.id) {
+                  <div class="booking-card-small" [ngClass]="getStatusClass(booking.status)" [title]="booking.client?.first_name + ' ' + booking.client?.last_name">
+                    <div class="booking-time-small">{{ formatTime(booking.scheduled_time_start) }}</div>
+                    <div class="booking-client-small">{{ booking.client?.first_name?.[0] }}{{ booking.client?.last_name?.[0] }}</div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Month View -->
+      @if (currentView === 'month') {
+        <div class="month-view">
+          <div class="month-header">
+            <div class="month-day-name">Sun</div>
+            <div class="month-day-name">Mon</div>
+            <div class="month-day-name">Tue</div>
+            <div class="month-day-name">Wed</div>
+            <div class="month-day-name">Thu</div>
+            <div class="month-day-name">Fri</div>
+            <div class="month-day-name">Sat</div>
+          </div>
+          <div class="month-grid">
+            @for (slot of scheduleSlots; track slot.date) {
+              <div class="month-day-cell"
+                   [class.today]="slot.isToday"
+                   [class.other-month]="!slot.isCurrentMonth">
+                <div class="day-number">{{ slot.date | date:'d' }}</div>
+                @if (slot.bookings.length > 0) {
+                  <div class="bookings-count">{{ slot.bookings.length }} booking{{ slot.bookings.length > 1 ? 's' : '' }}</div>
+                  <div class="booking-dots">
+                    @for (booking of slot.bookings.slice(0, 3); track booking.id) {
+                      <div class="booking-dot" [ngClass]="getStatusClass(booking.status)"></div>
+                    }
+                    @if (slot.bookings.length > 3) {
+                      <div class="more-bookings">+{{ slot.bookings.length - 3 }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <h3>Quick Actions</h3>
+      <div class="action-buttons">
+        <a routerLink="/bookings" class="action-btn">
+          <span class="action-icon">📋</span>
+          <span>View All Bookings</span>
+        </a>
+        <a routerLink="/bookings" class="action-btn">
+          <span class="action-icon">⏰</span>
+          <span>Pending Requests ({{ kpis[0].value }})</span>
+        </a>
+        <a routerLink="/groomers" class="action-btn">
+          <span class="action-icon">✂️</span>
+          <span>Manage Groomers</span>
+        </a>
+        <a routerLink="/service-areas" class="action-btn">
+          <span class="action-icon">🗺️</span>
+          <span>Service Areas</span>
+        </a>
+      </div>
+    </div>
   }
-
-  <!-- Placeholder Content -->
-  <div class="content-section">
-    <div class="card">
-      <h2>Welcome to Royal Pawz Admin Panel</h2>
-      <p>This is the Angular admin application foundation. The following features are ready to be implemented:</p>
-      <ul>
-        <li>✅ Authentication with Supabase (admin-only access)</li>
-        <li>✅ Protected routes with auth guard</li>
-        <li>✅ Admin layout with navigation</li>
-        <li>✅ Type definitions from Next.js app</li>
-        <li>⏳ Dashboard KPIs (ready for data integration)</li>
-        <li>⏳ Bookings Management</li>
-        <li>⏳ Clients Management</li>
-        <li>⏳ Groomers Management</li>
-        <li>⏳ Analytics & Reports</li>
-        <li>⏳ Promotions Management</li>
-        <li>⏳ Complaints Management</li>
-        <li>⏳ Service Areas Configuration</li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h2>Next Steps</h2>
-      <ol>
-        <li>Update <code>src/environments/environment.ts</code> with your Supabase credentials</li>
-        <li>Create admin services for each feature module</li>
-        <li>Build out the feature components</li>
-        <li>Connect to Supabase database</li>
-        <li>Test the application</li>
-      </ol>
-    </div>
-  </div>
 </div>

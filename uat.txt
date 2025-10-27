@@ -1,0 +1,12 @@
+## Admin Profile
+- See schedule, day week month
+
+Operation {
+- See Schedule → next day → See report
+  → next week
+  → next mnth → operation
+- Schedule requests → Assign slots
+- complaints + ratings 
+- Open territories (Zip Code)
+- Assign territories to Vans.
+}

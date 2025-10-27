@@ -1,0 +1,96 @@
+<div class="service-areas">
+  <h1 class="page-title">Service Areas & Territory Management</h1>
+
+  <!-- Info Banner -->
+  <div class="info-banner">
+    <div class="banner-icon">ℹ️</div>
+    <div class="banner-content">
+      <h3>Van Territory Management - Coming Soon</h3>
+      <p>
+        This feature will enable automatic routing of bookings to specific vans based on territory assignments.
+        See the component source code for detailed pseudocode and implementation plan.
+      </p>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading">Loading service areas...</div>
+  }
+
+  @if (!isLoading) {
+    <!-- Current Zip Codes -->
+    <div class="section-card">
+      <h2>Active Service Zip Codes</h2>
+      <p class="section-description">
+        Currently serviced zip codes. In the future, these will be assigned to specific vans for optimized routing.
+      </p>
+
+      <div class="zip-code-grid">
+        @for (zipCode of zipCodes; track zipCode.id) {
+          <div class="zip-code-card" [class.inactive]="!zipCode.is_active">
+            <div class="zip-code-header">
+              <span class="zip-code-number">{{ zipCode.zip_code }}</span>
+              <span class="zip-code-status" [class.active]="zipCode.is_active">
+                {{ zipCode.is_active ? 'Active' : 'Inactive' }}
+              </span>
+            </div>
+            <div class="zip-code-location">
+              {{ zipCode.city }}, {{ zipCode.state }}
+            </div>
+            <!-- Future: Van assignment display -->
+            <div class="zip-code-van">
+              <span class="label">Assigned Van:</span>
+              <span class="placeholder">Not yet assigned</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Future Van Management Section -->
+    <div class="section-card placeholder-section">
+      <h2>🚐 Van Fleet Management</h2>
+      <p class="section-description">
+        Manage your grooming vans and their assigned territories.
+      </p>
+
+      <div class="placeholder-content">
+        <div class="placeholder-icon">🚧</div>
+        <h3>To Be Implemented</h3>
+        <p>This section will include:</p>
+        <ul>
+          <li>View all active vans with status and capacity</li>
+          <li>Assign zip codes to specific vans</li>
+          <li>View van utilization metrics and booking density</li>
+          <li>Automatic load balancing suggestions</li>
+          <li>Territory rebalancing based on demand patterns</li>
+        </ul>
+
+        <div class="pseudocode-hint">
+          <strong>📝 Implementation Details:</strong> See component TypeScript file for complete pseudocode and algorithm design
+        </div>
+      </div>
+    </div>
+
+    <!-- Future Territory Optimization -->
+    <div class="section-card placeholder-section">
+      <h2>📊 Territory Optimization</h2>
+      <p class="section-description">
+        AI-powered territory assignment recommendations based on booking patterns.
+      </p>
+
+      <div class="placeholder-content">
+        <div class="placeholder-icon">🤖</div>
+        <h3>Smart Routing Algorithm</h3>
+        <p>Features to be implemented:</p>
+        <ul>
+          <li>Booking density heatmaps by zip code</li>
+          <li>Optimal van-to-territory assignments</li>
+          <li>Travel time and distance optimization</li>
+          <li>Peak hours and seasonal demand analysis</li>
+          <li>Automatic overflow routing when vans reach capacity</li>
+        </ul>
+      </div>
+    </div>
+  }
+</div>

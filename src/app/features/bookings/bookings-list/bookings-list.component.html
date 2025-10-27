@@ -117,27 +117,97 @@
     </div>
   }
 
-  <!-- Groomer Selection Modal -->
+  <!-- Groomer & Time Slot Selection Modal -->
   @if (showGroomerModal && selectedBooking) {
     <div class="modal-overlay" (click)="closeGroomerModal()">
       <div class="modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>Assign Groomer</h2>
+          <h2>Approve Booking & Assign Schedule</h2>
           <button class="close-btn" (click)="closeGroomerModal()">✕</button>
         </div>
         <div class="modal-body">
-          <p>Select a groomer for this booking:</p>
-          <div class="groomer-list">
-            @for (groomer of availableGroomers; track groomer.id) {
-              <div class="groomer-item" (click)="assignGroomerAndApprove(groomer.id)">
-                <div class="groomer-name">
-                  {{ groomer.first_name }} {{ groomer.last_name }}
+          <!-- Booking Info Summary -->
+          <div class="booking-summary">
+            <h3>Booking Details</h3>
+            <div class="summary-row">
+              <span class="label">Client:</span>
+              <span class="value">{{ selectedBooking.client?.first_name }} {{ selectedBooking.client?.last_name }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Date:</span>
+              <span class="value">{{ formatDate(selectedBooking.scheduled_date) }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Shift Preference:</span>
+              <span class="value shift-badge" [class.morning]="selectedBooking.shift_preference === 'morning'" [class.afternoon]="selectedBooking.shift_preference === 'afternoon'">
+                {{ selectedBooking.shift_preference === 'morning' ? 'Morning (8:30 AM - 12:15 PM)' : 'Afternoon (1:00 PM - 5:00 PM)' }}
+              </span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Service:</span>
+              <span class="value">{{ selectedBooking.service_name }}</span>
+            </div>
+          </div>
+
+          <!-- Step 1: Select Groomer -->
+          <div class="modal-section">
+            <h3>1. Select Groomer</h3>
+            <div class="groomer-grid">
+              @for (groomer of availableGroomers; track groomer.id) {
+                <div
+                  class="groomer-card"
+                  [class.selected]="selectedGroomerId === groomer.id"
+                  (click)="selectedGroomerId = groomer.id">
+                  <div class="groomer-avatar">{{ groomer.first_name?.[0] }}{{ groomer.last_name?.[0] }}</div>
+                  <div class="groomer-info">
+                    <div class="groomer-name">
+                      {{ groomer.first_name }} {{ groomer.last_name }}
+                    </div>
+                    <div class="groomer-meta">Available</div>
+                  </div>
+                  @if (selectedGroomerId === groomer.id) {
+                    <div class="check-icon">✓</div>
+                  }
                 </div>
-              </div>
-            }
-            @if (availableGroomers.length === 0) {
-              <p class="no-groomers">No groomers available</p>
-            }
+              }
+              @if (availableGroomers.length === 0) {
+                <p class="no-groomers">No groomers available for this date</p>
+              }
+            </div>
+          </div>
+
+          <!-- Step 2: Select Time Slot -->
+          <div class="modal-section">
+            <h3>2. Assign Time Slot</h3>
+            <p class="help-text">Select a specific time slot based on client's shift preference</p>
+            <div class="time-slots-grid">
+              @for (slot of availableTimeSlots; track slot.time) {
+                <div
+                  class="time-slot-card"
+                  [class.selected]="selectedTimeSlot === slot.time"
+                  [class.unavailable]="!slot.available"
+                  (click)="slot.available && (selectedTimeSlot = slot.time)">
+                  <div class="slot-time">{{ slot.label }}</div>
+                  @if (selectedTimeSlot === slot.time) {
+                    <div class="check-icon">✓</div>
+                  }
+                  @if (!slot.available) {
+                    <div class="unavailable-badge">Booked</div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="modal-actions">
+            <button class="btn btn-secondary" (click)="closeGroomerModal()">Cancel</button>
+            <button
+              class="btn btn-primary"
+              (click)="assignGroomerAndApprove()"
+              [disabled]="!selectedGroomerId || !selectedTimeSlot">
+              Approve & Assign
+            </button>
           </div>
         </div>
       </div>
