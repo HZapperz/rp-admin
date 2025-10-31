@@ -32,8 +32,12 @@ admin-app/
 ## Recent Changes
 - **2025-10-31**: Configured for Replit environment
   - Set dev server to port 5000 with host 0.0.0.0
-  - Enabled allowedHosts for iframe proxy compatibility
+  - Created vite.config.js with allowedHosts configuration for Replit proxy compatibility
+  - Configured angular.json with host and port settings
+  - Enhanced Supabase client configuration with explicit storage settings
   - Created workflow for Angular dev server
+  - Configured deployment with build and run commands
+  - Installed http-server for production deployments
   - Added replit.md documentation
 
 ## Environment Configuration
