@@ -5,12 +5,6 @@ import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { BookingWithDetails, BookingStatus } from '../../../core/models/types';
 
-interface TimeSlot {
-  time: string;
-  label: string;
-  available: boolean;
-}
-
 @Component({
   selector: 'app-bookings-list',
   standalone: true,
@@ -31,10 +25,6 @@ export class BookingsListComponent implements OnInit {
   selectedBooking: BookingWithDetails | null = null;
   availableGroomers: any[] = [];
   selectedGroomerId: string = '';
-
-  // Time slot management
-  availableTimeSlots: TimeSlot[] = [];
-  selectedTimeSlot: string = '';
 
   constructor(
     private bookingService: BookingService,
@@ -71,7 +61,10 @@ export class BookingsListComponent implements OnInit {
     let filtered = [...this.bookings];
 
     // Filter by status
-    if (this.selectedStatus !== 'all') {
+    if (this.selectedStatus === 'unassigned') {
+      // Show bookings without an assigned groomer
+      filtered = filtered.filter(b => !b.groomer_id && b.status === 'pending');
+    } else if (this.selectedStatus !== 'all') {
       filtered = filtered.filter(b => b.status === this.selectedStatus);
     }
 
@@ -123,56 +116,16 @@ export class BookingsListComponent implements OnInit {
   }
 
   async approveBooking(booking: BookingWithDetails) {
-    // Show groomer and time slot selection modal
+    // Show groomer selection modal
     this.selectedBooking = booking;
     this.selectedGroomerId = '';
-    this.selectedTimeSlot = '';
     this.availableGroomers = await this.groomerService.getAvailableGroomers(booking.scheduled_date);
-    this.generateTimeSlots(booking);
     this.showGroomerModal = true;
-  }
-
-  private generateTimeSlots(booking: BookingWithDetails): void {
-    const shift = booking.shift_preference;
-
-    if (shift === 'morning') {
-      // Morning slots: 8:30 AM - 12:15 PM (75-minute slots)
-      this.availableTimeSlots = [
-        { time: '08:30-09:45', label: '8:30 AM - 9:45 AM', available: true },
-        { time: '09:45-11:00', label: '9:45 AM - 11:00 AM', available: true },
-        { time: '11:00-12:15', label: '11:00 AM - 12:15 PM', available: true }
-      ];
-    } else if (shift === 'afternoon') {
-      // Afternoon slots: 1:00 PM - 5:00 PM (75-minute slots)
-      this.availableTimeSlots = [
-        { time: '13:00-14:15', label: '1:00 PM - 2:15 PM', available: true },
-        { time: '14:15-15:30', label: '2:15 PM - 3:30 PM', available: true },
-        { time: '15:30-16:45', label: '3:30 PM - 4:45 PM', available: true }
-      ];
-    } else {
-      // Default: show all available slots
-      this.availableTimeSlots = [
-        { time: '08:30-09:45', label: '8:30 AM - 9:45 AM', available: true },
-        { time: '09:45-11:00', label: '9:45 AM - 11:00 AM', available: true },
-        { time: '11:00-12:15', label: '11:00 AM - 12:15 PM', available: true },
-        { time: '13:00-14:15', label: '1:00 PM - 2:15 PM', available: true },
-        { time: '14:15-15:30', label: '2:15 PM - 3:30 PM', available: true },
-        { time: '15:30-16:45', label: '3:30 PM - 4:45 PM', available: true }
-      ];
-    }
-
-    // TODO: Query database to check which slots are already booked
-    // and mark them as unavailable
   }
 
   async assignGroomerAndApprove() {
     if (!this.selectedBooking || !this.selectedGroomerId) {
       alert('Please select a groomer');
-      return;
-    }
-
-    if (!this.selectedTimeSlot) {
-      alert('Please select a time slot');
       return;
     }
 
@@ -182,11 +135,9 @@ export class BookingsListComponent implements OnInit {
     );
 
     if (success) {
-      // TODO: Update assigned_time_slot field in booking
       this.showGroomerModal = false;
       this.selectedBooking = null;
       this.selectedGroomerId = '';
-      this.selectedTimeSlot = '';
       await this.loadBookings();
     } else {
       alert('Failed to approve booking');

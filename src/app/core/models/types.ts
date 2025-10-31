@@ -58,8 +58,8 @@ export type BookingStatus =
 export interface Booking {
   id: string;
   client_id: string;
-  groomer_id: string;
-  service_id: string;
+  groomer_id: string | null;
+  service_id: string | null;
   status: BookingStatus;
   scheduled_date: string;
   scheduled_time_start: string;
@@ -87,6 +87,10 @@ export interface Booking {
   payment_created_at?: string;
   before_photos?: string[];
   after_photos?: string[];
+  // Hard-coded service fields (used when service_id is null)
+  service_name?: string;
+  service_description?: string;
+  service_duration?: number;
 }
 
 export interface BookingPet {

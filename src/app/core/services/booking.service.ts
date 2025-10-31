@@ -31,8 +31,13 @@ export class BookingService {
         .lte('scheduled_date', filters.dateRange.end);
     }
 
-    if (filters?.groomerId) {
-      query = query.eq('groomer_id', filters.groomerId);
+    if (filters?.groomerId !== undefined) {
+      // Support both filtering by specific groomer and unassigned bookings (null)
+      if (filters.groomerId === null || filters.groomerId === '') {
+        query = query.is('groomer_id', null);
+      } else {
+        query = query.eq('groomer_id', filters.groomerId);
+      }
     }
 
     if (filters?.clientId) {
@@ -50,17 +55,19 @@ export class BookingService {
       return [];
     }
 
-    // Step 2: Extract unique IDs
+    // Step 2: Extract unique IDs (filter out null groomer_id for pending bookings)
     const groomerIds = [...new Set(bookings.map(b => b.groomer_id).filter(Boolean))];
     const clientIds = [...new Set(bookings.map(b => b.client_id).filter(Boolean))];
     const bookingIds = bookings.map(b => b.id);
 
     // Step 3: Batch fetch all related data in parallel
     const [groomersResult, clientsResult, bookingPetsResult] = await Promise.all([
-      this.supabase
-        .from('users')
-        .select('id, first_name, last_name, avatar_url')
-        .in('id', groomerIds),
+      groomerIds.length > 0
+        ? this.supabase
+            .from('users')
+            .select('id, first_name, last_name, avatar_url')
+            .in('id', groomerIds)
+        : Promise.resolve({ data: [], error: null }),
       this.supabase
         .from('users')
         .select('id, first_name, last_name, avatar_url')
@@ -150,14 +157,14 @@ export class BookingService {
 
     if (!booking) return null;
 
-    // Batch fetch related data
+    // Batch fetch related data (groomer might be null for pending bookings)
     const [groomerResult, clientResult, bookingPetsResult] = await Promise.all([
       booking.groomer_id
         ? this.supabase
             .from('users')
             .select('id, first_name, last_name, avatar_url, phone')
             .eq('id', booking.groomer_id)
-            .single()
+            .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       this.supabase
         .from('users')

@@ -10,6 +10,7 @@
       <label for="status">Status:</label>
       <select id="status" (change)="onStatusFilterChange($event)" [value]="selectedStatus">
         <option value="all">All Statuses</option>
+        <option value="unassigned">🔴 Unassigned (Needs Groomer)</option>
         <option value="pending">Pending</option>
         <option value="confirmed">Confirmed</option>
         <option value="in_progress">In Progress</option>
@@ -93,7 +94,7 @@
                   <div class="time">{{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</div>
                 </div>
               </td>
-              <td>{{ booking.service?.name || 'N/A' }}</td>
+              <td>{{ booking.service_name || booking.service?.name || 'N/A' }}</td>
               <td class="amount">{{ formatCurrency(booking.total_amount) }}</td>
               <td>
                 <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
@@ -134,24 +135,23 @@
               <span class="value">{{ selectedBooking.client?.first_name }} {{ selectedBooking.client?.last_name }}</span>
             </div>
             <div class="summary-row">
-              <span class="label">Date:</span>
-              <span class="value">{{ formatDate(selectedBooking.scheduled_date) }}</span>
+              <span class="label">Date & Time:</span>
+              <span class="value">{{ formatDate(selectedBooking.scheduled_date) }} at {{ selectedBooking.scheduled_time_start }}</span>
             </div>
             <div class="summary-row">
-              <span class="label">Shift Preference:</span>
-              <span class="value shift-badge" [class.morning]="selectedBooking.shift_preference === 'morning'" [class.afternoon]="selectedBooking.shift_preference === 'afternoon'">
-                {{ selectedBooking.shift_preference === 'morning' ? 'Morning (8:30 AM - 12:15 PM)' : 'Afternoon (1:00 PM - 5:00 PM)' }}
-              </span>
+              <span class="label">Location:</span>
+              <span class="value">{{ selectedBooking.address }}, {{ selectedBooking.city }}, {{ selectedBooking.state }}</span>
             </div>
             <div class="summary-row">
-              <span class="label">Service:</span>
-              <span class="value">{{ selectedBooking.service_name }}</span>
+              <span class="label">Amount:</span>
+              <span class="value">{{ formatCurrency(selectedBooking.total_amount) }}</span>
             </div>
           </div>
 
-          <!-- Step 1: Select Groomer -->
+          <!-- Select Groomer -->
           <div class="modal-section">
-            <h3>1. Select Groomer</h3>
+            <h3>Select Groomer to Assign</h3>
+            <p class="help-text">Choose a groomer to assign to this booking. The booking will be marked as confirmed.</p>
             <div class="groomer-grid">
               @for (groomer of availableGroomers; track groomer.id) {
                 <div
@@ -171,30 +171,7 @@
                 </div>
               }
               @if (availableGroomers.length === 0) {
-                <p class="no-groomers">No groomers available for this date</p>
-              }
-            </div>
-          </div>
-
-          <!-- Step 2: Select Time Slot -->
-          <div class="modal-section">
-            <h3>2. Assign Time Slot</h3>
-            <p class="help-text">Select a specific time slot based on client's shift preference</p>
-            <div class="time-slots-grid">
-              @for (slot of availableTimeSlots; track slot.time) {
-                <div
-                  class="time-slot-card"
-                  [class.selected]="selectedTimeSlot === slot.time"
-                  [class.unavailable]="!slot.available"
-                  (click)="slot.available && (selectedTimeSlot = slot.time)">
-                  <div class="slot-time">{{ slot.label }}</div>
-                  @if (selectedTimeSlot === slot.time) {
-                    <div class="check-icon">✓</div>
-                  }
-                  @if (!slot.available) {
-                    <div class="unavailable-badge">Booked</div>
-                  }
-                </div>
+                <p class="no-groomers">No groomers available</p>
               }
             </div>
           </div>
@@ -205,7 +182,7 @@
             <button
               class="btn btn-primary"
               (click)="assignGroomerAndApprove()"
-              [disabled]="!selectedGroomerId || !selectedTimeSlot">
+              [disabled]="!selectedGroomerId">
               Approve & Assign
             </button>
           </div>

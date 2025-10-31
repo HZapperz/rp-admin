@@ -53,25 +53,41 @@ export class AuthService {
   }
 
   private async loadUserProfile(userId: string): Promise<void> {
+    console.log('Loading user profile for ID:', userId);
+
     const { data, error } = await this.supabase
       .from('users')
       .select('id, role, email, phone, first_name, last_name')
       .eq('id', userId)
       .single();
 
+    console.log('User profile query result:', { data, error });
+
     if (error) {
       console.error('Error loading user profile:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       this._currentUser$.next(null);
       this._isAuthenticated$.next(false);
       return;
     }
 
+    if (!data) {
+      console.error('No user data returned from query');
+      this._currentUser$.next(null);
+      this._isAuthenticated$.next(false);
+      return;
+    }
+
+    console.log('User role from database:', data.role);
+
     // Only allow ADMIN role
     if (data.role !== 'ADMIN') {
-      console.warn('Non-admin user attempted to access admin panel');
+      console.warn('Non-admin user attempted to access admin panel. Role:', data.role);
       await this.signOut();
       return;
     }
+
+    console.log('Admin role confirmed, proceeding with authentication');
 
     const user: AuthUser = {
       id: data.id,
