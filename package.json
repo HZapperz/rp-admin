@@ -21,6 +21,7 @@
     "@angular/router": "^19.2.0",
     "@supabase/supabase-js": "^2.75.1",
     "date-fns": "^4.1.0",
+    "http-server": "^14.1.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
