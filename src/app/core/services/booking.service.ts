@@ -218,13 +218,15 @@ export class BookingService {
     };
   }
 
-  async approveBooking(bookingId: string, groomerId: string): Promise<boolean> {
-    // When approving, we must assign a groomer
+  async approveBooking(bookingId: string, groomerId: string, timeSlotStart: string, timeSlotEnd: string): Promise<boolean> {
+    // When approving, we must assign a groomer and set the confirmed time slot
     const { error } = await this.supabase
       .from('bookings')
       .update({
         status: 'confirmed',
         groomer_id: groomerId,
+        scheduled_time_start: timeSlotStart,
+        scheduled_time_end: timeSlotEnd,
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingId);

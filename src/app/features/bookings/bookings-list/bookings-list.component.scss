@@ -398,6 +398,26 @@
     margin: 0 0 0.5rem 0;
   }
 
+  .time-slot-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    &:hover {
+      border-color: #cbd5e1;
+    }
+  }
+
   .help-text {
     color: #64748b;
     font-size: 0.875rem;

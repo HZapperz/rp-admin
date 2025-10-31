@@ -25,6 +25,20 @@ export class BookingsListComponent implements OnInit {
   selectedBooking: BookingWithDetails | null = null;
   availableGroomers: any[] = [];
   selectedGroomerId: string = '';
+  selectedTimeSlot: { label: string; start: string; end: string } | null = null;
+
+  // Time slots configuration
+  morningSlots = [
+    { label: '8:30 AM - 9:45 AM', start: '08:30:00', end: '09:45:00' },
+    { label: '9:45 AM - 11:00 AM', start: '09:45:00', end: '11:00:00' },
+    { label: '11:00 AM - 12:15 PM', start: '11:00:00', end: '12:15:00' },
+  ];
+
+  afternoonSlots = [
+    { label: '1:00 PM - 2:15 PM', start: '13:00:00', end: '14:15:00' },
+    { label: '2:15 PM - 3:30 PM', start: '14:15:00', end: '15:30:00' },
+    { label: '3:30 PM - 4:45 PM', start: '15:30:00', end: '16:45:00' },
+  ];
 
   constructor(
     private bookingService: BookingService,
@@ -119,6 +133,7 @@ export class BookingsListComponent implements OnInit {
     // Show groomer selection modal
     this.selectedBooking = booking;
     this.selectedGroomerId = '';
+    this.selectedTimeSlot = null;
     this.availableGroomers = await this.groomerService.getAvailableGroomers(booking.scheduled_date);
     this.showGroomerModal = true;
   }
@@ -129,15 +144,23 @@ export class BookingsListComponent implements OnInit {
       return;
     }
 
+    if (!this.selectedTimeSlot) {
+      alert('Please select a time slot');
+      return;
+    }
+
     const success = await this.bookingService.approveBooking(
       this.selectedBooking.id,
-      this.selectedGroomerId
+      this.selectedGroomerId,
+      this.selectedTimeSlot.start,
+      this.selectedTimeSlot.end
     );
 
     if (success) {
       this.showGroomerModal = false;
       this.selectedBooking = null;
       this.selectedGroomerId = '';
+      this.selectedTimeSlot = null;
       await this.loadBookings();
     } else {
       alert('Failed to approve booking');

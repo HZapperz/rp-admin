@@ -54,7 +54,7 @@
             <th>ID</th>
             <th>Client</th>
             <th>Groomer</th>
-            <th>Date & Time</th>
+            <th>Request Date & Time</th>
             <th>Service</th>
             <th>Amount</th>
             <th>Status</th>
@@ -148,6 +148,25 @@
             </div>
           </div>
 
+          <!-- Select Time Slot -->
+          <div class="modal-section">
+            <h3>Select Time Slot</h3>
+            <p class="help-text">Choose the confirmed time slot for this appointment.</p>
+            <select class="time-slot-select" [(ngModel)]="selectedTimeSlot">
+              <option [ngValue]="null">-- Select a time slot --</option>
+              <optgroup label="Morning">
+                <option *ngFor="let slot of morningSlots" [ngValue]="slot">
+                  {{ slot.label }}
+                </option>
+              </optgroup>
+              <optgroup label="Afternoon">
+                <option *ngFor="let slot of afternoonSlots" [ngValue]="slot">
+                  {{ slot.label }}
+                </option>
+              </optgroup>
+            </select>
+          </div>
+
           <!-- Select Groomer -->
           <div class="modal-section">
             <h3>Select Groomer to Assign</h3>
@@ -182,7 +201,7 @@
             <button
               class="btn btn-primary"
               (click)="assignGroomerAndApprove()"
-              [disabled]="!selectedGroomerId">
+              [disabled]="!selectedGroomerId || !selectedTimeSlot">
               Approve & Assign
             </button>
           </div>
