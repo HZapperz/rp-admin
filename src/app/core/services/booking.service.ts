@@ -224,36 +224,24 @@ export class BookingService {
 
   async approveBooking(bookingId: string, groomerId: string, timeSlotStart: string, timeSlotEnd: string): Promise<boolean> {
     try {
-      // Get the current Supabase session token for authentication
-      const session = this.supabase.session;
-      if (!session) {
-        console.error('No active session');
-        return false;
-      }
+      // Update booking with groomer assignment, time slots, and confirm status
+      const { error } = await this.supabase
+        .from('bookings')
+        .update({
+          groomer_id: groomerId,
+          scheduled_time_start: timeSlotStart,
+          scheduled_time_end: timeSlotEnd,
+          status: 'confirmed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
 
-      // Call Next.js API endpoint which handles database update AND email notification
-      const response = await fetch(`${environment.apiUrl}/api/admin/bookings/${bookingId}/assign-groomer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          groomerId,
-          timeSlotStart,
-          timeSlotEnd
-        }),
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
+      if (error) {
         console.error('Error approving booking:', error);
         return false;
       }
 
-      const result = await response.json();
-      console.log('Booking approved successfully:', result);
+      console.log('Booking approved successfully');
       return true;
     } catch (error) {
       console.error('Error approving booking:', error);
