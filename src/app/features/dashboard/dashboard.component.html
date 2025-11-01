@@ -76,7 +76,7 @@
                   <div class="no-bookings">No bookings</div>
                 }
                 @for (booking of slot.bookings; track booking.id) {
-                  <div class="booking-card" [ngClass]="getStatusClass(booking.status)">
+                  <div class="booking-card clickable" [ngClass]="getStatusClass(booking.status)" (click)="openBookingDetail(booking)">
                     <div class="booking-time">
                       {{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end) }}
                     </div>
@@ -118,7 +118,7 @@
                   <div class="empty-day"></div>
                 }
                 @for (booking of slot.bookings; track booking.id) {
-                  <div class="booking-card-small" [ngClass]="getStatusClass(booking.status)" [title]="booking.client?.first_name + ' ' + booking.client?.last_name">
+                  <div class="booking-card-small clickable" [ngClass]="getStatusClass(booking.status)" [title]="booking.client?.first_name + ' ' + booking.client?.last_name" (click)="openBookingDetail(booking)">
                     <div class="booking-time-small">{{ formatTime(booking.scheduled_time_start) }}</div>
                     <div class="booking-client-small">{{ booking.client?.first_name?.[0] }}{{ booking.client?.last_name?.[0] }}</div>
                   </div>
@@ -189,3 +189,12 @@
     </div>
   }
 </div>
+
+<!-- Booking Detail Modal -->
+@if (showBookingModal && selectedBooking) {
+  <app-booking-detail-modal
+    [booking]="selectedBooking"
+    (close)="closeBookingModal()"
+    (bookingUpdated)="onBookingUpdated()">
+  </app-booking-detail-modal>
+}

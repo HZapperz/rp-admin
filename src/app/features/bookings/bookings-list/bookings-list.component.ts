@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { BookingWithDetails, BookingStatus } from '../../../core/models/types';
+import { BookingDetailModalComponent } from '../../../shared/components/booking-detail-modal/booking-detail-modal.component';
 
 @Component({
   selector: 'app-bookings-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BookingDetailModalComponent],
   templateUrl: './bookings-list.component.html',
   styleUrls: ['./bookings-list.component.scss']
 })
@@ -21,24 +22,9 @@ export class BookingsListComponent implements OnInit {
   selectedStatus: string = 'all';
   searchTerm: string = '';
 
-  showGroomerModal = false;
+  // Booking Detail Modal
+  showBookingModal = false;
   selectedBooking: BookingWithDetails | null = null;
-  availableGroomers: any[] = [];
-  selectedGroomerId: string = '';
-  selectedTimeSlot: { label: string; start: string; end: string } | null = null;
-
-  // Time slots configuration
-  morningSlots = [
-    { label: '8:30 AM - 9:45 AM', start: '08:30:00', end: '09:45:00' },
-    { label: '9:45 AM - 11:00 AM', start: '09:45:00', end: '11:00:00' },
-    { label: '11:00 AM - 12:15 PM', start: '11:00:00', end: '12:15:00' },
-  ];
-
-  afternoonSlots = [
-    { label: '1:00 PM - 2:15 PM', start: '13:00:00', end: '14:15:00' },
-    { label: '2:15 PM - 3:30 PM', start: '14:15:00', end: '15:30:00' },
-    { label: '3:30 PM - 4:45 PM', start: '15:30:00', end: '16:45:00' },
-  ];
 
   constructor(
     private bookingService: BookingService,
@@ -129,61 +115,23 @@ export class BookingsListComponent implements OnInit {
     return labels[status] || status;
   }
 
-  async approveBooking(booking: BookingWithDetails) {
-    // Show groomer selection modal
-    this.selectedBooking = booking;
-    this.selectedGroomerId = '';
-    this.selectedTimeSlot = null;
-    this.availableGroomers = await this.groomerService.getAvailableGroomers(booking.scheduled_date);
-    this.showGroomerModal = true;
-  }
-
-  async assignGroomerAndApprove() {
-    if (!this.selectedBooking || !this.selectedGroomerId) {
-      alert('Please select a groomer');
-      return;
-    }
-
-    if (!this.selectedTimeSlot) {
-      alert('Please select a time slot');
-      return;
-    }
-
-    const success = await this.bookingService.approveBooking(
-      this.selectedBooking.id,
-      this.selectedGroomerId,
-      this.selectedTimeSlot.start,
-      this.selectedTimeSlot.end
-    );
-
-    if (success) {
-      this.showGroomerModal = false;
-      this.selectedBooking = null;
-      this.selectedGroomerId = '';
-      this.selectedTimeSlot = null;
-      await this.loadBookings();
-    } else {
-      alert('Failed to approve booking');
+  async openBookingDetail(booking: BookingWithDetails): Promise<void> {
+    // Fetch full booking details including pets
+    const fullBooking = await this.bookingService.getBookingById(booking.id);
+    if (fullBooking) {
+      this.selectedBooking = fullBooking;
+      this.showBookingModal = true;
     }
   }
 
-  async rejectBooking(booking: BookingWithDetails) {
-    const reason = prompt(`Reject booking for ${booking.client?.first_name} ${booking.client?.last_name}?\n\nReason:`);
-
-    if (reason === null) return;
-
-    const success = await this.bookingService.rejectBooking(booking.id, reason);
-
-    if (success) {
-      await this.loadBookings();
-    } else {
-      alert('Failed to reject booking');
-    }
-  }
-
-  closeGroomerModal() {
-    this.showGroomerModal = false;
+  closeBookingModal(): void {
+    this.showBookingModal = false;
     this.selectedBooking = null;
+  }
+
+  async onBookingUpdated(): Promise<void> {
+    // Reload bookings after an update
+    await this.loadBookings();
   }
 
   formatDate(dateString: string): string {

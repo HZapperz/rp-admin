@@ -68,7 +68,7 @@
             </tr>
           }
           @for (booking of filteredBookings; track booking.id) {
-            <tr>
+            <tr class="booking-row" (click)="openBookingDetail(booking)">
               <td class="booking-id">{{ booking.id.substring(0, 8) }}...</td>
               <td>
                 <div class="user-info">
@@ -102,14 +102,9 @@
                 </span>
               </td>
               <td class="actions">
-                @if (booking.status === 'pending') {
-                  <button class="btn btn-approve" (click)="approveBooking(booking)">
-                    ✓ Approve
-                  </button>
-                  <button class="btn btn-reject" (click)="rejectBooking(booking)">
-                    ✗ Reject
-                  </button>
-                }
+                <button class="btn btn-view" (click)="$event.stopPropagation(); openBookingDetail(booking)">
+                  View Details
+                </button>
               </td>
             </tr>
           }
@@ -118,95 +113,12 @@
     </div>
   }
 
-  <!-- Groomer & Time Slot Selection Modal -->
-  @if (showGroomerModal && selectedBooking) {
-    <div class="modal-overlay" (click)="closeGroomerModal()">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h2>Approve Booking & Assign Schedule</h2>
-          <button class="close-btn" (click)="closeGroomerModal()">✕</button>
-        </div>
-        <div class="modal-body">
-          <!-- Booking Info Summary -->
-          <div class="booking-summary">
-            <h3>Booking Details</h3>
-            <div class="summary-row">
-              <span class="label">Client:</span>
-              <span class="value">{{ selectedBooking.client?.first_name }} {{ selectedBooking.client?.last_name }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="label">Date & Time:</span>
-              <span class="value">{{ formatDate(selectedBooking.scheduled_date) }} at {{ selectedBooking.scheduled_time_start }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="label">Location:</span>
-              <span class="value">{{ selectedBooking.address }}, {{ selectedBooking.city }}, {{ selectedBooking.state }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="label">Amount:</span>
-              <span class="value">{{ formatCurrency(selectedBooking.total_amount) }}</span>
-            </div>
-          </div>
-
-          <!-- Select Time Slot -->
-          <div class="modal-section">
-            <h3>Select Time Slot</h3>
-            <p class="help-text">Choose the confirmed time slot for this appointment.</p>
-            <select class="time-slot-select" [(ngModel)]="selectedTimeSlot">
-              <option [ngValue]="null">-- Select a time slot --</option>
-              <optgroup label="Morning">
-                <option *ngFor="let slot of morningSlots" [ngValue]="slot">
-                  {{ slot.label }}
-                </option>
-              </optgroup>
-              <optgroup label="Afternoon">
-                <option *ngFor="let slot of afternoonSlots" [ngValue]="slot">
-                  {{ slot.label }}
-                </option>
-              </optgroup>
-            </select>
-          </div>
-
-          <!-- Select Groomer -->
-          <div class="modal-section">
-            <h3>Select Groomer to Assign</h3>
-            <p class="help-text">Choose a groomer to assign to this booking. The booking will be marked as confirmed.</p>
-            <div class="groomer-grid">
-              @for (groomer of availableGroomers; track groomer.id) {
-                <div
-                  class="groomer-card"
-                  [class.selected]="selectedGroomerId === groomer.id"
-                  (click)="selectedGroomerId = groomer.id">
-                  <div class="groomer-avatar">{{ groomer.first_name?.[0] }}{{ groomer.last_name?.[0] }}</div>
-                  <div class="groomer-info">
-                    <div class="groomer-name">
-                      {{ groomer.first_name }} {{ groomer.last_name }}
-                    </div>
-                    <div class="groomer-meta">Available</div>
-                  </div>
-                  @if (selectedGroomerId === groomer.id) {
-                    <div class="check-icon">✓</div>
-                  }
-                </div>
-              }
-              @if (availableGroomers.length === 0) {
-                <p class="no-groomers">No groomers available</p>
-              }
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="modal-actions">
-            <button class="btn btn-secondary" (click)="closeGroomerModal()">Cancel</button>
-            <button
-              class="btn btn-primary"
-              (click)="assignGroomerAndApprove()"
-              [disabled]="!selectedGroomerId || !selectedTimeSlot">
-              Approve & Assign
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+  <!-- Booking Detail Modal -->
+  @if (showBookingModal && selectedBooking) {
+    <app-booking-detail-modal
+      [booking]="selectedBooking"
+      (close)="closeBookingModal()"
+      (bookingUpdated)="onBookingUpdated()">
+    </app-booking-detail-modal>
   }
 </div>

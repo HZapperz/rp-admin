@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
 import { KPIData, BookingWithDetails } from '../../core/models/types';
+import { BookingDetailModalComponent } from '../../shared/components/booking-detail-modal/booking-detail-modal.component';
 
 type ScheduleView = 'day' | 'week' | 'month';
 
@@ -17,7 +18,7 @@ interface DaySlot {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, BookingDetailModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -37,6 +38,10 @@ export class DashboardComponent implements OnInit {
   currentDate = new Date();
   scheduleSlots: DaySlot[] = [];
   allBookings: BookingWithDetails[] = [];
+
+  // Booking Detail Modal
+  selectedBooking: BookingWithDetails | null = null;
+  showBookingModal = false;
 
   constructor(
     private analyticsService: AnalyticsService,
@@ -229,5 +234,25 @@ export class DashboardComponent implements OnInit {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
+  }
+
+  async openBookingDetail(booking: BookingWithDetails): Promise<void> {
+    // Fetch full booking details including pets
+    const fullBooking = await this.bookingService.getBookingById(booking.id);
+    if (fullBooking) {
+      this.selectedBooking = fullBooking;
+      this.showBookingModal = true;
+    }
+  }
+
+  closeBookingModal(): void {
+    this.showBookingModal = false;
+    this.selectedBooking = null;
+  }
+
+  async onBookingUpdated(): Promise<void> {
+    // Reload the schedule after a booking is updated
+    await this.loadSchedule();
+    await this.loadKPIs();
   }
 }

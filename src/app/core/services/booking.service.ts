@@ -1,12 +1,16 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SupabaseService } from './supabase.service';
 import { Observable, from, map } from 'rxjs';
 import { BookingWithDetails, BookingStatus, BookingFilters } from '../models/types';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BookingService {
+  private http = inject(HttpClient);
+
   constructor(private supabase: SupabaseService) {}
 
   getAllBookings(filters?: BookingFilters): Observable<BookingWithDetails[]> {
@@ -219,24 +223,42 @@ export class BookingService {
   }
 
   async approveBooking(bookingId: string, groomerId: string, timeSlotStart: string, timeSlotEnd: string): Promise<boolean> {
-    // When approving, we must assign a groomer and set the confirmed time slot
-    const { error } = await this.supabase
-      .from('bookings')
-      .update({
-        status: 'confirmed',
-        groomer_id: groomerId,
-        scheduled_time_start: timeSlotStart,
-        scheduled_time_end: timeSlotEnd,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', bookingId);
+    try {
+      // Get the current Supabase session token for authentication
+      const session = this.supabase.session;
+      if (!session) {
+        console.error('No active session');
+        return false;
+      }
 
-    if (error) {
+      // Call Next.js API endpoint which handles database update AND email notification
+      const response = await fetch(`${environment.apiUrl}/api/admin/bookings/${bookingId}/assign-groomer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          groomerId,
+          timeSlotStart,
+          timeSlotEnd
+        }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Error approving booking:', error);
+        return false;
+      }
+
+      const result = await response.json();
+      console.log('Booking approved successfully:', result);
+      return true;
+    } catch (error) {
       console.error('Error approving booking:', error);
       return false;
     }
-
-    return true;
   }
 
   async rejectBooking(bookingId: string, reason?: string): Promise<boolean> {

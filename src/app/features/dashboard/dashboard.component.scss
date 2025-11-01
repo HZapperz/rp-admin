@@ -414,6 +414,17 @@
   border-left: 4px solid;
   border-radius: 8px;
   padding: 0.75rem;
+  transition: all 0.2s ease;
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+      transform: translateX(2px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+  }
 
   .booking-time {
     font-weight: 600;

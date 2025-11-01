@@ -2,12 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>AdminApp</title>
+  <title>Royal Pawz Admin Dashboard</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Responsive & Mobile Optimization -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Royal Pawz Admin Dashboard - Manage bookings, groomers, and clients">
+  <meta name="theme-color" content="#6366f1">
+
+  <!-- Performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+
+  <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
   <app-root></app-root>
+
+  <!-- Fallback for users with JavaScript disabled -->
+  <noscript>
+    <div style="padding: 2rem; text-align: center; font-family: sans-serif;">
+      <h1>JavaScript Required</h1>
+      <p>Please enable JavaScript to use the Royal Pawz Admin Dashboard.</p>
+    </div>
+  </noscript>
 </body>
 </html>

@@ -89,7 +89,16 @@
   tbody {
     tr {
       border-bottom: 1px solid #e2e8f0;
-      transition: background-color 0.2s;
+      transition: all 0.2s;
+
+      &.booking-row {
+        cursor: pointer;
+
+        &:hover {
+          background-color: #f1f5f9;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+      }
 
       &:hover {
         background-color: #f8fafc;
@@ -203,6 +212,15 @@
 
       &:hover {
         background: #dc2626;
+      }
+    }
+
+    &.btn-view {
+      background: #3b82f6;
+      color: white;
+
+      &:hover {
+        background: #2563eb;
       }
     }
   }

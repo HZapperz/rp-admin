@@ -122,12 +122,16 @@ export interface BookingWithDetails extends Booking {
     first_name: string;
     last_name: string;
     avatar_url?: string;
+    phone?: string;
+    email?: string;
   };
   client?: {
     id: string;
     first_name: string;
     last_name: string;
     avatar_url?: string;
+    phone?: string;
+    email?: string;
   };
   pets?: Array<
     BookingPet & {
