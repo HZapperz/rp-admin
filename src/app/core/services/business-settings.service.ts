@@ -312,8 +312,8 @@ export class BusinessSettingsService {
           booking_date,
           booking_time,
           status,
-          users!bookings_client_id_fkey(first_name, last_name),
-          groomers:users!bookings_groomer_id_fkey(first_name, last_name)
+          client:users!bookings_client_id_fkey(first_name, last_name),
+          groomer:users!bookings_groomer_id_fkey(first_name, last_name)
         `)
         .gte('booking_date', today)
         .in('status', ['PENDING', 'CONFIRMED', 'IN_PROGRESS'])
@@ -323,21 +323,29 @@ export class BusinessSettingsService {
 
         // Filter bookings that fall on closed days
         return response.data
-          .filter(booking => {
+          .filter((booking: any) => {
             const bookingDate = new Date(booking.booking_date);
             const dayOfWeek = bookingDate.getDay();
             return closedDays.includes(dayOfWeek);
           })
-          .map(booking => ({
-            id: booking.id,
-            booking_date: booking.booking_date,
-            booking_time: booking.booking_time,
-            client_name: `${booking.users?.first_name || ''} ${booking.users?.last_name || ''}`.trim(),
-            groomer_name: booking.groomers
-              ? `${booking.groomers.first_name || ''} ${booking.groomers.last_name || ''}`.trim()
-              : 'Unassigned',
-            status: booking.status
-          }));
+          .map((booking: any) => {
+            // Handle both single object and array responses from Supabase
+            const client = Array.isArray(booking.client) ? booking.client[0] : booking.client;
+            const groomer = Array.isArray(booking.groomer) ? booking.groomer[0] : booking.groomer;
+
+            return {
+              id: booking.id,
+              booking_date: booking.booking_date,
+              booking_time: booking.booking_time,
+              client_name: client
+                ? `${client.first_name || ''} ${client.last_name || ''}`.trim()
+                : 'Unknown',
+              groomer_name: groomer
+                ? `${groomer.first_name || ''} ${groomer.last_name || ''}`.trim()
+                : 'Unassigned',
+              status: booking.status
+            };
+          });
       }),
       catchError(error => {
         console.error('Error checking booking conflicts:', error);
