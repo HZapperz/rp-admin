@@ -15,20 +15,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Email Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Angular Dev Server"
-
-[[workflows.workflow]]
-name = "Email Server"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run email-server"
-waitForPort = 3001
 
 [[workflows.workflow]]
 name = "Angular Dev Server"
@@ -49,6 +36,10 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 33241
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"

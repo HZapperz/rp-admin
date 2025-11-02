@@ -30,11 +30,14 @@ admin-app/
 ```
 
 ## Recent Changes
-- **2025-11-02**: Implemented cache busting for deployments
-  - Created `production-server.js` with Express to handle cache headers properly
+- **2025-11-02**: Implemented cache busting and integrated email service for deployments
+  - Created `production-server.js` with Express to handle both Angular app and email API
+  - Integrated Resend email service for booking approval emails (sends to client, groomer, and admin)
+  - Email API endpoint: `/api/send-booking-approval-emails` (POST)
   - HTML files: `no-cache, no-store, must-revalidate` (always fetch latest)
   - Static assets (JS/CSS/images): `max-age=31536000, immutable` (cache for 1 year since Angular generates content-hashed filenames)
   - Updated deployment config to use production server instead of http-server
+  - Removed separate Email Server workflow (now integrated into production server)
   - This ensures all users get the latest version immediately after republishing
 
 - **2025-10-31**: Configured for Replit environment
