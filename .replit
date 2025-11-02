@@ -35,5 +35,5 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npx", "http-server", "dist/admin-app/browser", "-p", "5000"]
+run = ["node", "production-server.js"]
 build = ["npm", "run", "build"]

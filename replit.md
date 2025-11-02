@@ -30,6 +30,13 @@ admin-app/
 ```
 
 ## Recent Changes
+- **2025-11-02**: Implemented cache busting for deployments
+  - Created `production-server.js` with Express to handle cache headers properly
+  - HTML files: `no-cache, no-store, must-revalidate` (always fetch latest)
+  - Static assets (JS/CSS/images): `max-age=31536000, immutable` (cache for 1 year since Angular generates content-hashed filenames)
+  - Updated deployment config to use production server instead of http-server
+  - This ensures all users get the latest version immediately after republishing
+
 - **2025-10-31**: Configured for Replit environment
   - Set dev server to port 5000 with host 0.0.0.0
   - Created vite.config.js with allowedHosts configuration for Replit proxy compatibility
