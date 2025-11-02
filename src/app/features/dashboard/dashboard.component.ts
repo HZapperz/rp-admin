@@ -5,6 +5,8 @@ import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
 import { KPIData, BookingWithDetails } from '../../core/models/types';
 import { BookingDetailModalComponent } from '../../shared/components/booking-detail-modal/booking-detail-modal.component';
+import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
+import { BusinessSettingsService, OperatingDay, OperatingHours } from '../../core/services/business-settings.service';
 
 type ScheduleView = 'day' | 'week' | 'month';
 
@@ -18,7 +20,7 @@ interface DaySlot {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, BookingDetailModalComponent],
+  imports: [CommonModule, RouterModule, BookingDetailModalComponent, BusinessSettingsModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -43,9 +45,14 @@ export class DashboardComponent implements OnInit {
   selectedBooking: BookingWithDetails | null = null;
   showBookingModal = false;
 
+  // Business Settings Modal
+  showBusinessSettingsModal = false;
+  operatingDaysSummary = 'Loading...';
+
   constructor(
     private analyticsService: AnalyticsService,
-    private bookingService: BookingService
+    private bookingService: BookingService,
+    private businessSettingsService: BusinessSettingsService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -53,6 +60,7 @@ export class DashboardComponent implements OnInit {
       this.loadKPIs(),
       this.loadSchedule()
     ]);
+    this.loadBusinessSettingsSummary();
   }
 
   private async loadKPIs(): Promise<void> {
@@ -254,5 +262,55 @@ export class DashboardComponent implements OnInit {
     // Reload the schedule after a booking is updated
     await this.loadSchedule();
     await this.loadKPIs();
+  }
+
+  // Business Settings Methods
+  loadBusinessSettingsSummary(): void {
+    this.businessSettingsService.getOperatingDays().subscribe(days => {
+      this.businessSettingsService.getOperatingHours().subscribe(hours => {
+        const openDays = days.filter(d => d.is_open);
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        if (openDays.length === 0) {
+          this.operatingDaysSummary = 'No operating days set';
+        } else if (openDays.length === 7) {
+          // Get hours for first open day
+          const firstDay = openDays[0];
+          const firstHours = hours.find(h => h.day_of_week === firstDay.day_of_week);
+          if (firstHours) {
+            const opensAt = this.businessSettingsService.formatTime(firstHours.opens_at);
+            const closesAt = this.businessSettingsService.formatTime(firstHours.closes_at);
+            this.operatingDaysSummary = `7 days/week, ${opensAt} - ${closesAt}`;
+          } else {
+            this.operatingDaysSummary = '7 days/week';
+          }
+        } else {
+          const dayLabels = openDays.map(d => dayNames[d.day_of_week]).join(', ');
+          // Get hours for first open day
+          const firstDay = openDays[0];
+          const firstHours = hours.find(h => h.day_of_week === firstDay.day_of_week);
+          if (firstHours) {
+            const opensAt = this.businessSettingsService.formatTime(firstHours.opens_at);
+            const closesAt = this.businessSettingsService.formatTime(firstHours.closes_at);
+            this.operatingDaysSummary = `${dayLabels} • ${opensAt} - ${closesAt}`;
+          } else {
+            this.operatingDaysSummary = dayLabels;
+          }
+        }
+      });
+    });
+  }
+
+  openBusinessSettings(): void {
+    this.showBusinessSettingsModal = true;
+  }
+
+  closeBusinessSettings(): void {
+    this.showBusinessSettingsModal = false;
+  }
+
+  onBusinessSettingsSaved(): void {
+    this.loadBusinessSettingsSummary();
+    this.loadSchedule(); // Reload schedule to reflect new operating days
   }
 }

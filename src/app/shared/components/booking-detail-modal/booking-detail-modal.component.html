@@ -214,6 +214,9 @@
                 @if (booking.groomer && booking.groomer.phone) {
                   <div class="groomer-contact">📞 {{ booking.groomer.phone }}</div>
                 }
+                @if (booking.groomer && booking.groomer.email) {
+                  <div class="groomer-contact">✉️ {{ booking.groomer.email }}</div>
+                }
               </div>
             </div>
           </div>

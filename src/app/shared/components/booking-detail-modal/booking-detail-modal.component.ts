@@ -151,13 +151,33 @@ export class BookingDetailModalComponent implements OnInit {
         return;
       }
 
-      console.log('Updated booking fetched:', updatedBooking);
+      console.log('Updated booking fetched:', {
+        hasPets: !!updatedBooking.pets,
+        petsCount: updatedBooking.pets?.length || 0,
+        hasGroomer: !!updatedBooking.groomer,
+        hasClient: !!updatedBooking.client
+      });
+
+      // If the updated booking doesn't have pets, use the original booking's pets
+      // This can happen if there's a timing issue with the database fetch
+      if (!updatedBooking.pets || updatedBooking.pets.length === 0) {
+        console.warn('Updated booking missing pets data, using original booking pets');
+        updatedBooking.pets = this.booking.pets;
+      }
 
       // Step 3: Send confirmation emails to client, groomer, and admin
       // You can configure the admin email here
       const adminEmail = 'admin@royalpawz.com'; // Configure this as needed
 
-      console.log('Sending confirmation emails...');
+      console.log('Sending confirmation emails with data:', {
+        hasPets: !!updatedBooking.pets,
+        petsCount: updatedBooking.pets?.length || 0,
+        hasGroomer: !!updatedBooking.groomer,
+        groomerEmail: updatedBooking.groomer?.email,
+        hasClient: !!updatedBooking.client,
+        clientEmail: updatedBooking.client?.email
+      });
+
       const emailResult = await this.emailService.sendBookingApprovalEmails(
         updatedBooking,
         adminEmail

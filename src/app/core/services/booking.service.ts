@@ -69,12 +69,12 @@ export class BookingService {
       groomerIds.length > 0
         ? this.supabase
             .from('users')
-            .select('id, first_name, last_name, avatar_url')
+            .select('id, first_name, last_name, avatar_url, phone, email')
             .in('id', groomerIds)
         : Promise.resolve({ data: [], error: null }),
       this.supabase
         .from('users')
-        .select('id, first_name, last_name, avatar_url')
+        .select('id, first_name, last_name, avatar_url, phone, email')
         .in('id', clientIds),
       this.supabase
         .from('booking_pets')
@@ -147,6 +147,8 @@ export class BookingService {
   }
 
   async getBookingById(id: string): Promise<BookingWithDetails | null> {
+    console.log('getBookingById called for:', id);
+
     // Fetch single booking
     const { data: booking, error } = await this.supabase
       .from('bookings')
@@ -159,20 +161,25 @@ export class BookingService {
       return null;
     }
 
-    if (!booking) return null;
+    if (!booking) {
+      console.warn('No booking found for id:', id);
+      return null;
+    }
+
+    console.log('Booking fetched, now fetching related data...', { bookingId: booking.id });
 
     // Batch fetch related data (groomer might be null for pending bookings)
     const [groomerResult, clientResult, bookingPetsResult] = await Promise.all([
       booking.groomer_id
         ? this.supabase
             .from('users')
-            .select('id, first_name, last_name, avatar_url, phone')
+            .select('id, first_name, last_name, avatar_url, phone, email')
             .eq('id', booking.groomer_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       this.supabase
         .from('users')
-        .select('id, first_name, last_name, avatar_url, phone')
+        .select('id, first_name, last_name, avatar_url, phone, email')
         .eq('id', booking.client_id)
         .single(),
       this.supabase
@@ -181,9 +188,21 @@ export class BookingService {
         .eq('booking_id', booking.id)
     ]);
 
+    console.log('Booking pets fetched:', {
+      count: bookingPetsResult.data?.length || 0,
+      hasError: !!bookingPetsResult.error,
+      error: bookingPetsResult.error
+    });
+
+    if (bookingPetsResult.error) {
+      console.error('Error fetching booking_pets:', bookingPetsResult.error);
+    }
+
     // Fetch pets and addons for this booking
     const bookingPetIds = (bookingPetsResult.data || []).map(bp => bp.id);
     const petIds = [...new Set((bookingPetsResult.data || []).map(bp => bp.pet_id).filter(Boolean))];
+
+    console.log('Pet IDs to fetch:', { petIds, bookingPetIds });
 
     const [petsResult, addonsResult] = await Promise.all([
       petIds.length > 0
@@ -193,6 +212,11 @@ export class BookingService {
         ? this.supabase.from('booking_addons').select('*').in('booking_pet_id', bookingPetIds)
         : Promise.resolve({ data: [], error: null })
     ]);
+
+    console.log('Pets fetched:', {
+      count: petsResult.data?.length || 0,
+      hasError: !!petsResult.error
+    });
 
     // Create lookups
     const petsLookup: Record<string, any> = (petsResult.data || []).reduce((acc, p) => {
@@ -213,6 +237,11 @@ export class BookingService {
       pet: petsLookup[bp.pet_id],
       addons: addonsByBookingPetId[bp.id] || []
     }));
+
+    console.log('Final pets with details:', {
+      count: petsWithDetails.length,
+      pets: petsWithDetails
+    });
 
     return {
       ...booking,

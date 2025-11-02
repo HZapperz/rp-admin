@@ -1,0 +1,393 @@
+<!-- Modal Overlay -->
+<div class="modal-overlay" (click)="closeModal()">
+  <!-- Modal Content -->
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>Business Settings</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading settings...</p>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="!loading" class="modal-body">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button
+          class="tab"
+          [class.active]="activeTab === 'days'"
+          (click)="setActiveTab('days')">
+          Days of Operation
+        </button>
+        <button
+          class="tab"
+          [class.active]="activeTab === 'hours'"
+          (click)="setActiveTab('hours')">
+          Operating Hours
+        </button>
+        <button
+          class="tab"
+          [class.active]="activeTab === 'holidays'"
+          (click)="setActiveTab('holidays')">
+          Holidays
+        </button>
+        <button
+          class="tab"
+          [class.active]="activeTab === 'special'"
+          (click)="setActiveTab('special')">
+          Special Hours
+        </button>
+      </div>
+
+      <!-- Alerts -->
+      <div *ngIf="error" class="alert alert-error">
+        {{ error }}
+      </div>
+      <div *ngIf="success" class="alert alert-success">
+        {{ success }}
+      </div>
+
+      <!-- Days Tab -->
+      <div *ngIf="activeTab === 'days'" class="tab-content">
+        <p class="tab-description">
+          Select which days of the week your business is open. Closed days will prevent new bookings.
+        </p>
+
+        <div class="days-grid">
+          <div
+            *ngFor="let day of daysConfig"
+            class="day-card"
+            [class.open]="day.isOpen"
+            [class.closed]="!day.isOpen">
+            <label class="day-label">
+              <input
+                type="checkbox"
+                [(ngModel)]="day.isOpen"
+                [disabled]="saving">
+              <span class="day-name">{{ day.dayName }}</span>
+              <span class="day-status">{{ day.isOpen ? 'Open' : 'Closed' }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hours Tab -->
+      <div *ngIf="activeTab === 'hours'" class="tab-content">
+        <p class="tab-description">
+          Configure operating hours for each day. Only open days can have hours configured.
+        </p>
+
+        <div class="hours-list">
+          <div
+            *ngFor="let day of daysConfig"
+            class="hours-item"
+            [class.disabled]="!day.isOpen">
+            <div class="hours-header">
+              <h4>{{ day.dayName }}</h4>
+              <span *ngIf="!day.isOpen" class="closed-badge">Closed</span>
+            </div>
+
+            <div *ngIf="day.isOpen" class="hours-form">
+              <div class="time-row">
+                <div class="form-group">
+                  <label>Opens At</label>
+                  <input
+                    type="time"
+                    [(ngModel)]="day.opensAt"
+                    [disabled]="saving"
+                    class="time-input">
+                </div>
+
+                <div class="form-group">
+                  <label>Closes At</label>
+                  <input
+                    type="time"
+                    [(ngModel)]="day.closesAt"
+                    [disabled]="saving"
+                    class="time-input">
+                </div>
+              </div>
+
+              <div class="break-section">
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="day.hasBreak"
+                    [disabled]="saving">
+                  <span>Include break time</span>
+                </label>
+
+                <div *ngIf="day.hasBreak" class="time-row">
+                  <div class="form-group">
+                    <label>Break Start</label>
+                    <input
+                      type="time"
+                      [(ngModel)]="day.breakStart"
+                      [disabled]="saving"
+                      class="time-input">
+                  </div>
+
+                  <div class="form-group">
+                    <label>Break End</label>
+                    <input
+                      type="time"
+                      [(ngModel)]="day.breakEnd"
+                      [disabled]="saving"
+                      class="time-input">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Holidays Tab -->
+      <div *ngIf="activeTab === 'holidays'" class="tab-content">
+        <p class="tab-description">
+          Manage business closure dates for holidays. The business will not accept bookings on these dates.
+        </p>
+
+        <!-- Add New Holiday Form -->
+        <div class="add-form">
+          <h4>Add Holiday</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date</label>
+              <input
+                type="date"
+                [(ngModel)]="newHoliday.date"
+                [disabled]="saving"
+                class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label>Holiday Name</label>
+              <input
+                type="text"
+                [(ngModel)]="newHoliday.name"
+                placeholder="e.g., Christmas Day"
+                [disabled]="saving"
+                class="form-input">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Description (Optional)</label>
+            <input
+              type="text"
+              [(ngModel)]="newHoliday.description"
+              placeholder="e.g., Business closed for Christmas"
+              [disabled]="saving"
+              class="form-input">
+          </div>
+
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              [(ngModel)]="newHoliday.is_recurring"
+              [disabled]="saving">
+            <span>Recurring annually</span>
+          </label>
+
+          <button
+            class="btn btn-secondary"
+            (click)="addHoliday()"
+            [disabled]="saving">
+            Add Holiday
+          </button>
+        </div>
+
+        <!-- Holidays List -->
+        <div class="items-list">
+          <h4>Upcoming Holidays</h4>
+          <div *ngIf="holidays.length === 0" class="empty-state">
+            No holidays configured
+          </div>
+
+          <div *ngFor="let holiday of holidays" class="list-item">
+            <div class="item-content">
+              <div class="item-date">{{ formatDate(holiday.date) }}</div>
+              <div class="item-name">{{ holiday.name }}</div>
+              <div *ngIf="holiday.description" class="item-description">
+                {{ holiday.description }}
+              </div>
+              <span *ngIf="holiday.is_recurring" class="recurring-badge">Recurring</span>
+            </div>
+            <button
+              class="btn-icon-delete"
+              (click)="deleteHoliday(holiday.id)"
+              [disabled]="saving"
+              title="Delete holiday">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Special Hours Tab -->
+      <div *ngIf="activeTab === 'special'" class="tab-content">
+        <p class="tab-description">
+          Override normal operating hours for specific dates or mark dates as closed.
+        </p>
+
+        <!-- Add New Special Hours Form -->
+        <div class="add-form">
+          <h4>Add Special Hours</h4>
+          <div class="form-group">
+            <label>Date</label>
+            <input
+              type="date"
+              [(ngModel)]="newSpecialHours.date"
+              [disabled]="saving"
+              class="form-input">
+          </div>
+
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              [(ngModel)]="newSpecialHours.is_closed"
+              [disabled]="saving">
+            <span>Business is closed on this date</span>
+          </label>
+
+          <div *ngIf="!newSpecialHours.is_closed" class="form-row">
+            <div class="form-group">
+              <label>Opens At</label>
+              <input
+                type="time"
+                [(ngModel)]="newSpecialHours.opens_at"
+                [disabled]="saving"
+                class="time-input">
+            </div>
+
+            <div class="form-group">
+              <label>Closes At</label>
+              <input
+                type="time"
+                [(ngModel)]="newSpecialHours.closes_at"
+                [disabled]="saving"
+                class="time-input">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Reason (Optional)</label>
+            <input
+              type="text"
+              [(ngModel)]="newSpecialHours.reason"
+              placeholder="e.g., Staff training, Early closure"
+              [disabled]="saving"
+              class="form-input">
+          </div>
+
+          <button
+            class="btn btn-secondary"
+            (click)="addSpecialHours()"
+            [disabled]="saving">
+            Add Special Hours
+          </button>
+        </div>
+
+        <!-- Special Hours List -->
+        <div class="items-list">
+          <h4>Upcoming Special Hours</h4>
+          <div *ngIf="specialHours.length === 0" class="empty-state">
+            No special hours configured
+          </div>
+
+          <div *ngFor="let special of specialHours" class="list-item">
+            <div class="item-content">
+              <div class="item-date">{{ formatDate(special.date) }}</div>
+              <div class="item-name">
+                <span *ngIf="special.is_closed">Closed</span>
+                <span *ngIf="!special.is_closed">
+                  {{ formatTime(special.opens_at!) }} - {{ formatTime(special.closes_at!) }}
+                </span>
+              </div>
+              <div *ngIf="special.reason" class="item-description">
+                {{ special.reason }}
+              </div>
+            </div>
+            <button
+              class="btn-icon-delete"
+              (click)="deleteSpecialHours(special.id)"
+              [disabled]="saving"
+              title="Delete special hours">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button
+        class="btn btn-secondary"
+        (click)="closeModal()"
+        [disabled]="saving">
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        (click)="saveAllSettings()"
+        [disabled]="saving || loading">
+        <span *ngIf="!saving">Save Settings</span>
+        <span *ngIf="saving">Saving...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Conflict Dialog -->
+<div *ngIf="showConflictDialog" class="modal-overlay" (click)="closeConflictDialog()">
+  <div class="conflict-dialog" (click)="$event.stopPropagation()">
+    <h3>⚠️ Booking Conflicts Detected</h3>
+    <p>
+      The following bookings are scheduled on days you're trying to close.
+      These bookings will be automatically cancelled.
+    </p>
+
+    <div class="conflicts-list">
+      <div *ngFor="let conflict of conflicts" class="conflict-item">
+        <div class="conflict-date">
+          {{ formatDate(conflict.booking_date) }} at {{ formatTime(conflict.booking_time) }}
+        </div>
+        <div class="conflict-details">
+          <strong>Client:</strong> {{ conflict.client_name }}<br>
+          <strong>Groomer:</strong> {{ conflict.groomer_name }}<br>
+          <strong>Status:</strong> {{ conflict.status }}
+        </div>
+      </div>
+    </div>
+
+    <p class="warning-text">
+      <strong>{{ conflicts.length }}</strong> booking(s) will be cancelled.
+      Clients will be notified via email.
+    </p>
+
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" (click)="closeConflictDialog()" [disabled]="saving">
+        Cancel
+      </button>
+      <button class="btn btn-danger" (click)="confirmAndCancelBookings()" [disabled]="saving">
+        <span *ngIf="!saving">Confirm & Cancel Bookings</span>
+        <span *ngIf="saving">Cancelling...</span>
+      </button>
+    </div>
+  </div>
+</div>
