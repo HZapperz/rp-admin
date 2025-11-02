@@ -41,7 +41,10 @@ interface EmailResponse {
   providedIn: 'root'
 })
 export class EmailService {
-  private emailApiUrl = 'http://localhost:3001/api';
+  // Use relative URL in production, localhost in development
+  private emailApiUrl = window.location.hostname === 'localhost'
+    ? 'http://localhost:3001/api'
+    : '/api';
 
   constructor(private http: HttpClient) {}
 

@@ -5,7 +5,8 @@
       "mcp__supabase__execute_sql",
       "Bash(cat:*)",
       "Bash(npm install:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run email-server:*)"
     ],
     "deny": [],
     "ask": []

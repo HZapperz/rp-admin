@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Resend } from 'resend';
@@ -7,10 +8,14 @@ import { Resend } from 'resend';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env['PORT'] || 3001;
 
 // Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env['RESEND_API_KEY']);
+
+// Configure the "from" email address
+// Use Resend's test domain for development or allow configuration via env variable
+const FROM_EMAIL = process.env['FROM_EMAIL'] || 'onboarding@resend.dev';
 
 // Middleware
 app.use(cors());
@@ -339,7 +344,7 @@ app.post('/api/send-booking-approval-emails', async (req: Request, res: Response
     const results = await Promise.allSettled([
       // Send to client
       resend.emails.send({
-        from: 'Royal Pawz <noreply@royalpawz.com>',
+        from: FROM_EMAIL,
         to: [emailData.client.email],
         subject: 'Your Royal Pawz Appointment is Confirmed! 🐾',
         html: generateClientEmailHTML(emailData),
@@ -347,7 +352,7 @@ app.post('/api/send-booking-approval-emails', async (req: Request, res: Response
 
       // Send to groomer
       resend.emails.send({
-        from: 'Royal Pawz <noreply@royalpawz.com>',
+        from: FROM_EMAIL,
         to: [emailData.groomer.email],
         subject: 'New Booking Assignment - Royal Pawz',
         html: generateGroomerEmailHTML(emailData),
@@ -356,7 +361,7 @@ app.post('/api/send-booking-approval-emails', async (req: Request, res: Response
       // Send to admin (if provided)
       ...(emailData.adminEmail ? [
         resend.emails.send({
-          from: 'Royal Pawz <noreply@royalpawz.com>',
+          from: FROM_EMAIL,
           to: [emailData.adminEmail],
           subject: 'Booking Approved - Royal Pawz Admin',
           html: generateAdminEmailHTML(emailData),
@@ -377,7 +382,7 @@ app.post('/api/send-booking-approval-emails', async (req: Request, res: Response
     }
 
     console.log('All booking approval emails sent successfully');
-    res.json({
+    return res.json({
       success: true,
       message: 'All emails sent successfully',
       results: results
@@ -385,7 +390,7 @@ app.post('/api/send-booking-approval-emails', async (req: Request, res: Response
 
   } catch (error) {
     console.error('Error sending booking approval emails:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to send emails',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -401,5 +406,5 @@ app.get('/api/health', (req: Request, res: Response) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Email service running on http://localhost:${PORT}`);
-  console.log(`Resend API Key configured: ${!!process.env.RESEND_API_KEY}`);
+  console.log(`Resend API Key configured: ${!!process.env['RESEND_API_KEY']}`);
 });
