@@ -1,0 +1,107 @@
+<div class="modal-overlay" (click)="onOverlayClick($event)">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ isEditMode ? 'Edit Zip Code' : 'Add New Zip Code' }}</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        &times;
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Error Message -->
+      <div *ngIf="error" class="alert alert-error">
+        {{ error }}
+      </div>
+
+      <!-- Success Message -->
+      <div *ngIf="success" class="alert alert-success">
+        {{ success }}
+      </div>
+
+      <!-- Form -->
+      <form (ngSubmit)="saveZipCode()">
+        <!-- Zip Code -->
+        <div class="form-group">
+          <label for="zip_code">Zip Code *</label>
+          <input
+            type="text"
+            id="zip_code"
+            class="form-input"
+            [(ngModel)]="formData.zip_code"
+            name="zip_code"
+            placeholder="e.g., 77082"
+            maxlength="5"
+            [disabled]="saving"
+            required
+          />
+          <small class="form-hint">5-digit US zip code</small>
+        </div>
+
+        <!-- City -->
+        <div class="form-group">
+          <label for="city">City *</label>
+          <input
+            type="text"
+            id="city"
+            class="form-input"
+            [(ngModel)]="formData.city"
+            name="city"
+            placeholder="e.g., Houston"
+            [disabled]="saving"
+            required
+          />
+        </div>
+
+        <!-- State -->
+        <div class="form-group">
+          <label for="state">State *</label>
+          <input
+            type="text"
+            id="state"
+            class="form-input"
+            [(ngModel)]="formData.state"
+            name="state"
+            placeholder="e.g., TX"
+            maxlength="2"
+            [disabled]="saving"
+            required
+          />
+          <small class="form-hint">2-letter state code (e.g., TX, CA, NY)</small>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label for="notes">Notes (Optional)</label>
+          <textarea
+            id="notes"
+            class="form-input"
+            [(ngModel)]="formData.notes"
+            name="notes"
+            rows="3"
+            placeholder="Add any additional notes about this zip code..."
+            [disabled]="saving"
+          ></textarea>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="closeModal()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="saveZipCode()"
+        [disabled]="saving"
+      >
+        {{ saving ? 'Saving...' : (isEditMode ? 'Update' : 'Add') }}
+      </button>
+    </div>
+  </div>
+</div>

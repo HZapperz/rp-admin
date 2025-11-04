@@ -1,5 +1,21 @@
 <div class="service-areas">
-  <h1 class="page-title">Service Areas & Territory Management</h1>
+  <div class="header-section">
+    <h1 class="page-title">Service Areas & Territory Management</h1>
+  </div>
+
+  <!-- Success Message -->
+  @if (successMessage) {
+    <div class="alert alert-success">
+      {{ successMessage }}
+    </div>
+  }
+
+  <!-- Error Message -->
+  @if (error) {
+    <div class="alert alert-error">
+      {{ error }}
+    </div>
+  }
 
   <!-- Info Banner -->
   <div class="info-banner">
@@ -20,31 +36,92 @@
   @if (!isLoading) {
     <!-- Current Zip Codes -->
     <div class="section-card">
-      <h2>Active Service Zip Codes</h2>
-      <p class="section-description">
-        Currently serviced zip codes. In the future, these will be assigned to specific vans for optimized routing.
-      </p>
-
-      <div class="zip-code-grid">
-        @for (zipCode of zipCodes; track zipCode.id) {
-          <div class="zip-code-card" [class.inactive]="!zipCode.is_active">
-            <div class="zip-code-header">
-              <span class="zip-code-number">{{ zipCode.zip_code }}</span>
-              <span class="zip-code-status" [class.active]="zipCode.is_active">
-                {{ zipCode.is_active ? 'Active' : 'Inactive' }}
-              </span>
-            </div>
-            <div class="zip-code-location">
-              {{ zipCode.city }}, {{ zipCode.state }}
-            </div>
-            <!-- Future: Van assignment display -->
-            <div class="zip-code-van">
-              <span class="label">Assigned Van:</span>
-              <span class="placeholder">Not yet assigned</span>
-            </div>
-          </div>
-        }
+      <div class="section-header">
+        <div class="header-left">
+          <h2>Serviceable Zip Codes</h2>
+          <p class="section-description">
+            Manage zip codes where grooming services are available.
+          </p>
+        </div>
+        <button class="btn btn-primary" (click)="openAddModal()">
+          + Add Zip Code
+        </button>
       </div>
+
+      <!-- Search Bar -->
+      <div class="search-bar">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search by zip code, city, or state..."
+          [(ngModel)]="searchTerm"
+          (input)="onSearchChange()"
+        />
+      </div>
+
+      <!-- Zip Codes Grid -->
+      @if (filteredZipCodes.length === 0) {
+        <div class="empty-state">
+          <p>No zip codes found.</p>
+          @if (searchTerm) {
+            <button class="btn btn-secondary" (click)="searchTerm = ''; onSearchChange()">
+              Clear Search
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="zip-code-grid">
+          @for (zipCode of filteredZipCodes; track zipCode.id) {
+            <div class="zip-code-card" [class.inactive]="!zipCode.is_active">
+              <div class="zip-code-header">
+                <span class="zip-code-number">{{ zipCode.zip_code }}</span>
+                <span class="status-badge" [class.active]="zipCode.is_active" [class.inactive]="!zipCode.is_active">
+                  {{ zipCode.is_active ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+              <div class="zip-code-location">
+                {{ zipCode.city }}, {{ zipCode.state }}
+              </div>
+              @if (zipCode.notes) {
+                <div class="zip-code-notes">
+                  <span class="notes-label">Notes:</span>
+                  <span class="notes-text">{{ zipCode.notes }}</span>
+                </div>
+              }
+              <!-- Future: Van assignment display -->
+              <div class="zip-code-van">
+                <span class="label">Assigned Van:</span>
+                <span class="placeholder">Not yet assigned</span>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="action-buttons">
+                <button
+                  class="btn-icon btn-toggle"
+                  (click)="toggleStatus(zipCode)"
+                  [title]="zipCode.is_active ? 'Deactivate' : 'Activate'"
+                >
+                  {{ zipCode.is_active ? '⏸' : '▶' }}
+                </button>
+                <button
+                  class="btn-icon btn-edit"
+                  (click)="openEditModal(zipCode)"
+                  title="Edit"
+                >
+                  ✏️
+                </button>
+                <button
+                  class="btn-icon btn-delete"
+                  (click)="confirmDelete(zipCode)"
+                  title="Delete"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <!-- Future Van Management Section -->
@@ -90,6 +167,37 @@
           <li>Peak hours and seasonal demand analysis</li>
           <li>Automatic overflow routing when vans reach capacity</li>
         </ul>
+      </div>
+    </div>
+  }
+
+  <!-- Zip Code Modal -->
+  @if (showModal) {
+    <app-zip-code-modal
+      [zipCode]="selectedZipCode"
+      (close)="closeModal()"
+      (zipCodeSaved)="onZipCodeSaved()"
+    ></app-zip-code-modal>
+  }
+
+  <!-- Delete Confirmation Dialog -->
+  @if (zipCodeToDelete) {
+    <div class="modal-overlay" (click)="cancelDelete()">
+      <div class="confirmation-dialog" (click)="$event.stopPropagation()">
+        <h3>Confirm Delete</h3>
+        <p>
+          Are you sure you want to delete zip code <strong>{{ zipCodeToDelete.zip_code }}</strong>
+          ({{ zipCodeToDelete.city }}, {{ zipCodeToDelete.state }})?
+        </p>
+        <p class="warning-text">This action cannot be undone.</p>
+        <div class="dialog-actions">
+          <button class="btn btn-secondary" (click)="cancelDelete()">
+            Cancel
+          </button>
+          <button class="btn btn-danger" (click)="deleteZipCode()">
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   }

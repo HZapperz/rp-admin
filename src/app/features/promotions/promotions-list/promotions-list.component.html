@@ -1,0 +1,165 @@
+<div class="promotions-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>🎁 Promotions Management</h1>
+        <p class="subtitle">Create and manage promotional discounts for customers</p>
+      </div>
+      <button class="btn-create" (click)="openCreateDialog()">+ Create Promotion</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label for="status">Status:</label>
+      <select id="status" (change)="onStatusFilterChange($event)" [value]="selectedStatus">
+        <option value="all">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="inactive">Inactive</option>
+        <option value="expired">Expired</option>
+        <option value="maxed_out">Max Reached</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="search">Search:</label>
+      <input
+        type="text"
+        id="search"
+        placeholder="Search by title or description..."
+        (input)="onSearchChange($event)"
+        [value]="searchTerm"
+      />
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading promotions...</p>
+    </div>
+  }
+
+  @if (error) {
+    <div class="error-message">{{ error }}</div>
+  }
+
+  @if (!isLoading && !error) {
+    <div class="promotions-stats">
+      <span>Showing {{ filteredPromotions.length }} of {{ promotions.length }} promotions</span>
+    </div>
+
+    <div class="promotions-table-container">
+      <table class="promotions-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Discount</th>
+            <th>Valid Period</th>
+            <th>Usage</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredPromotions.length === 0) {
+            <tr>
+              <td colspan="6" class="no-promotions">
+                @if (promotions.length === 0) {
+                  <div class="empty-state">
+                    <p>No promotions created yet.</p>
+                    <button class="btn-create-small" (click)="openCreateDialog()">Create First Promotion</button>
+                  </div>
+                } @else {
+                  No promotions match your filters
+                }
+              </td>
+            </tr>
+          }
+          @for (promotion of filteredPromotions; track promotion.id) {
+            <tr class="promotion-row" (click)="openEditDialog(promotion)">
+              <td>
+                <div class="promotion-info">
+                  <div class="promotion-title">{{ promotion.title }}</div>
+                  @if (promotion.description) {
+                    <div class="promotion-description">{{ promotion.description }}</div>
+                  }
+                </div>
+              </td>
+              <td>
+                <span class="discount-badge">{{ promotion.discount_percentage }}% OFF</span>
+              </td>
+              <td>
+                <div class="date-range">
+                  <div>{{ formatDate(promotion.valid_from) }}</div>
+                  <div class="to-text">to</div>
+                  <div>{{ formatDate(promotion.valid_until) }}</div>
+                  @if (getPromotionStatus(promotion) === 'active') {
+                    <div class="days-remaining">{{ getDaysRemaining(promotion.valid_until) }} days left</div>
+                  }
+                </div>
+              </td>
+              <td>
+                <div class="usage-info">
+                  <div class="usage-label">{{ getUsageLabel(promotion) }}</div>
+                  @if (promotion.max_uses) {
+                    <div class="usage-bar">
+                      <div class="usage-fill" [style.width.%]="getUsagePercentage(promotion)"></div>
+                    </div>
+                  }
+                </div>
+              </td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusClass(getPromotionStatus(promotion))">
+                  {{ getStatusLabel(getPromotionStatus(promotion)) }}
+                </span>
+              </td>
+              <td class="actions">
+                <div class="action-buttons">
+                  <button
+                    class="btn-toggle"
+                    [class.active]="promotion.is_active"
+                    (click)="togglePromotionStatus(promotion, $event)"
+                    title="{{ promotion.is_active ? 'Deactivate' : 'Activate' }}">
+                    {{ promotion.is_active ? '⏸' : '▶' }}
+                  </button>
+                  <button
+                    class="btn-edit"
+                    (click)="openEditDialog(promotion); $event.stopPropagation()"
+                    title="Edit">
+                    ✏️
+                  </button>
+                  <button
+                    class="btn-delete"
+                    (click)="deletePromotion(promotion, $event)"
+                    title="Delete">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Promotion Form Dialog -->
+@if (showPromotionDialog) {
+  <div class="dialog-overlay" (click)="closeDialog()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h2>{{ editingPromotion ? 'Edit Promotion' : 'Create Promotion' }}</h2>
+        <button class="btn-close" (click)="closeDialog()">×</button>
+      </div>
+      <app-promotion-form-dialog
+        [promotion]="editingPromotion"
+        (close)="closeDialog()"
+        (save)="onPromotionSaved()"
+      ></app-promotion-form-dialog>
+    </div>
+  </div>
+}

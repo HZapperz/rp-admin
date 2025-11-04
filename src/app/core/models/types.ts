@@ -163,20 +163,36 @@ export interface Complaint {
 // Promotion Types
 export interface Promotion {
   id: string;
-  code: string;
+  title: string;
   description?: string;
-  discount_type: 'percentage' | 'fixed_amount';
-  discount_value: number;
-  min_booking_amount?: number;
-  max_discount_amount?: number;
+  discount_percentage: number;
   valid_from: string;
   valid_until: string;
+  is_active: boolean;
   max_uses?: number;
   current_uses: number;
-  is_active: boolean;
-  user_segments?: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface CreatePromotionDto {
+  title: string;
+  description?: string;
+  discount_percentage: number;
+  valid_from: string;
+  valid_until: string;
+  is_active?: boolean;
+  max_uses?: number;
+}
+
+export interface UpdatePromotionDto {
+  title?: string;
+  description?: string;
+  discount_percentage?: number;
+  valid_from?: string;
+  valid_until?: string;
+  is_active?: boolean;
+  max_uses?: number;
 }
 
 // Rating Types
@@ -251,6 +267,18 @@ export interface Address {
   additional_info?: string;
   address_type: AddressType;
   is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Service Area Types
+export interface ServiceAreaZipCode {
+  id: string;
+  zip_code: string;
+  city: string;
+  state: string;
+  is_active: boolean;
+  notes?: string;
   created_at: string;
   updated_at: string;
 }

@@ -1,0 +1,144 @@
+<div class="promotion-form-dialog">
+  <form [formGroup]="promotionForm" (ngSubmit)="onSubmit()">
+    <!-- Title -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Promotion Title</mat-label>
+      <input
+        matInput
+        formControlName="title"
+        placeholder="e.g., New Customer Promotion"
+        maxlength="100"
+      />
+      <mat-hint align="end">{{ promotionForm.get('title')?.value?.length || 0 }}/100</mat-hint>
+      @if (promotionForm.get('title')?.touched && promotionForm.get('title')?.errors) {
+        <mat-error>{{ getErrorMessage('title') }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Description -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description (Optional)</mat-label>
+      <textarea
+        matInput
+        formControlName="description"
+        placeholder="e.g., Welcome to Royal Pawz! Enjoy 25% off your first grooming appointment."
+        rows="3"
+        maxlength="500"
+      ></textarea>
+      <mat-hint align="end">{{ promotionForm.get('description')?.value?.length || 0 }}/500</mat-hint>
+      @if (promotionForm.get('description')?.touched && promotionForm.get('description')?.errors) {
+        <mat-error>{{ getErrorMessage('description') }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Discount Percentage -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Discount Percentage</mat-label>
+      <input
+        matInput
+        type="number"
+        formControlName="discount_percentage"
+        placeholder="25"
+        min="1"
+        max="100"
+      />
+      <span matSuffix>%</span>
+      <mat-hint>Enter a value between 1 and 100</mat-hint>
+      @if (promotionForm.get('discount_percentage')?.touched && promotionForm.get('discount_percentage')?.errors) {
+        <mat-error>{{ getErrorMessage('discount_percentage') }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Date Range -->
+    <div class="date-range-group">
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>Valid From</mat-label>
+        <input
+          matInput
+          [matDatepicker]="pickerFrom"
+          formControlName="valid_from"
+        />
+        <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+        <mat-datepicker #pickerFrom></mat-datepicker>
+        @if (promotionForm.get('valid_from')?.touched && promotionForm.get('valid_from')?.errors) {
+          <mat-error>{{ getErrorMessage('valid_from') }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>Valid Until</mat-label>
+        <input
+          matInput
+          [matDatepicker]="pickerUntil"
+          formControlName="valid_until"
+        />
+        <mat-datepicker-toggle matSuffix [for]="pickerUntil"></mat-datepicker-toggle>
+        <mat-datepicker #pickerUntil></mat-datepicker>
+        @if (promotionForm.get('valid_until')?.touched && promotionForm.get('valid_until')?.errors) {
+          <mat-error>{{ getErrorMessage('valid_until') }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    @if (promotionForm.errors?.['dateRangeInvalid']) {
+      <div class="date-range-error">
+        Valid from date must be before valid until date
+      </div>
+    }
+
+    <!-- Max Uses -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Max Uses (Optional)</mat-label>
+      <input
+        matInput
+        type="number"
+        formControlName="max_uses"
+        placeholder="Leave empty for unlimited"
+        min="1"
+      />
+      <mat-hint>Limit the number of times this promotion can be used</mat-hint>
+      @if (promotionForm.get('max_uses')?.touched && promotionForm.get('max_uses')?.errors) {
+        <mat-error>{{ getErrorMessage('max_uses') }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Active Toggle -->
+    <div class="toggle-field">
+      <mat-slide-toggle formControlName="is_active" color="primary">
+        <span class="toggle-label">
+          Active
+          <span class="toggle-hint">
+            {{ promotionForm.get('is_active')?.value ? 'Promotion will be visible to customers' : 'Promotion will be hidden' }}
+          </span>
+        </span>
+      </mat-slide-toggle>
+    </div>
+
+    <!-- Error Message -->
+    @if (errorMessage) {
+      <div class="error-banner">
+        {{ errorMessage }}
+      </div>
+    }
+
+    <!-- Actions -->
+    <div class="dialog-actions">
+      <button
+        type="button"
+        mat-stroked-button
+        (click)="onCancel()"
+        [disabled]="isSubmitting"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        mat-raised-button
+        color="primary"
+        [disabled]="promotionForm.invalid || isSubmitting"
+      >
+        {{ isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Promotion' : 'Create Promotion') }}
+      </button>
+    </div>
+  </form>
+</div>

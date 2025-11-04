@@ -1,5 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ServiceAreaService } from '../../../core/services/service-area.service';
+import { ServiceAreaZipCode } from '../../../core/models/types';
+import { ZipCodeModalComponent } from '../../../shared/components/zip-code-modal/zip-code-modal.component';
 
 /**
  * Service Areas Management Component
@@ -63,40 +67,143 @@ import { CommonModule } from '@angular/common';
  *   );
  */
 
-interface ServiceAreaZipCode {
-  id: string;
-  zip_code: string;
-  city: string;
-  state: string;
-  is_active: boolean;
-  // Future: assigned_van_id
-}
-
 @Component({
   selector: 'app-service-areas-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, ZipCodeModalComponent],
   templateUrl: './service-areas-list.component.html',
   styleUrls: ['./service-areas-list.component.scss']
 })
 export class ServiceAreasListComponent implements OnInit {
   zipCodes: ServiceAreaZipCode[] = [];
+  filteredZipCodes: ServiceAreaZipCode[] = [];
   isLoading = true;
+  error: string | null = null;
+  successMessage: string = '';
+  searchTerm: string = '';
+
+  // Modal state
+  showModal = false;
+  selectedZipCode: ServiceAreaZipCode | null = null;
+
+  // Delete confirmation
+  zipCodeToDelete: ServiceAreaZipCode | null = null;
+
+  constructor(private serviceAreaService: ServiceAreaService) {}
 
   ngOnInit(): void {
-    // TODO: Load zip codes from database
-    // this.supabaseService.from('service_area_zipcodes').select('*')
-    this.mockLoadZipCodes();
+    this.loadZipCodes();
   }
 
-  private mockLoadZipCodes(): void {
-    // Mock data for demonstration
-    this.zipCodes = [
-      { id: '1', zip_code: '75201', city: 'Dallas', state: 'TX', is_active: true },
-      { id: '2', zip_code: '75202', city: 'Dallas', state: 'TX', is_active: true },
-      { id: '3', zip_code: '75203', city: 'Dallas', state: 'TX', is_active: true },
-    ];
-    this.isLoading = false;
+  async loadZipCodes(): Promise<void> {
+    this.isLoading = true;
+    this.error = null;
+
+    try {
+      this.serviceAreaService.getAllZipCodes().subscribe({
+        next: (data) => {
+          this.zipCodes = data;
+          this.applyFilters();
+          this.isLoading = false;
+        },
+        error: (err) => {
+          this.error = 'Failed to load zip codes. Please try again.';
+          console.error('Error loading zip codes:', err);
+          this.isLoading = false;
+        }
+      });
+    } catch (err) {
+      this.error = 'Failed to load zip codes. Please try again.';
+      console.error('Error loading zip codes:', err);
+      this.isLoading = false;
+    }
+  }
+
+  applyFilters(): void {
+    if (!this.searchTerm.trim()) {
+      this.filteredZipCodes = this.zipCodes;
+      return;
+    }
+
+    const term = this.searchTerm.toLowerCase();
+    this.filteredZipCodes = this.zipCodes.filter(
+      (zipCode) =>
+        zipCode.zip_code.toLowerCase().includes(term) ||
+        zipCode.city.toLowerCase().includes(term) ||
+        zipCode.state.toLowerCase().includes(term)
+    );
+  }
+
+  onSearchChange(): void {
+    this.applyFilters();
+  }
+
+  openAddModal(): void {
+    this.selectedZipCode = null;
+    this.showModal = true;
+  }
+
+  openEditModal(zipCode: ServiceAreaZipCode): void {
+    this.selectedZipCode = zipCode;
+    this.showModal = true;
+  }
+
+  closeModal(): void {
+    this.showModal = false;
+    this.selectedZipCode = null;
+  }
+
+  onZipCodeSaved(): void {
+    this.loadZipCodes();
+    this.showSuccessMessage(
+      this.selectedZipCode ? 'Zip code updated successfully!' : 'Zip code added successfully!'
+    );
+  }
+
+  async toggleStatus(zipCode: ServiceAreaZipCode): Promise<void> {
+    try {
+      await this.serviceAreaService
+        .toggleZipCodeStatus(zipCode.id, !zipCode.is_active)
+        .toPromise();
+
+      this.showSuccessMessage(
+        `Zip code ${zipCode.is_active ? 'deactivated' : 'activated'} successfully!`
+      );
+      this.loadZipCodes();
+    } catch (err: any) {
+      this.error = err.message || 'Failed to toggle zip code status';
+      setTimeout(() => (this.error = null), 5000);
+    }
+  }
+
+  confirmDelete(zipCode: ServiceAreaZipCode): void {
+    this.zipCodeToDelete = zipCode;
+  }
+
+  cancelDelete(): void {
+    this.zipCodeToDelete = null;
+  }
+
+  async deleteZipCode(): Promise<void> {
+    if (!this.zipCodeToDelete) return;
+
+    try {
+      await this.serviceAreaService.deleteZipCode(this.zipCodeToDelete.id).toPromise();
+      this.showSuccessMessage('Zip code deleted successfully!');
+      this.zipCodeToDelete = null;
+      this.loadZipCodes();
+    } catch (err: any) {
+      this.error = err.message || 'Failed to delete zip code';
+      this.zipCodeToDelete = null;
+      setTimeout(() => (this.error = null), 5000);
+    }
+  }
+
+  private showSuccessMessage(message: string): void {
+    this.successMessage = message;
+    setTimeout(() => {
+      this.successMessage = '';
+    }, 3000);
   }
 
   // Future methods for van territory management:
