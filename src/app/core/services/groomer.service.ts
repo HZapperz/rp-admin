@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Observable, from } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 export interface GroomerWithStats {
   id: string;
@@ -9,19 +12,75 @@ export interface GroomerWithStats {
   email: string;
   phone?: string;
   avatar_url?: string;
+  commission_rate?: number;
   created_at: string;
   total_bookings: number;
   completed_bookings: number;
   total_revenue: number;
   average_rating: number;
   completion_rate: number;
+  // New stats with Stripe fee breakdown
+  stats?: {
+    totalBookings: number;
+    completedBookings: number;
+    completionRate: number;
+    totalGrossRevenue: number;
+    totalStripeFees: number;
+    totalNetRevenue: number;
+    totalGroomerEarnings: number;
+    totalServiceCommission: number;
+    totalTips: number;
+    averageRating: number | null;
+    reviewCount: number;
+  };
+}
+
+export interface CommissionHistory {
+  id: string;
+  groomer_id: string;
+  old_rate: number;
+  new_rate: number;
+  changed_by: string;
+  notes?: string;
+  created_at: string;
+  admin?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+export interface GroomerEarningsDetail {
+  groomer: {
+    id: string;
+    name: string;
+    email: string;
+    commissionRate: number;
+  };
+  summary: {
+    totalEarnings: number;
+    totalServiceCommission: number;
+    totalTips: number;
+    totalStripeFees: number;
+    totalGrossRevenue: number;
+    totalNetRevenue: number;
+    totalBookings: number;
+    pendingPayout: number;
+    paidOut: number;
+  };
+  earnings: any[];
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class GroomerService {
-  constructor(private supabase: SupabaseService) {}
+  private apiUrl = environment.apiUrl || 'http://localhost:3000';
+
+  constructor(
+    private supabase: SupabaseService,
+    private http: HttpClient
+  ) {}
 
   getAllGroomers(search?: string): Observable<GroomerWithStats[]> {
     return from(this.fetchGroomers(search));
@@ -243,5 +302,62 @@ export class GroomerService {
       : 0;
 
     return { total, active, averageRating };
+  }
+
+  // New API methods for commission management with Stripe fee breakdown
+
+  /**
+   * Get all groomers with complete stats including commission rates and fees
+   * Uses the new Next.js API endpoint
+   */
+  getAllGroomersWithCommission(): Observable<GroomerWithStats[]> {
+    return this.http.get<{ groomers: GroomerWithStats[] }>(`${this.apiUrl}/api/admin/groomers`)
+      .pipe(
+        from,
+        map((response: any) => response.groomers || [])
+      );
+  }
+
+  /**
+   * Get detailed earnings for a specific groomer
+   */
+  getGroomerEarnings(groomerId: string): Observable<GroomerEarningsDetail> {
+    return this.http.get<GroomerEarningsDetail>(`${this.apiUrl}/api/admin/groomers/${groomerId}/earnings`);
+  }
+
+  /**
+   * Update groomer's commission rate
+   */
+  updateGroomerCommission(groomerId: string, commissionRate: number, notes?: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/api/admin/groomers/${groomerId}/commission`, {
+      commissionRate,
+      notes
+    });
+  }
+
+  /**
+   * Get commission rate change history for a groomer
+   */
+  getCommissionHistory(groomerId: string): Observable<{ groomer: any; history: CommissionHistory[] }> {
+    return this.http.get<{ groomer: any; history: CommissionHistory[] }>(
+      `${this.apiUrl}/api/admin/groomers/${groomerId}/commission-history`
+    );
+  }
+
+  /**
+   * Format commission rate as percentage string
+   */
+  formatCommissionRate(rate: number): string {
+    return `${Math.round(rate * 100)}%`;
+  }
+
+  /**
+   * Format currency
+   */
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
   }
 }

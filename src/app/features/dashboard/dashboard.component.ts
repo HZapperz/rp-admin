@@ -187,8 +187,11 @@ export class DashboardComponent implements OnInit {
   private createDaySlot(date: Date, today: Date, isCurrentMonth: boolean = true): DaySlot {
     const dateStr = date.toISOString().split('T')[0];
     const bookings = this.allBookings.filter(b => {
-      const bookingDate = new Date(b.scheduled_date).toISOString().split('T')[0];
-      return bookingDate === dateStr;
+      // Parse booking date as local date to avoid timezone issues
+      const [year, month, day] = b.scheduled_date.split('-').map(Number);
+      const bookingDate = new Date(year, month - 1, day, 12, 0, 0);
+      const bookingDateStr = bookingDate.toISOString().split('T')[0];
+      return bookingDateStr === dateStr;
     });
 
     return {

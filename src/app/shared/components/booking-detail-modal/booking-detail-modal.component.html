@@ -163,7 +163,7 @@
             }
             <div class="price-row total">
               <span class="label">Total Amount:</span>
-              <span class="value">{{ formatCurrency(booking.total_amount) }}</span>
+              <span class="value">{{ formatCurrency(booking.amount_paid || booking.total_amount) }}</span>
             </div>
           </div>
         </div>

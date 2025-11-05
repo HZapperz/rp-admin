@@ -55,7 +55,10 @@ export class BookingDetailModalComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse as local date to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -242,7 +245,10 @@ export class BookingDetailModalComponent implements OnInit {
 
     // Otherwise, it's a storage path - convert it to a public URL
     // The bucket name is 'pet-certificates' based on the database storage format
-    const publicUrl = this.supabaseService.getPublicUrl('pet-certificates', url);
+    // Remove the bucket prefix if it exists (database stores 'pet-certificates/path', but storage path is just 'path')
+    const bucketPrefix = 'pet-certificates/';
+    const cleanPath = url.startsWith(bucketPrefix) ? url.substring(bucketPrefix.length) : url;
+    const publicUrl = this.supabaseService.getPublicUrl('pet-certificates', cleanPath);
     window.open(publicUrl, '_blank');
   }
 
