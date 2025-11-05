@@ -30,6 +30,13 @@ admin-app/
 ```
 
 ## Recent Changes
+- **2025-11-05**: Enhanced cache busting with triple-layer protection
+  - Added HTTP-EQUIV meta tags directly in `src/index.html` (Cache-Control, Pragma, Expires)
+  - These meta tags force browsers to NEVER cache the index.html file
+  - Combined with server-side headers for maximum compatibility across all browsers
+  - Angular automatically generates unique content-hashed filenames for JS/CSS on every build
+  - Triple-layer protection ensures users ALWAYS get the latest version after republish
+
 - **2025-11-02**: Implemented cache busting and integrated email service for deployments
   - Created `production-server.js` with Express to handle both Angular app and email API
   - Integrated Resend email service for booking approval emails (sends to client, groomer, and admin)
@@ -38,7 +45,6 @@ admin-app/
   - Static assets (JS/CSS/images): `max-age=31536000, immutable` (cache for 1 year since Angular generates content-hashed filenames)
   - Updated deployment config to use production server instead of http-server
   - Removed separate Email Server workflow (now integrated into production server)
-  - This ensures all users get the latest version immediately after republishing
 
 - **2025-10-31**: Configured for Replit environment
   - Set dev server to port 5000 with host 0.0.0.0
