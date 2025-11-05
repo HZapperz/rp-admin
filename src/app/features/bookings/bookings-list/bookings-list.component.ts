@@ -135,13 +135,13 @@ export class BookingsListComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    // Parse as local date to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day, 12, 0, 0);
+    // Parse ISO date string as UTC to avoid timezone conversion issues
+    const date = new Date(dateString + 'T00:00:00Z');
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   }
 

@@ -91,6 +91,13 @@ export interface Booking {
   service_name?: string;
   service_description?: string;
   service_duration?: number;
+  // Pricing breakdown fields
+  original_subtotal?: number;
+  discount_amount?: number;
+  authorized_amount?: number;
+  subtotal_before_tax?: number;
+  tax_amount?: number;
+  tax_rate?: number;
 }
 
 export interface BookingPet {

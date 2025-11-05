@@ -119,7 +119,7 @@ This application only allows users with `role = 'ADMIN'` in the Supabase `users`
 ```sql
 UPDATE users
 SET role = 'ADMIN'
-WHERE email = 'admin@royalpawz.com';
+WHERE email = 'admin@royalpawzusa.com';
 ```
 
 ## Project Structure

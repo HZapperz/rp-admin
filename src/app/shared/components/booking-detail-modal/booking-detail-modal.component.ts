@@ -55,13 +55,13 @@ export class BookingDetailModalComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    // Parse as local date to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day, 12, 0, 0);
+    // Parse ISO date string as UTC to avoid timezone conversion issues
+    const date = new Date(dateString + 'T00:00:00Z');
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   }
 
@@ -170,7 +170,7 @@ export class BookingDetailModalComponent implements OnInit {
 
       // Step 3: Send confirmation emails to client, groomer, and admin
       // You can configure the admin email here
-      const adminEmail = 'admin@royalpawz.com'; // Configure this as needed
+      const adminEmail = 'admin@royalpawzusa.com'; // Configure this as needed
 
       console.log('Sending confirmation emails with data:', {
         hasPets: !!updatedBooking.pets,

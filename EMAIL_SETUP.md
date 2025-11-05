@@ -92,7 +92,7 @@ curl http://localhost:3001/api/health
     { "name": "Buddy" },
     { "name": "Max" }
   ],
-  "adminEmail": "admin@royalpawz.com"
+  "adminEmail": "admin@royalpawzusa.com"
 }
 ```
 
@@ -172,7 +172,7 @@ The booking service now includes detailed console logging:
 To change the admin email that receives notifications, edit:
 ```typescript
 // src/app/shared/components/booking-detail-modal/booking-detail-modal.component.ts
-const adminEmail = 'admin@royalpawz.com'; // Change this
+const adminEmail = 'admin@royalpawzusa.com'; // Change this
 ```
 
 ### Email Server Port

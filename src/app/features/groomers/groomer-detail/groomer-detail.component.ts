@@ -501,12 +501,25 @@ export class GroomerDetailComponent implements OnInit {
       next: () => {
         this.isSaving = false;
         this.editingCommission = false;
+        // Show success message
+        alert('Commission rate updated successfully!');
         // Reload data to show updated values
         this.loadGroomerData();
       },
       error: (err) => {
         console.error('Error updating commission:', err);
-        this.saveError = err.error?.error || 'Failed to update commission rate';
+
+        // Provide more helpful error messages
+        if (err.message?.includes('lock') || err.message?.includes('LockManager')) {
+          this.saveError = 'Auth session conflict detected. Please close any other admin portal tabs and try again.';
+        } else if (err.error?.error) {
+          this.saveError = err.error.error;
+        } else if (err.message) {
+          this.saveError = err.message;
+        } else {
+          this.saveError = 'Failed to update commission rate. Please try again.';
+        }
+
         this.isSaving = false;
       }
     });

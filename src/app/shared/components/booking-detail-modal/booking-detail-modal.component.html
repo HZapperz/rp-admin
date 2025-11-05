@@ -143,6 +143,28 @@
               <span class="label">Service:</span>
               <span class="value">{{ booking.service_name || 'Grooming Service' }}</span>
             </div>
+            @if (booking.original_subtotal && booking.discount_amount && booking.discount_amount > 0) {
+              <div class="price-row">
+                <span class="label">Subtotal:</span>
+                <span class="value">{{ formatCurrency(booking.original_subtotal) }}</span>
+              </div>
+              <div class="price-row discount">
+                <span class="label">💰 Discount:</span>
+                <span class="value discount-amount">-{{ formatCurrency(booking.discount_amount) }}</span>
+              </div>
+            }
+            @if (booking.subtotal_before_tax) {
+              <div class="price-row">
+                <span class="label">Subtotal (After Discount):</span>
+                <span class="value">{{ formatCurrency(booking.subtotal_before_tax) }}</span>
+              </div>
+            }
+            @if (booking.tax_amount) {
+              <div class="price-row">
+                <span class="label">Tax:</span>
+                <span class="value">{{ formatCurrency(booking.tax_amount) }}</span>
+              </div>
+            }
             @if (booking.service_fee) {
               <div class="price-row">
                 <span class="label">Service Fee:</span>
@@ -162,8 +184,8 @@
               </div>
             }
             <div class="price-row total">
-              <span class="label">Total Amount:</span>
-              <span class="value">{{ formatCurrency(booking.amount_paid || booking.total_amount) }}</span>
+              <span class="label">Total Amount (Authorized):</span>
+              <span class="value">{{ formatCurrency(booking.authorized_amount || booking.amount_paid || booking.total_amount) }}</span>
             </div>
           </div>
         </div>
