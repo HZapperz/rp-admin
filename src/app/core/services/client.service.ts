@@ -13,6 +13,106 @@ export interface ClientWithStats {
   total_bookings: number;
   total_spent: number;
   last_booking_date?: string;
+  blocked_at?: string;
+}
+
+export interface Pet {
+  id: string;
+  user_id: string;
+  name: string;
+  breed?: string;
+  age?: string;
+  date_of_birth?: string;
+  size_category?: 'small' | 'medium' | 'large' | 'xl';
+  special_notes?: string;
+  photo_url?: string;
+  rabies_certificate_url?: string;
+  has_allergies?: boolean;
+  allergy_details?: string;
+  has_skin_conditions?: boolean;
+  skin_condition_details?: string;
+  is_friendly?: boolean;
+  blow_dryer_reaction?: string;
+  water_reaction?: string;
+  has_behavioral_issues?: boolean;
+  behavioral_issue_details?: string;
+  additional_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Address {
+  id: string;
+  user_id: string;
+  name: string;
+  building: string;
+  apartment?: string;
+  floor?: string;
+  street: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  additional_info?: string;
+  address_type: 'home' | 'work' | 'other';
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  stripe_customer_id: string;
+  stripe_payment_method_id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Rating {
+  id: string;
+  booking_id: string;
+  client_id: string;
+  groomer_id: string;
+  experience_rating: number;
+  recommendation_rating: number;
+  quality_rating: number;
+  comment?: string;
+  reviewer_role: 'CLIENT' | 'GROOMER';
+  created_at: string;
+  groomer?: {
+    first_name: string;
+    last_name: string;
+  };
+}
+
+export interface AdminNote {
+  id: string;
+  entity_type: 'booking' | 'user' | 'payment';
+  entity_id: string;
+  note: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  admin_id: string;
+  created_at: string;
+  updated_at: string;
+  admin?: {
+    first_name: string;
+    last_name: string;
+  };
+}
+
+export interface ClientDetailData {
+  client: ClientWithStats;
+  pets: Pet[];
+  addresses: Address[];
+  paymentMethods: PaymentMethod[];
+  bookings: any[];
+  ratings: Rating[];
+  adminNotes: AdminNote[];
 }
 
 @Injectable({
@@ -191,5 +291,158 @@ export class ClientService {
     const active = total - blocked;
 
     return { total, active, blocked };
+  }
+
+  async getClientPets(clientId: string): Promise<Pet[]> {
+    const { data, error } = await this.supabase
+      .from('pets')
+      .select('*')
+      .eq('user_id', clientId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching client pets:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  async getClientAddresses(clientId: string): Promise<Address[]> {
+    const { data, error } = await this.supabase
+      .from('addresses')
+      .select('*')
+      .eq('user_id', clientId)
+      .order('is_default', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching client addresses:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  async getClientPaymentMethods(clientId: string): Promise<PaymentMethod[]> {
+    const { data, error } = await this.supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('user_id', clientId)
+      .order('is_default', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payment methods:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  async getClientRatings(clientId: string): Promise<Rating[]> {
+    const { data, error } = await this.supabase
+      .from('ratings')
+      .select(`
+        *,
+        groomer:groomer_id (
+          first_name,
+          last_name
+        )
+      `)
+      .eq('client_id', clientId)
+      .eq('reviewer_role', 'CLIENT')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching client ratings:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  async getClientAdminNotes(clientId: string): Promise<AdminNote[]> {
+    const { data, error } = await this.supabase
+      .from('admin_notes')
+      .select(`
+        *,
+        admin:admin_id (
+          first_name,
+          last_name
+        )
+      `)
+      .eq('entity_type', 'user')
+      .eq('entity_id', clientId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching admin notes:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  async createAdminNote(
+    entityType: 'booking' | 'user' | 'payment',
+    entityId: string,
+    note: string,
+    priority: 'low' | 'medium' | 'high' | 'urgent',
+    adminId: string
+  ): Promise<AdminNote | null> {
+    const { data, error } = await this.supabase
+      .from('admin_notes')
+      .insert({
+        entity_type: entityType,
+        entity_id: entityId,
+        note,
+        priority,
+        admin_id: adminId
+      })
+      .select(`
+        *,
+        admin:admin_id (
+          first_name,
+          last_name
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error creating admin note:', error);
+      return null;
+    }
+
+    return data;
+  }
+
+  async getClientDetailData(clientId: string): Promise<ClientDetailData | null> {
+    try {
+      const [client, pets, addresses, paymentMethods, bookings, ratings, adminNotes] = await Promise.all([
+        this.getClientById(clientId),
+        this.getClientPets(clientId),
+        this.getClientAddresses(clientId),
+        this.getClientPaymentMethods(clientId),
+        this.getClientBookings(clientId),
+        this.getClientRatings(clientId),
+        this.getClientAdminNotes(clientId)
+      ]);
+
+      if (!client) {
+        return null;
+      }
+
+      return {
+        client,
+        pets,
+        addresses,
+        paymentMethods,
+        bookings,
+        ratings,
+        adminNotes
+      };
+    } catch (error) {
+      console.error('Error fetching client detail data:', error);
+      return null;
+    }
   }
 }

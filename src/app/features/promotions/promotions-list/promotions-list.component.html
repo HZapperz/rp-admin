@@ -5,33 +5,6 @@
         <h1>🎁 Promotions Management</h1>
         <p class="subtitle">Create and manage promotional discounts for customers</p>
       </div>
-      <button class="btn-create" (click)="openCreateDialog()">+ Create Promotion</button>
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="filters">
-    <div class="filter-group">
-      <label for="status">Status:</label>
-      <select id="status" (change)="onStatusFilterChange($event)" [value]="selectedStatus">
-        <option value="all">All Statuses</option>
-        <option value="active">Active</option>
-        <option value="scheduled">Scheduled</option>
-        <option value="inactive">Inactive</option>
-        <option value="expired">Expired</option>
-        <option value="maxed_out">Max Reached</option>
-      </select>
-    </div>
-
-    <div class="filter-group">
-      <label for="search">Search:</label>
-      <input
-        type="text"
-        id="search"
-        placeholder="Search by title or description..."
-        (input)="onSearchChange($event)"
-        [value]="searchTerm"
-      />
     </div>
   </div>
 
@@ -47,9 +20,50 @@
   }
 
   @if (!isLoading && !error) {
-    <div class="promotions-stats">
-      <span>Showing {{ filteredPromotions.length }} of {{ promotions.length }} promotions</span>
-    </div>
+    <!-- First-Time Customer Promotion Section -->
+    @if (firstTimePromotion) {
+      <app-first-time-promotion-card
+        [promotion]="firstTimePromotion"
+        (updated)="onFirstTimePromotionUpdated()"
+      ></app-first-time-promotion-card>
+    }
+
+    <!-- General Promotions Section -->
+    <div class="general-promotions-section">
+      <div class="section-header">
+        <h2>📅 Other Promotions</h2>
+        <button class="btn-create" (click)="openCreateDialog()">+ Add Promotion</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <div class="filter-group">
+          <label for="status">Status:</label>
+          <select id="status" (change)="onStatusFilterChange($event)" [value]="selectedStatus">
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="inactive">Inactive</option>
+            <option value="expired">Expired</option>
+            <option value="maxed_out">Max Reached</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="search">Search:</label>
+          <input
+            type="text"
+            id="search"
+            placeholder="Search by title or description..."
+            (input)="onSearchChange($event)"
+            [value]="searchTerm"
+          />
+        </div>
+      </div>
+
+      <div class="promotions-stats">
+        <span>Showing {{ filteredPromotions.length }} of {{ generalPromotions.length }} promotions</span>
+      </div>
 
     <div class="promotions-table-container">
       <table class="promotions-table">
@@ -67,9 +81,9 @@
           @if (filteredPromotions.length === 0) {
             <tr>
               <td colspan="6" class="no-promotions">
-                @if (promotions.length === 0) {
+                @if (generalPromotions.length === 0) {
                   <div class="empty-state">
-                    <p>No promotions created yet.</p>
+                    <p>No general promotions created yet.</p>
                     <button class="btn-create-small" (click)="openCreateDialog()">Create First Promotion</button>
                   </div>
                 } @else {
@@ -143,6 +157,7 @@
           }
         </tbody>
       </table>
+    </div>
     </div>
   }
 </div>

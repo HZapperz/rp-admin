@@ -161,6 +161,8 @@ export interface Complaint {
 }
 
 // Promotion Types
+export type PromotionType = 'first_time' | 'general';
+
 export interface Promotion {
   id: string;
   title: string;
@@ -171,6 +173,7 @@ export interface Promotion {
   is_active: boolean;
   max_uses?: number;
   current_uses: number;
+  promotion_type: PromotionType;
   created_at: string;
   updated_at: string;
 }
@@ -183,6 +186,7 @@ export interface CreatePromotionDto {
   valid_until: string;
   is_active?: boolean;
   max_uses?: number;
+  promotion_type: PromotionType;
 }
 
 export interface UpdatePromotionDto {

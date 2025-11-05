@@ -1,0 +1,129 @@
+<mat-card class="first-time-promotion-card">
+  <mat-card-header>
+    <div class="card-header-content">
+      <div class="header-left">
+        <span class="icon">🎁</span>
+        <div>
+          <h2>First-Time Customer Promotion</h2>
+          <p class="subtitle">Always active for new customers on their first booking</p>
+        </div>
+      </div>
+      @if (!editMode) {
+        <button mat-raised-button color="primary" (click)="toggleEditMode()">
+          Edit
+        </button>
+      }
+    </div>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (!editMode) {
+      <!-- View Mode -->
+      <div class="view-mode">
+        <div class="promo-details">
+          <div class="detail-item highlight">
+            <span class="label">Discount:</span>
+            <span class="value discount">{{ promotion.discount_percentage }}% OFF</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="label">Valid Until:</span>
+            <span class="value">{{ formatDate(promotion.valid_until) }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="label">Status:</span>
+            <span class="value" [class.active]="promotion.is_active" [class.inactive]="!promotion.is_active">
+              {{ promotion.is_active ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <span class="label">Total Uses:</span>
+            <span class="value">{{ promotion.current_uses }}</span>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <strong>💡 How it works:</strong>
+          <p>This promotion automatically applies to customers who have never completed a booking before. The discount appears on the landing page and applies during their first checkout.</p>
+        </div>
+      </div>
+    } @else {
+      <!-- Edit Mode -->
+      <form [formGroup]="promotionForm" (ngSubmit)="onSubmit()" class="edit-form">
+        <!-- Discount Percentage -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Discount Percentage</mat-label>
+          <input
+            matInput
+            type="number"
+            formControlName="discount_percentage"
+            min="1"
+            max="100"
+          />
+          <span matSuffix>%</span>
+          <mat-hint>Enter a value between 1 and 100</mat-hint>
+          @if (promotionForm.get('discount_percentage')?.touched && promotionForm.get('discount_percentage')?.errors) {
+            <mat-error>{{ getErrorMessage('discount_percentage') }}</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Valid Until Date -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Valid Until</mat-label>
+          <input
+            matInput
+            [matDatepicker]="picker"
+            formControlName="valid_until"
+          />
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+          <mat-hint>Extend the promotion validity period</mat-hint>
+          @if (promotionForm.get('valid_until')?.touched && promotionForm.get('valid_until')?.errors) {
+            <mat-error>{{ getErrorMessage('valid_until') }}</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Active Toggle -->
+        <div class="toggle-field">
+          <mat-slide-toggle formControlName="is_active" color="primary">
+            <span class="toggle-label">
+              Active
+              <span class="toggle-hint">
+                {{ promotionForm.get('is_active')?.value ? 'Promotion is visible to customers' : 'Promotion is hidden' }}
+              </span>
+            </span>
+          </mat-slide-toggle>
+        </div>
+
+        <!-- Error Message -->
+        @if (errorMessage) {
+          <div class="error-banner">
+            {{ errorMessage }}
+          </div>
+        }
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button
+            type="button"
+            mat-stroked-button
+            (click)="toggleEditMode()"
+            [disabled]="isSubmitting"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            mat-raised-button
+            color="primary"
+            [disabled]="promotionForm.invalid || isSubmitting"
+          >
+            {{ isSubmitting ? 'Saving...' : 'Save Changes' }}
+          </button>
+        </div>
+      </form>
+    }
+  </mat-card-content>
+</mat-card>

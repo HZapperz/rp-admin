@@ -6,7 +6,8 @@
       "Bash(cat:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run email-server:*)"
+      "Bash(npm run email-server:*)",
+      "mcp__supabase__list_tables"
     ],
     "deny": [],
     "ask": []

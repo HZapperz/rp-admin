@@ -14,6 +14,44 @@ export class PromotionService {
   // =======================
 
   /**
+   * Get first-time customer promotion
+   * There should only be one
+   */
+  getFirstTimePromotion(): Observable<Promotion | null> {
+    return from(
+      this.supabase.from('promotions')
+        .select('*')
+        .eq('promotion_type', 'first_time')
+        .single()
+    ).pipe(
+      map(response => response.data),
+      catchError(error => {
+        console.error('Error fetching first-time promotion:', error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Get all general promotions (excluding first-time)
+   * Admin-only - requires ADMIN role
+   */
+  getGeneralPromotions(): Observable<Promotion[]> {
+    return from(
+      this.supabase.from('promotions')
+        .select('*')
+        .eq('promotion_type', 'general')
+        .order('created_at', { ascending: false })
+    ).pipe(
+      map(response => response.data || []),
+      catchError(error => {
+        console.error('Error fetching general promotions:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
    * Get all promotions (including inactive and expired)
    * Admin-only - requires ADMIN role
    */

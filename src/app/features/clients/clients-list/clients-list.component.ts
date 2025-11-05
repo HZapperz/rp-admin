@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ClientService, ClientWithStats } from '../../../core/services/client.service';
 
 @Component({
@@ -33,7 +34,7 @@ import { ClientService, ClientWithStats } from '../../../core/services/client.se
             </thead>
             <tbody>
               @for (client of clients; track client.id) {
-                <tr>
+                <tr (click)="viewClientDetail(client.id)" class="clickable-row">
                   <td>{{ client.first_name }} {{ client.last_name }}</td>
                   <td>{{ client.email }}</td>
                   <td>{{ client.phone || 'N/A' }}</td>
@@ -59,7 +60,8 @@ import { ClientService, ClientWithStats } from '../../../core/services/client.se
     thead { background: #f8fafc; }
     th { padding: 1rem; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; }
     td { padding: 1rem; border-bottom: 1px solid #e2e8f0; }
-    tr:hover { background: #f8fafc; }
+    .clickable-row { cursor: pointer; transition: background 0.2s; }
+    .clickable-row:hover { background: #f1f5f9; }
   `]
 })
 export class ClientsListComponent implements OnInit {
@@ -67,7 +69,10 @@ export class ClientsListComponent implements OnInit {
   isLoading = true;
   searchTerm = '';
 
-  constructor(private clientService: ClientService) {}
+  constructor(
+    private clientService: ClientService,
+    private router: Router
+  ) {}
 
   ngOnInit() {
     this.loadClients();
@@ -94,5 +99,9 @@ export class ClientsListComponent implements OnInit {
 
   formatDate(date: string): string {
     return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  viewClientDetail(clientId: string): void {
+    this.router.navigate(['/clients', clientId]);
   }
 }

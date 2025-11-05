@@ -1,6 +1,43 @@
 .promotion-form-dialog {
   padding: 1.5rem;
 
+  .info-banner {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+
+    .info-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .info-content {
+      flex: 1;
+
+      strong {
+        color: #1565c0;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: #1976d2;
+        line-height: 1.5;
+
+        strong {
+          display: inline;
+          color: #0d47a1;
+        }
+      }
+    }
+  }
+
   form {
     display: flex;
     flex-direction: column;

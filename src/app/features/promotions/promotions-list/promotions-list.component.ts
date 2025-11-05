@@ -1,19 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { PromotionService } from '../../../core/services/promotion.service';
 import { Promotion } from '../../../core/models/types';
 import { PromotionFormDialogComponent } from '../promotion-form-dialog/promotion-form-dialog.component';
+import { FirstTimePromotionCardComponent } from '../first-time-promotion-card/first-time-promotion-card.component';
 
 @Component({
   selector: 'app-promotions-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, PromotionFormDialogComponent],
+  imports: [CommonModule, FormsModule, PromotionFormDialogComponent, FirstTimePromotionCardComponent],
   templateUrl: './promotions-list.component.html',
   styleUrls: ['./promotions-list.component.scss']
 })
 export class PromotionsListComponent implements OnInit {
-  promotions: Promotion[] = [];
+  firstTimePromotion: Promotion | null = null;
+  generalPromotions: Promotion[] = [];
   filteredPromotions: Promotion[] = [];
   isLoading = true;
   error: string | null = null;
@@ -33,9 +36,14 @@ export class PromotionsListComponent implements OnInit {
 
   loadPromotions() {
     this.isLoading = true;
-    this.promotionService.getAllPromotions().subscribe({
-      next: (promotions) => {
-        this.promotions = promotions;
+    // Fetch both first-time and general promotions in parallel
+    forkJoin({
+      firstTime: this.promotionService.getFirstTimePromotion(),
+      general: this.promotionService.getGeneralPromotions()
+    }).subscribe({
+      next: ({ firstTime, general }) => {
+        this.firstTimePromotion = firstTime;
+        this.generalPromotions = general;
         this.applyFilters();
         this.isLoading = false;
       },
@@ -48,7 +56,7 @@ export class PromotionsListComponent implements OnInit {
   }
 
   applyFilters() {
-    let filtered = [...this.promotions];
+    let filtered = [...this.generalPromotions];
 
     // Filter by status
     if (this.selectedStatus !== 'all') {
@@ -68,6 +76,18 @@ export class PromotionsListComponent implements OnInit {
     }
 
     this.filteredPromotions = filtered;
+  }
+
+  onFirstTimePromotionUpdated() {
+    // Reload only the first-time promotion
+    this.promotionService.getFirstTimePromotion().subscribe({
+      next: (promotion) => {
+        this.firstTimePromotion = promotion;
+      },
+      error: (err) => {
+        console.error('Error reloading first-time promotion:', err);
+      }
+    });
   }
 
   onStatusFilterChange(event: Event) {

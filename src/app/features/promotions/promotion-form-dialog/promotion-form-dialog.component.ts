@@ -129,6 +129,7 @@ export class PromotionFormDialogComponent implements OnInit {
         valid_from: new Date(formValue.valid_from).toISOString(),
         valid_until: new Date(formValue.valid_until).toISOString(),
         max_uses: formValue.max_uses || null,
+        promotion_type: 'general' as const, // All created promotions are general type
       };
 
       // Validate data
