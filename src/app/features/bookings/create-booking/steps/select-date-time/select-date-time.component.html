@@ -1,0 +1,112 @@
+<div class="select-date-time-step">
+  <!-- No Groomer Selected -->
+  <div *ngIf="!selectedGroomer" class="info-state">
+    <span class="info-icon">👨‍💼</span>
+    <p>Please select a groomer first</p>
+    <small>You must select a groomer before choosing a date and time</small>
+  </div>
+
+  <!-- Date Time Selection -->
+  <div *ngIf="selectedGroomer" class="datetime-content">
+    <div class="content-header">
+      <h3>Select Date & Time</h3>
+      <div class="groomer-info">
+        <span class="groomer-icon">👨‍💼</span>
+        <span>Booking for: {{ selectedGroomer.first_name }} {{ selectedGroomer.last_name }}</span>
+      </div>
+    </div>
+
+    <div class="datetime-grid">
+      <!-- Calendar Section -->
+      <div class="calendar-section">
+        <h4>Choose a Date</h4>
+
+        <div class="calendar">
+          <!-- Calendar Header -->
+          <div class="calendar-header">
+            <button class="nav-btn" (click)="previousMonth()">‹</button>
+            <span class="month-year">{{ getCurrentMonthYear() }}</span>
+            <button class="nav-btn" (click)="nextMonth()">›</button>
+          </div>
+
+          <!-- Day Names -->
+          <div class="day-names">
+            <div *ngFor="let dayName of dayNames" class="day-name">
+              {{ dayName }}
+            </div>
+          </div>
+
+          <!-- Calendar Days -->
+          <div class="calendar-days">
+            <div
+              *ngFor="let date of calendarDays"
+              class="calendar-day"
+              [class.empty]="!date"
+              [class.past]="date && !isDateSelectable(date)"
+              [class.today]="isToday(date)"
+              [class.selected]="isDateSelected(date)"
+              [class.selectable]="date && isDateSelectable(date)"
+              (click)="selectDate(date)"
+            >
+              <span *ngIf="date">{{ date.getDate() }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Date Display -->
+        <div class="selected-date-display" *ngIf="selectedDate">
+          <span class="calendar-icon">📅</span>
+          <span class="date-text">{{ formatDateDisplay(selectedDate) }}</span>
+        </div>
+      </div>
+
+      <!-- Time Slots Section -->
+      <div class="timeslots-section">
+        <h4>Choose a Time</h4>
+
+        <div *ngIf="!selectedDate" class="no-date-message">
+          <span class="clock-icon">🕐</span>
+          <p>Please select a date first</p>
+        </div>
+
+        <div *ngIf="selectedDate" class="timeslots-grid">
+          <div
+            *ngFor="let slot of timeSlots"
+            class="timeslot-card"
+            [class.selected]="selectedTimeSlot === slot.time"
+            [class.unavailable]="!slot.available"
+            (click)="selectTimeSlot(slot)"
+          >
+            <span class="slot-icon">🕐</span>
+            <span class="slot-time">{{ slot.time }}</span>
+            <span class="unavailable-badge" *ngIf="!slot.available">Booked</span>
+            <div class="check-icon" *ngIf="selectedTimeSlot === slot.time">✓</div>
+          </div>
+        </div>
+
+        <!-- Selected Time Display -->
+        <div class="selected-time-display" *ngIf="selectedTimeSlot">
+          <span class="clock-icon">🕐</span>
+          <span class="time-text">{{ selectedTimeSlot }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="datetime-summary" *ngIf="selectedDate && selectedTimeSlot">
+      <div class="summary-icon">✓</div>
+      <div class="summary-text">
+        <div class="summary-title">Appointment Scheduled</div>
+        <div class="summary-details">
+          {{ formatDateDisplay(selectedDate) }} at {{ selectedTimeSlot }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Validation Message -->
+    <div class="validation-message" *ngIf="selectedDate && !selectedTimeSlot">
+      <span class="info-icon">ℹ️</span>
+      <span>Please select a time slot to continue</span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,99 @@
+<div class="select-pets-step">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading pets...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <span class="error-icon">⚠️</span>
+    <p>{{ error }}</p>
+    <button class="retry-btn" (click)="loadPets()">Retry</button>
+  </div>
+
+  <!-- No Client Selected -->
+  <div *ngIf="!selectedClient && !isLoading" class="info-state">
+    <span class="info-icon">👤</span>
+    <p>Please select a client first</p>
+    <small>You must select a client before choosing pets</small>
+  </div>
+
+  <!-- Pets List -->
+  <div *ngIf="!isLoading && !error && selectedClient" class="pets-content">
+    <div class="selection-header">
+      <h3>Select Pets for {{ selectedClient.first_name }} {{ selectedClient.last_name }}</h3>
+      <div class="selection-count" *ngIf="selectedPets.length > 0">
+        {{ selectedPets.length }} {{ selectedPets.length === 1 ? 'pet' : 'pets' }} selected
+      </div>
+    </div>
+
+    <div *ngIf="pets.length === 0" class="empty-state">
+      <span class="empty-icon">🐾</span>
+      <p>No pets found for this client</p>
+      <small>This client has not added any pets yet</small>
+    </div>
+
+    <div *ngIf="pets.length > 0" class="pets-grid">
+      <div
+        *ngFor="let pet of pets"
+        class="pet-card"
+        [class.selected]="isPetSelected(pet)"
+        (click)="togglePetSelection(pet)"
+      >
+        <!-- Selection Checkbox -->
+        <div class="checkbox">
+          <input
+            type="checkbox"
+            [checked]="isPetSelected(pet)"
+            (click)="$event.stopPropagation()"
+            (change)="togglePetSelection(pet)"
+          />
+        </div>
+
+        <!-- Pet Avatar -->
+        <div class="pet-avatar">
+          <div *ngIf="!pet.photo_url" class="avatar-initials">
+            {{ getInitials(pet.name) }}
+          </div>
+          <img *ngIf="pet.photo_url" [src]="pet.photo_url" [alt]="pet.name" />
+        </div>
+
+        <!-- Pet Info -->
+        <div class="pet-info">
+          <div class="pet-header">
+            <div class="pet-name">{{ pet.name }}</div>
+            <span class="size-badge" [ngClass]="getSizeBadgeClass(pet.size_category)">
+              {{ getSizeLabel(pet.size_category) }}
+            </span>
+          </div>
+
+          <div class="pet-breed">{{ pet.breed }}</div>
+
+          <div class="pet-warnings" *ngIf="!pet.rabies_certificate_url">
+            <div class="warning-badge">
+              <span class="warning-icon">⚠️</span>
+              Missing rabies certificate
+            </div>
+          </div>
+
+          <div class="pet-notes" *ngIf="pet.special_notes">
+            <span class="notes-label">Notes:</span>
+            <span class="notes-text">{{ pet.special_notes }}</span>
+          </div>
+        </div>
+
+        <!-- Selected Checkmark -->
+        <div class="select-indicator" *ngIf="isPetSelected(pet)">
+          <span class="check-icon">✓</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selection Note -->
+    <div class="selection-note" *ngIf="pets.length > 0">
+      <span class="note-icon">💡</span>
+      <span>You can select multiple pets for this booking</span>
+    </div>
+  </div>
+</div>

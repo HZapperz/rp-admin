@@ -1,0 +1,87 @@
+<div class="select-client-step">
+  <!-- Search Bar -->
+  <div class="search-section">
+    <div class="search-box">
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange($event)"
+        placeholder="Search by name, email, or phone..."
+        class="search-input"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="results-count" *ngIf="!isLoading">
+      {{ filteredClients.length }} {{ filteredClients.length === 1 ? 'client' : 'clients' }} found
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading clients...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <span class="error-icon">⚠️</span>
+    <p>{{ error }}</p>
+    <button class="retry-btn" (click)="loadClients()">Retry</button>
+  </div>
+
+  <!-- Clients List -->
+  <div *ngIf="!isLoading && !error" class="clients-list">
+    <div *ngIf="filteredClients.length === 0" class="empty-state">
+      <span class="empty-icon">👤</span>
+      <p>No clients found</p>
+      <small>Try adjusting your search</small>
+    </div>
+
+    <div
+      *ngFor="let client of filteredClients"
+      class="client-card"
+      [class.selected]="selectedClient?.id === client.id"
+      (click)="selectClient(client)"
+    >
+      <!-- Avatar -->
+      <div class="client-avatar">
+        <div *ngIf="!client.avatar_url" class="avatar-initials">
+          {{ getInitials(client) }}
+        </div>
+        <img *ngIf="client.avatar_url" [src]="client.avatar_url" [alt]="client.first_name" />
+      </div>
+
+      <!-- Client Info -->
+      <div class="client-info">
+        <div class="client-name">
+          {{ client.first_name }} {{ client.last_name }}
+          <span *ngIf="selectedClient?.id === client.id" class="selected-badge">✓ Selected</span>
+        </div>
+        <div class="client-email">{{ client.email }}</div>
+        <div *ngIf="client.phone" class="client-phone">{{ client.phone }}</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="client-stats">
+        <div class="stat">
+          <span class="stat-label">Total Bookings</span>
+          <span class="stat-value">{{ client.total_bookings }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Total Spent</span>
+          <span class="stat-value">{{ formatCurrency(client.total_spent) }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Last Booking</span>
+          <span class="stat-value">{{ formatDate(client.last_booking_date) }}</span>
+        </div>
+      </div>
+
+      <!-- Select Icon -->
+      <div class="select-icon">
+        <span *ngIf="selectedClient?.id === client.id" class="check-icon">✓</span>
+        <span *ngIf="selectedClient?.id !== client.id" class="arrow-icon">→</span>
+      </div>
+    </div>
+  </div>
+</div>

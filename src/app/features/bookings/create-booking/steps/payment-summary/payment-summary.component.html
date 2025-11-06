@@ -1,0 +1,241 @@
+<div class="payment-summary-step">
+  <div class="step-content">
+    <!-- Booking Summary -->
+    <div class="booking-summary-section">
+      <h3 class="section-title">
+        <span class="title-icon">📋</span>
+        Booking Summary
+      </h3>
+
+      <div class="summary-grid">
+        <!-- Client Info -->
+        <div class="summary-card">
+          <div class="card-header">
+            <span class="card-icon">👤</span>
+            <span class="card-title">Client</span>
+          </div>
+          <div class="card-content" *ngIf="selectedClient">
+            <div class="info-line">
+              <strong>{{ selectedClient.first_name }} {{ selectedClient.last_name }}</strong>
+            </div>
+            <div class="info-line">{{ selectedClient.email }}</div>
+          </div>
+          <div class="card-content empty" *ngIf="!selectedClient">Not selected</div>
+        </div>
+
+        <!-- Pets Info -->
+        <div class="summary-card">
+          <div class="card-header">
+            <span class="card-icon">🐕</span>
+            <span class="card-title">Pets ({{ selectedPets.length }})</span>
+          </div>
+          <div class="card-content" *ngIf="selectedPets.length > 0">
+            <div class="info-line" *ngFor="let pet of selectedPets">
+              {{ pet.name }} ({{ pet.size }})
+            </div>
+          </div>
+          <div class="card-content empty" *ngIf="selectedPets.length === 0">Not selected</div>
+        </div>
+
+        <!-- Groomer Info -->
+        <div class="summary-card">
+          <div class="card-header">
+            <span class="card-icon">👨‍💼</span>
+            <span class="card-title">Groomer</span>
+          </div>
+          <div class="card-content" *ngIf="selectedGroomer">
+            <div class="info-line">
+              <strong>{{ selectedGroomer.first_name }} {{ selectedGroomer.last_name }}</strong>
+            </div>
+          </div>
+          <div class="card-content empty" *ngIf="!selectedGroomer">Not selected</div>
+        </div>
+
+        <!-- Date & Time Info -->
+        <div class="summary-card">
+          <div class="card-header">
+            <span class="card-icon">📅</span>
+            <span class="card-title">Date & Time</span>
+          </div>
+          <div class="card-content" *ngIf="selectedDateTime?.date && selectedDateTime?.time_slot">
+            <div class="info-line">{{ formatDate(selectedDateTime.date) }}</div>
+            <div class="info-line"><strong>{{ selectedDateTime.time_slot }}</strong></div>
+          </div>
+          <div class="card-content empty" *ngIf="!selectedDateTime?.date">Not selected</div>
+        </div>
+
+        <!-- Address Info -->
+        <div class="summary-card full-width">
+          <div class="card-header">
+            <span class="card-icon">📍</span>
+            <span class="card-title">Service Address</span>
+          </div>
+          <div class="card-content" *ngIf="selectedAddress">
+            <div class="info-line" *ngIf="selectedAddress.building_name">
+              <strong>{{ selectedAddress.building_name }}</strong>
+            </div>
+            <div class="info-line">{{ selectedAddress.street }}</div>
+            <div class="info-line" *ngIf="selectedAddress.city">
+              {{ selectedAddress.city }}, {{ selectedAddress.state }} {{ selectedAddress.zip_code }}
+            </div>
+          </div>
+          <div class="card-content empty" *ngIf="!selectedAddress">Not selected</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services & Pricing -->
+    <div class="services-pricing-section">
+      <h3 class="section-title">
+        <span class="title-icon">💰</span>
+        Services & Pricing
+      </h3>
+
+      <div class="services-list">
+        <div *ngFor="let service of petServices" class="service-item">
+          <div class="service-info">
+            <span class="pet-name">{{ service.pet_name }}</span>
+            <span class="service-details">
+              {{ service.package_type }}
+              <span *ngIf="service.add_ons.length > 0">+ {{ service.add_ons.length }} add-on(s)</span>
+            </span>
+          </div>
+          <div class="service-price">{{ formatCurrency(service.price) }}</div>
+        </div>
+
+        <div class="pricing-breakdown">
+          <div class="breakdown-row subtotal">
+            <span class="label">Subtotal</span>
+            <span class="value">{{ formatCurrency(originalAmount) }}</span>
+          </div>
+
+          <div class="breakdown-row discount" *ngIf="discountAmount > 0">
+            <span class="label">Discount</span>
+            <span class="value">-{{ formatCurrency(discountAmount) }}</span>
+          </div>
+
+          <div class="breakdown-row total">
+            <span class="label">Total Amount</span>
+            <span class="value">{{ formatCurrency(getFinalAmount()) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Discount Controls -->
+      <div class="discount-controls">
+        <h4>Apply Discount (Optional)</h4>
+        <div class="discount-inputs">
+          <div class="input-group">
+            <label>Discount Amount</label>
+            <input
+              type="number"
+              [(ngModel)]="discountAmount"
+              (input)="onDiscountChange()"
+              min="0"
+              [max]="originalAmount"
+              step="0.01"
+              class="discount-input"
+              placeholder="0.00"
+            />
+          </div>
+          <div class="input-group">
+            <label>Reason (Optional)</label>
+            <input
+              type="text"
+              [(ngModel)]="discountReason"
+              (input)="emitPaymentConfig()"
+              class="reason-input"
+              placeholder="e.g., First-time client discount"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Method -->
+    <div class="payment-method-section">
+      <h3 class="section-title">
+        <span class="title-icon">💳</span>
+        Payment Method
+      </h3>
+
+      <div class="payment-types">
+        <div
+          class="payment-type-card"
+          [class.selected]="paymentType === 'pay_on_completion'"
+          (click)="onPaymentTypeChange('pay_on_completion')"
+        >
+          <div class="type-icon">⏰</div>
+          <div class="type-info">
+            <div class="type-name">Pay on Completion</div>
+            <div class="type-description">Client will be charged after service</div>
+          </div>
+          <div class="check-icon" *ngIf="paymentType === 'pay_on_completion'">✓</div>
+        </div>
+
+        <div
+          class="payment-type-card"
+          [class.selected]="paymentType === 'use_saved_card'"
+          (click)="onPaymentTypeChange('use_saved_card')"
+        >
+          <div class="type-icon">💳</div>
+          <div class="type-info">
+            <div class="type-name">Use Saved Card</div>
+            <div class="type-description">Charge client's saved payment method now</div>
+          </div>
+          <div class="check-icon" *ngIf="paymentType === 'use_saved_card'">✓</div>
+        </div>
+
+        <div
+          class="payment-type-card"
+          [class.selected]="paymentType === 'cash_on_service'"
+          (click)="onPaymentTypeChange('cash_on_service')"
+        >
+          <div class="type-icon">💵</div>
+          <div class="type-info">
+            <div class="type-name">Cash on Service</div>
+            <div class="type-description">Client will pay cash at service time</div>
+          </div>
+          <div class="check-icon" *ngIf="paymentType === 'cash_on_service'">✓</div>
+        </div>
+      </div>
+
+      <!-- Saved Cards Selection -->
+      <div class="saved-cards-section" *ngIf="paymentType === 'use_saved_card'">
+        <h4>Select Payment Method</h4>
+
+        <div *ngIf="isLoadingPaymentMethods" class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading payment methods...</p>
+        </div>
+
+        <div *ngIf="!isLoadingPaymentMethods && paymentMethods.length === 0" class="no-cards">
+          <span class="warning-icon">⚠️</span>
+          <p>This client has no saved payment methods</p>
+          <small>Please select a different payment type</small>
+        </div>
+
+        <div *ngIf="!isLoadingPaymentMethods && paymentMethods.length > 0" class="cards-grid">
+          <div
+            *ngFor="let method of paymentMethods"
+            class="card-item"
+            [class.selected]="selectedPaymentMethod?.id === method.id"
+            (click)="selectPaymentMethod(method)"
+          >
+            <div class="card-brand">{{ getCardBrandName(method.brand) }}</div>
+            <div class="card-number">•••• {{ method.last4 }}</div>
+            <div class="card-expiry">Expires {{ method.exp_month }}/{{ method.exp_year }}</div>
+            <div class="default-badge" *ngIf="method.is_default">Default</div>
+            <div class="check-icon" *ngIf="selectedPaymentMethod?.id === method.id">✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Validation Message -->
+    <div class="validation-message" *ngIf="!isValid()">
+      <span class="warning-icon">⚠️</span>
+      <span>Please complete all steps before creating the booking</span>
+    </div>
+  </div>
+</div>

@@ -1,7 +1,15 @@
 <div class="bookings-page">
   <div class="page-header">
-    <h1>📅 Bookings Management</h1>
-    <p class="subtitle">Manage and approve customer bookings</p>
+    <div class="header-content">
+      <div>
+        <h1>📅 Bookings Management</h1>
+        <p class="subtitle">Manage and approve customer bookings</p>
+      </div>
+      <button class="create-booking-btn" (click)="navigateToCreateBooking()">
+        <span class="icon">+</span>
+        Create Booking
+      </button>
+    </div>
   </div>
 
   <!-- Filters -->

@@ -1,0 +1,97 @@
+<div class="select-groomer-step">
+  <!-- Search Bar -->
+  <div class="search-section">
+    <div class="search-box">
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange($event)"
+        placeholder="Search by name, email, or specialty..."
+        class="search-input"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="results-count" *ngIf="!isLoading">
+      {{ filteredGroomers.length }} {{ filteredGroomers.length === 1 ? 'groomer' : 'groomers' }} available
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading groomers...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <span class="error-icon">⚠️</span>
+    <p>{{ error }}</p>
+    <button class="retry-btn" (click)="loadGroomers()">Retry</button>
+  </div>
+
+  <!-- Groomers List -->
+  <div *ngIf="!isLoading && !error" class="groomers-list">
+    <div *ngIf="filteredGroomers.length === 0" class="empty-state">
+      <span class="empty-icon">👨‍💼</span>
+      <p>No groomers found</p>
+      <small>Try adjusting your search</small>
+    </div>
+
+    <div
+      *ngFor="let groomer of filteredGroomers"
+      class="groomer-card"
+      [class.selected]="selectedGroomer?.id === groomer.id"
+      (click)="selectGroomer(groomer)"
+    >
+      <!-- Avatar -->
+      <div class="groomer-avatar">
+        <div *ngIf="!groomer.avatar_url" class="avatar-initials">
+          {{ getInitials(groomer) }}
+        </div>
+        <img *ngIf="groomer.avatar_url" [src]="groomer.avatar_url" [alt]="groomer.first_name" />
+      </div>
+
+      <!-- Groomer Info -->
+      <div class="groomer-info">
+        <div class="groomer-name">
+          {{ groomer.first_name }} {{ groomer.last_name }}
+          <span *ngIf="selectedGroomer?.id === groomer.id" class="selected-badge">✓ Selected</span>
+        </div>
+        <div class="groomer-email">{{ groomer.email }}</div>
+        <div *ngIf="groomer.phone" class="groomer-phone">{{ groomer.phone }}</div>
+
+        <!-- Rating -->
+        <div class="groomer-rating" *ngIf="groomer.rating">
+          <span class="stars">{{ getRatingStars(groomer.rating) }}</span>
+          <span class="rating-value">{{ groomer.rating.toFixed(1) }}</span>
+        </div>
+
+        <!-- Specialties -->
+        <div class="groomer-specialties" *ngIf="groomer.specialties && groomer.specialties.length > 0">
+          <span *ngFor="let specialty of groomer.specialties" class="specialty-badge">
+            {{ specialty }}
+          </span>
+        </div>
+
+        <!-- Bio -->
+        <div class="groomer-bio" *ngIf="groomer.bio">
+          <p>{{ groomer.bio }}</p>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="groomer-stats">
+        <div class="stat">
+          <span class="stat-label">Total Bookings</span>
+          <span class="stat-value">{{ groomer.total_bookings || 0 }}</span>
+        </div>
+      </div>
+
+      <!-- Select Icon -->
+      <div class="select-icon">
+        <span *ngIf="selectedGroomer?.id === groomer.id" class="check-icon">✓</span>
+        <span *ngIf="selectedGroomer?.id !== groomer.id" class="arrow-icon">→</span>
+      </div>
+    </div>
+  </div>
+</div>

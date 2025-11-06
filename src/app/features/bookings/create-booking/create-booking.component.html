@@ -1,0 +1,204 @@
+<div class="create-booking-container">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <button mat-icon-button (click)="cancel()" class="back-button">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Create New Booking</h1>
+    </div>
+  </div>
+
+  <!-- Progress indicator -->
+  <mat-progress-bar
+    *ngIf="isSubmitting"
+    mode="indeterminate"
+    color="primary"
+  ></mat-progress-bar>
+
+  <!-- Stepper -->
+  <mat-stepper #stepper orientation="horizontal" linear="false" class="booking-stepper">
+
+    <!-- Step 1: Select Client -->
+    <mat-step [completed]="isStep1Complete()" label="Client">
+      <div class="step-content">
+        <app-select-client
+          (clientSelected)="onClientSelected($event)"
+        ></app-select-client>
+
+        <div class="step-actions">
+          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep1Complete()">
+            Next
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 2: Select Pets -->
+    <mat-step [completed]="isStep2Complete()" label="Pets">
+      <div class="step-content">
+        <app-select-pets
+          [selectedClient]="selectedClient"
+          (petsSelected)="onPetsSelected($event)"
+        ></app-select-pets>
+
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep2Complete()">
+            Next
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 3: Select Services -->
+    <mat-step [completed]="isStep3Complete()" label="Services">
+      <div class="step-content">
+        <app-select-service
+          [selectedPets]="selectedPets"
+          (servicesSelected)="onServicesSelected($event)"
+        ></app-select-service>
+
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep3Complete()">
+            Next
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 4: Select Groomer -->
+    <mat-step [completed]="isStep4Complete()" label="Groomer">
+      <div class="step-content">
+        <app-select-groomer
+          (groomerSelected)="onGroomerSelected($event)"
+        ></app-select-groomer>
+
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep4Complete()">
+            Next
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 5: Select Date & Time -->
+    <mat-step [completed]="isStep5Complete()" label="Date & Time">
+      <div class="step-content">
+        <app-select-date-time
+          [selectedGroomer]="selectedGroomer"
+          (dateTimeSelected)="onDateTimeSelected($event)"
+        ></app-select-date-time>
+
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep5Complete()">
+            Next
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 6: Select Address -->
+    <mat-step [completed]="isStep6Complete()" label="Address">
+      <div class="step-content">
+        <app-select-address
+          [selectedClient]="selectedClient"
+          (addressSelected)="onAddressSelected($event)"
+        ></app-select-address>
+
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep6Complete()">
+            Next
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 7: Payment & Review -->
+    <mat-step [completed]="isStep7Complete()" label="Review">
+      <div class="step-content">
+        <app-payment-summary
+          [selectedClient]="selectedClient"
+          [selectedPets]="selectedPets"
+          [petServices]="petServices"
+          [selectedGroomer]="selectedGroomer"
+          [selectedDateTime]="selectedDateTime"
+          [selectedAddress]="selectedAddress"
+          (paymentConfigured)="onPaymentConfigured($event)"
+        ></app-payment-summary>
+
+        <!-- Error message -->
+        <div *ngIf="submitError" class="error-message">
+          <mat-icon>error</mat-icon>
+          <span>{{ submitError }}</span>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="submitBooking()"
+            [disabled]="!isStep7Complete() || isSubmitting"
+          >
+            <mat-icon *ngIf="!isSubmitting">check</mat-icon>
+            <span *ngIf="isSubmitting">Creating...</span>
+            <span *ngIf="!isSubmitting">Create Booking</span>
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+  </mat-stepper>
+
+  <!-- Summary Sidebar (sticky) -->
+  <div class="summary-sidebar" *ngIf="selectedClient">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Booking Summary</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="summary-section" *ngIf="selectedClient">
+          <h3>Client</h3>
+          <p>{{ selectedClient.first_name }} {{ selectedClient.last_name }}</p>
+        </div>
+
+        <div class="summary-section" *ngIf="selectedPets.length > 0">
+          <h3>Pets ({{ selectedPets.length }})</h3>
+          <ul>
+            <li *ngFor="let pet of selectedPets">{{ pet.name }}</li>
+          </ul>
+        </div>
+
+        <div class="summary-section" *ngIf="selectedGroomer">
+          <h3>Groomer</h3>
+          <p>{{ selectedGroomer.first_name }} {{ selectedGroomer.last_name }}</p>
+        </div>
+
+        <div class="summary-section" *ngIf="selectedDateTime">
+          <h3>Date & Time</h3>
+          <p>{{ selectedDateTime.date | date }}</p>
+          <p class="time-slot">{{ selectedDateTime.time_slot }}</p>
+        </div>
+
+        <div class="summary-section" *ngIf="selectedAddress">
+          <h3>Address</h3>
+          <p>{{ selectedAddress.street }}</p>
+          <p>{{ selectedAddress.city }}, {{ selectedAddress.state }} {{ selectedAddress.zip_code }}</p>
+        </div>
+
+        <div class="summary-section" *ngIf="paymentConfig">
+          <h3>Payment</h3>
+          <p *ngIf="paymentConfig.payment_type === 'pay_on_completion'">Pay on Completion</p>
+          <p *ngIf="paymentConfig.payment_type === 'cash_on_service'">Cash on Service</p>
+          <p *ngIf="paymentConfig.payment_type === 'use_saved_card'">Use Saved Card</p>
+          <p *ngIf="paymentConfig.final_amount" class="total-amount">${{ paymentConfig.final_amount.toFixed(2) }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

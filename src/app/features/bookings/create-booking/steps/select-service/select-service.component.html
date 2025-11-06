@@ -1,0 +1,135 @@
+<div class="select-service-step">
+  <!-- No Pets Selected -->
+  <div *ngIf="selectedPets.length === 0" class="info-state">
+    <span class="info-icon">🐾</span>
+    <p>Please select pets first</p>
+    <small>You must select at least one pet before choosing services</small>
+  </div>
+
+  <!-- Service Selection -->
+  <div *ngIf="selectedPets.length > 0" class="services-content">
+    <div class="content-header">
+      <h3>Select Services for Each Pet</h3>
+      <div class="total-price">
+        <span class="label">Total:</span>
+        <span class="amount">{{ formatCurrency(getTotalPrice()) }}</span>
+      </div>
+    </div>
+
+    <!-- Pet Services -->
+    <div class="pets-services-list">
+      <div *ngFor="let petService of petServices" class="pet-service-section">
+        <!-- Pet Header -->
+        <div class="pet-header">
+          <div class="pet-info">
+            <span class="pet-icon">🐕</span>
+            <span class="pet-name">{{ petService.pet_name }}</span>
+            <span class="pet-size-badge">{{ petService.pet_size }}</span>
+          </div>
+          <div class="pet-price" *ngIf="petService.price > 0">
+            {{ formatCurrency(petService.price) }}
+          </div>
+        </div>
+
+        <!-- Package Selection -->
+        <div class="package-selection">
+          <h4>Choose a Package</h4>
+          <div class="packages-grid">
+            <div
+              *ngFor="let package of packages"
+              class="package-card"
+              [class.selected]="petService.package_type === package.type"
+              (click)="selectPackage(petService, package.type)"
+            >
+              <div class="package-header">
+                <span class="package-name">{{ package.name }}</span>
+                <span class="package-price">
+                  {{ formatCurrency(getPackagePrice(package.type, petService.pet_size)) }}
+                </span>
+              </div>
+              <p class="package-description">{{ package.description }}</p>
+              <ul class="package-features">
+                <li *ngFor="let feature of package.features">
+                  <span class="check-icon">✓</span>
+                  {{ feature }}
+                </li>
+              </ul>
+              <div class="selected-indicator" *ngIf="petService.package_type === package.type">
+                <span class="check-icon">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add-ons Selection -->
+        <div class="addons-selection" *ngIf="petService.package_type">
+          <h4>Add-ons (Optional)</h4>
+          <div class="addons-grid">
+            <div
+              *ngFor="let addOn of addOns"
+              class="addon-card"
+              [class.selected]="isAddOnSelected(petService, addOn.id)"
+              (click)="toggleAddOn(petService, addOn.id)"
+            >
+              <div class="addon-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="isAddOnSelected(petService, addOn.id)"
+                  (click)="$event.stopPropagation()"
+                  (change)="toggleAddOn(petService, addOn.id)"
+                />
+              </div>
+              <div class="addon-info">
+                <div class="addon-header">
+                  <span class="addon-name">{{ addOn.name }}</span>
+                  <span class="addon-price">
+                    +{{ formatCurrency(getAddOnPrice(addOn.id, petService.pet_size)) }}
+                  </span>
+                </div>
+                <p class="addon-description">{{ addOn.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Package Required Message -->
+        <div class="package-required" *ngIf="!petService.package_type">
+          <span class="info-icon">ℹ️</span>
+          <span>Please select a package to continue</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="service-summary">
+      <div class="summary-header">
+        <span class="summary-icon">📋</span>
+        <span>Service Summary</span>
+      </div>
+      <div class="summary-items">
+        <div *ngFor="let petService of petServices" class="summary-item">
+          <div class="summary-pet">
+            <span class="pet-name">{{ petService.pet_name }}</span>
+            <span class="package-name" *ngIf="petService.package_type">
+              - {{ getPackageName(petService.package_type) }}
+            </span>
+            <span class="addons-count" *ngIf="petService.add_ons.length > 0">
+              + {{ petService.add_ons.length }} add-on{{ petService.add_ons.length > 1 ? 's' : '' }}
+            </span>
+          </div>
+          <div class="summary-price">{{ formatCurrency(petService.price) }}</div>
+        </div>
+        <div class="summary-total">
+          <span class="total-label">Total Amount</span>
+          <span class="total-amount">{{ formatCurrency(getTotalPrice()) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Validation Message -->
+    <div class="validation-message" *ngIf="!isAllPetsConfigured()">
+      <span class="warning-icon">⚠️</span>
+      <span>Please select a package for all pets before proceeding</span>
+    </div>
+  </div>
+</div>

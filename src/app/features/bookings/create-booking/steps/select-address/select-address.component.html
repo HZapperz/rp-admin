@@ -1,0 +1,102 @@
+<div class="select-address-step">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading addresses...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <span class="error-icon">⚠️</span>
+    <p>{{ error }}</p>
+    <button class="retry-btn" (click)="loadAddresses()">Retry</button>
+  </div>
+
+  <!-- No Client Selected -->
+  <div *ngIf="!selectedClient && !isLoading" class="info-state">
+    <span class="info-icon">👤</span>
+    <p>Please select a client first</p>
+    <small>You must select a client before choosing an address</small>
+  </div>
+
+  <!-- Addresses List -->
+  <div *ngIf="!isLoading && !error && selectedClient" class="addresses-content">
+    <div class="content-header">
+      <h3>Select Service Address</h3>
+      <div class="client-info">
+        <span class="client-icon">👤</span>
+        <span>{{ selectedClient.first_name }} {{ selectedClient.last_name }}'s Addresses</span>
+      </div>
+    </div>
+
+    <div *ngIf="addresses.length === 0" class="empty-state">
+      <span class="empty-icon">📍</span>
+      <p>No addresses found</p>
+      <small>This client has not added any addresses yet</small>
+    </div>
+
+    <div *ngIf="addresses.length > 0" class="addresses-grid">
+      <div
+        *ngFor="let address of addresses"
+        class="address-card"
+        [class.selected]="selectedAddress?.id === address.id"
+        (click)="selectAddress(address)"
+      >
+        <!-- Address Icon -->
+        <div class="address-icon">
+          {{ getAddressIcon(address.address_type) }}
+        </div>
+
+        <!-- Address Info -->
+        <div class="address-info">
+          <div class="address-header">
+            <div class="address-type">
+              <span class="type-badge" [ngClass]="getAddressTypeBadgeClass(address.address_type)">
+                {{ getAddressTypeLabel(address.address_type) }}
+              </span>
+              <span *ngIf="address.is_default" class="default-badge">Default</span>
+            </div>
+          </div>
+
+          <div class="address-details">
+            <div class="address-line" *ngIf="address.building">
+              <strong>{{ address.building }}</strong>
+            </div>
+            <div class="address-line" *ngIf="address.floor">
+              Floor: {{ address.floor }}
+            </div>
+            <div class="address-line">
+              {{ address.street }}
+            </div>
+            <div class="address-line" *ngIf="address.city || address.state || address.zip_code">
+              <span *ngIf="address.city">{{ address.city }}</span><span *ngIf="address.city && address.state">, </span>
+              <span *ngIf="address.state">{{ address.state }}</span>
+              <span *ngIf="address.zip_code"> {{ address.zip_code }}</span>
+            </div>
+          </div>
+
+          <div class="additional-info" *ngIf="address.additional_info">
+            <span class="info-icon">ℹ️</span>
+            <span class="info-text">{{ address.additional_info }}</span>
+          </div>
+        </div>
+
+        <!-- Selected Indicator -->
+        <div class="select-indicator" *ngIf="selectedAddress?.id === address.id">
+          <span class="check-icon">✓</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected Address Summary -->
+    <div class="selected-summary" *ngIf="selectedAddress">
+      <div class="summary-icon">✓</div>
+      <div class="summary-content">
+        <div class="summary-title">Service Address Selected</div>
+        <div class="summary-address">
+          {{ formatAddress(selectedAddress) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { BookingWithDetails, BookingStatus } from '../../../core/models/types';
@@ -28,7 +29,8 @@ export class BookingsListComponent implements OnInit {
 
   constructor(
     private bookingService: BookingService,
-    private groomerService: GroomerService
+    private groomerService: GroomerService,
+    private router: Router
   ) {}
 
   async ngOnInit() {
@@ -147,5 +149,9 @@ export class BookingsListComponent implements OnInit {
 
   formatCurrency(amount: number): string {
     return `$${amount.toFixed(2)}`;
+  }
+
+  navigateToCreateBooking(): void {
+    this.router.navigate(['/bookings/create']);
   }
 }
