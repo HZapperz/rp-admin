@@ -3,7 +3,7 @@
     <!-- Booking Summary -->
     <div class="booking-summary-section">
       <h3 class="section-title">
-        <span class="title-icon">📋</span>
+        <mat-icon class="title-icon" inline>assignment</mat-icon>
         Booking Summary
       </h3>
 
@@ -11,7 +11,7 @@
         <!-- Client Info -->
         <div class="summary-card">
           <div class="card-header">
-            <span class="card-icon">👤</span>
+            <mat-icon class="card-icon" inline>person</mat-icon>
             <span class="card-title">Client</span>
           </div>
           <div class="card-content" *ngIf="selectedClient">
@@ -26,7 +26,7 @@
         <!-- Pets Info -->
         <div class="summary-card">
           <div class="card-header">
-            <span class="card-icon">🐕</span>
+            <mat-icon class="card-icon" inline>pets</mat-icon>
             <span class="card-title">Pets ({{ selectedPets.length }})</span>
           </div>
           <div class="card-content" *ngIf="selectedPets.length > 0">
@@ -40,7 +40,7 @@
         <!-- Groomer Info -->
         <div class="summary-card">
           <div class="card-header">
-            <span class="card-icon">👨‍💼</span>
+            <mat-icon class="card-icon" inline>person</mat-icon>
             <span class="card-title">Groomer</span>
           </div>
           <div class="card-content" *ngIf="selectedGroomer">
@@ -54,7 +54,7 @@
         <!-- Date & Time Info -->
         <div class="summary-card">
           <div class="card-header">
-            <span class="card-icon">📅</span>
+            <mat-icon class="card-icon" inline>calendar_today</mat-icon>
             <span class="card-title">Date & Time</span>
           </div>
           <div class="card-content" *ngIf="selectedDateTime?.date && selectedDateTime?.time_slot">
@@ -67,7 +67,7 @@
         <!-- Address Info -->
         <div class="summary-card full-width">
           <div class="card-header">
-            <span class="card-icon">📍</span>
+            <mat-icon class="card-icon" inline>place</mat-icon>
             <span class="card-title">Service Address</span>
           </div>
           <div class="card-content" *ngIf="selectedAddress">
@@ -87,7 +87,7 @@
     <!-- Services & Pricing -->
     <div class="services-pricing-section">
       <h3 class="section-title">
-        <span class="title-icon">💰</span>
+        <mat-icon class="title-icon" inline>attach_money</mat-icon>
         Services & Pricing
       </h3>
 
@@ -155,7 +155,7 @@
     <!-- Payment Method -->
     <div class="payment-method-section">
       <h3 class="section-title">
-        <span class="title-icon">💳</span>
+        <mat-icon class="title-icon" inline>credit_card</mat-icon>
         Payment Method
       </h3>
 
@@ -165,12 +165,12 @@
           [class.selected]="paymentType === 'pay_on_completion'"
           (click)="onPaymentTypeChange('pay_on_completion')"
         >
-          <div class="type-icon">⏰</div>
+          <mat-icon class="type-icon">access_time</mat-icon>
           <div class="type-info">
             <div class="type-name">Pay on Completion</div>
             <div class="type-description">Client will be charged after service</div>
           </div>
-          <div class="check-icon" *ngIf="paymentType === 'pay_on_completion'">✓</div>
+          <mat-icon class="check-icon" *ngIf="paymentType === 'pay_on_completion'">check</mat-icon>
         </div>
 
         <div
@@ -178,12 +178,12 @@
           [class.selected]="paymentType === 'use_saved_card'"
           (click)="onPaymentTypeChange('use_saved_card')"
         >
-          <div class="type-icon">💳</div>
+          <mat-icon class="type-icon">credit_card</mat-icon>
           <div class="type-info">
             <div class="type-name">Use Saved Card</div>
             <div class="type-description">Charge client's saved payment method now</div>
           </div>
-          <div class="check-icon" *ngIf="paymentType === 'use_saved_card'">✓</div>
+          <mat-icon class="check-icon" *ngIf="paymentType === 'use_saved_card'">check</mat-icon>
         </div>
 
         <div
@@ -191,12 +191,12 @@
           [class.selected]="paymentType === 'cash_on_service'"
           (click)="onPaymentTypeChange('cash_on_service')"
         >
-          <div class="type-icon">💵</div>
+          <mat-icon class="type-icon">payments</mat-icon>
           <div class="type-info">
             <div class="type-name">Cash on Service</div>
             <div class="type-description">Client will pay cash at service time</div>
           </div>
-          <div class="check-icon" *ngIf="paymentType === 'cash_on_service'">✓</div>
+          <mat-icon class="check-icon" *ngIf="paymentType === 'cash_on_service'">check</mat-icon>
         </div>
       </div>
 
@@ -210,7 +210,7 @@
         </div>
 
         <div *ngIf="!isLoadingPaymentMethods && paymentMethods.length === 0" class="no-cards">
-          <span class="warning-icon">⚠️</span>
+          <mat-icon class="warning-icon" inline>warning</mat-icon>
           <p>This client has no saved payment methods</p>
           <small>Please select a different payment type</small>
         </div>
@@ -226,7 +226,7 @@
             <div class="card-number">•••• {{ method.last4 }}</div>
             <div class="card-expiry">Expires {{ method.exp_month }}/{{ method.exp_year }}</div>
             <div class="default-badge" *ngIf="method.is_default">Default</div>
-            <div class="check-icon" *ngIf="selectedPaymentMethod?.id === method.id">✓</div>
+            <mat-icon class="check-icon" *ngIf="selectedPaymentMethod?.id === method.id">check</mat-icon>
           </div>
         </div>
       </div>
@@ -234,7 +234,7 @@
 
     <!-- Validation Message -->
     <div class="validation-message" *ngIf="!isValid()">
-      <span class="warning-icon">⚠️</span>
+      <mat-icon class="warning-icon" inline>warning</mat-icon>
       <span>Please complete all steps before creating the booking</span>
     </div>
   </div>

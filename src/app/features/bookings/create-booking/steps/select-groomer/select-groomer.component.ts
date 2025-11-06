@@ -1,6 +1,7 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { GroomerService } from '../../../../../core/services/groomer.service';
 
 export interface Groomer {
@@ -19,7 +20,7 @@ export interface Groomer {
 @Component({
   selector: 'app-select-groomer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './select-groomer.component.html',
   styleUrls: ['./select-groomer.component.scss']
 })

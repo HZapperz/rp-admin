@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 
 export interface TimeSlot {
   time: string;
@@ -14,7 +15,7 @@ export interface DateTimeSelection {
 @Component({
   selector: 'app-select-date-time',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './select-date-time.component.html',
   styleUrls: ['./select-date-time.component.scss']
 })

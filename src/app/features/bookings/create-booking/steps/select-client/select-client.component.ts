@@ -1,13 +1,14 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { ClientService, ClientWithStats } from '../../../../../core/services/client.service';
 import { debounceTime, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-select-client',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './select-client.component.html',
   styleUrls: ['./select-client.component.scss']
 })

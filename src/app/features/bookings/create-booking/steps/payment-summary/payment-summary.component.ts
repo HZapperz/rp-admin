@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { AdminBookingService } from '../../../../../core/services/admin-booking.service';
 
 export interface PaymentConfig {
@@ -24,7 +25,7 @@ export interface PaymentMethod {
 @Component({
   selector: 'app-payment-summary',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './payment-summary.component.html',
   styleUrls: ['./payment-summary.component.scss']
 })

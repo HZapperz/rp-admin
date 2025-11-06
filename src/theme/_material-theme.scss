@@ -1,0 +1,113 @@
+// ============================================================================
+// CUSTOM ANGULAR MATERIAL THEME - Royal Pawz Admin Portal  
+// ============================================================================
+// Material Design 3 (M3) Theme for Angular Material v19
+
+@use '@angular/material' as mat;
+@use './design-tokens' as tokens;
+
+// Include the common styles for Angular Material
+@include mat.core();
+
+// ----------------------------------------------------------------------------
+// Define M3 Theme
+// ----------------------------------------------------------------------------
+
+// Create a simple M3 theme
+$admin-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$blue-palette,
+  ),
+));
+
+// Apply the theme to all Material components
+html {
+  @include mat.all-component-themes($admin-theme);
+}
+
+// ----------------------------------------------------------------------------
+// Custom Component Overrides
+// ----------------------------------------------------------------------------
+
+// Material Icons
+.mat-icon {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+
+  &[inline] {
+    font-size: inherit;
+    line-height: inherit;
+    height: auto;
+    width: auto;
+    vertical-align: middle;
+  }
+}
+
+// Buttons
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button {
+  border-radius: tokens.$button-border-radius !important;
+  font-weight: tokens.$font-weight-medium !important;
+  transition: all tokens.$transition-base !important;
+
+  &:hover:not([disabled]) {
+    transform: translateY(-1px);
+    box-shadow: tokens.$shadow-md !important;
+  }
+
+  &:active:not([disabled]) {
+    transform: translateY(0);
+  }
+}
+
+// Cards
+.mat-mdc-card {
+  border-radius: tokens.$card-border-radius !important;
+  box-shadow: tokens.$card-shadow !important;
+  transition: box-shadow tokens.$transition-base !important;
+
+  &:hover {
+    box-shadow: tokens.$card-shadow-hover !important;
+  }
+}
+
+// Stepper
+.mat-stepper-horizontal {
+  .mat-step-header {
+    padding: tokens.$spacing-4 !important;
+    transition: all tokens.$transition-base !important;
+
+    &:hover {
+      background-color: tokens.$gray-50 !important;
+    }
+
+    .mat-step-icon {
+      transition: all tokens.$transition-base !important;
+
+      &.mat-step-icon-selected {
+        transform: scale(1.1);
+      }
+    }
+
+    .mat-step-label {
+      &.mat-step-label-selected {
+        font-weight: tokens.$font-weight-semibold !important;
+      }
+    }
+  }
+}

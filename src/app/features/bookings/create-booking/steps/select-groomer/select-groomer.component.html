@@ -9,7 +9,7 @@
         placeholder="Search by name, email, or specialty..."
         class="search-input"
       />
-      <span class="search-icon">🔍</span>
+      <mat-icon class="search-icon">search</mat-icon>
     </div>
     <div class="results-count" *ngIf="!isLoading">
       {{ filteredGroomers.length }} {{ filteredGroomers.length === 1 ? 'groomer' : 'groomers' }} available
@@ -24,7 +24,7 @@
 
   <!-- Error State -->
   <div *ngIf="error" class="error-state">
-    <span class="error-icon">⚠️</span>
+    <mat-icon class="error-icon">warning</mat-icon>
     <p>{{ error }}</p>
     <button class="retry-btn" (click)="loadGroomers()">Retry</button>
   </div>
@@ -32,7 +32,7 @@
   <!-- Groomers List -->
   <div *ngIf="!isLoading && !error" class="groomers-list">
     <div *ngIf="filteredGroomers.length === 0" class="empty-state">
-      <span class="empty-icon">👨‍💼</span>
+      <mat-icon class="empty-icon">person</mat-icon>
       <p>No groomers found</p>
       <small>Try adjusting your search</small>
     </div>

@@ -1,7 +1,7 @@
 <div class="select-service-step">
   <!-- No Pets Selected -->
   <div *ngIf="selectedPets.length === 0" class="info-state">
-    <span class="info-icon">🐾</span>
+    <mat-icon class="info-icon">pets</mat-icon>
     <p>Please select pets first</p>
     <small>You must select at least one pet before choosing services</small>
   </div>
@@ -22,7 +22,7 @@
         <!-- Pet Header -->
         <div class="pet-header">
           <div class="pet-info">
-            <span class="pet-icon">🐕</span>
+            <mat-icon class="pet-icon" inline>pets</mat-icon>
             <span class="pet-name">{{ petService.pet_name }}</span>
             <span class="pet-size-badge">{{ petService.pet_size }}</span>
           </div>
@@ -50,12 +50,12 @@
               <p class="package-description">{{ package.description }}</p>
               <ul class="package-features">
                 <li *ngFor="let feature of package.features">
-                  <span class="check-icon">✓</span>
+                  <mat-icon inline>check</mat-icon>
                   {{ feature }}
                 </li>
               </ul>
               <div class="selected-indicator" *ngIf="petService.package_type === package.type">
-                <span class="check-icon">✓</span>
+                <mat-icon inline>check</mat-icon>
               </div>
             </div>
           </div>
@@ -94,7 +94,7 @@
 
         <!-- Package Required Message -->
         <div class="package-required" *ngIf="!petService.package_type">
-          <span class="info-icon">ℹ️</span>
+          <mat-icon class="info-icon" inline>info</mat-icon>
           <span>Please select a package to continue</span>
         </div>
       </div>
@@ -103,7 +103,7 @@
     <!-- Summary -->
     <div class="service-summary">
       <div class="summary-header">
-        <span class="summary-icon">📋</span>
+        <mat-icon class="summary-icon" inline>assignment</mat-icon>
         <span>Service Summary</span>
       </div>
       <div class="summary-items">
@@ -128,7 +128,7 @@
 
     <!-- Validation Message -->
     <div class="validation-message" *ngIf="!isAllPetsConfigured()">
-      <span class="warning-icon">⚠️</span>
+      <mat-icon class="warning-icon" inline>warning</mat-icon>
       <span>Please select a package for all pets before proceeding</span>
     </div>
   </div>

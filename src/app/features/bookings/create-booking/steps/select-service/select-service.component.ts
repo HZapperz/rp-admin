@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 
 export interface PetServiceSelection {
   pet_id: string;
@@ -36,7 +37,7 @@ export interface AddOnOption {
 @Component({
   selector: 'app-select-service',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './select-service.component.html',
   styleUrls: ['./select-service.component.scss']
 })

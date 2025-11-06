@@ -1,7 +1,7 @@
 <div class="select-date-time-step">
   <!-- No Groomer Selected -->
   <div *ngIf="!selectedGroomer" class="info-state">
-    <span class="info-icon">👨‍💼</span>
+    <mat-icon class="info-icon">person</mat-icon>
     <p>Please select a groomer first</p>
     <small>You must select a groomer before choosing a date and time</small>
   </div>
@@ -11,7 +11,7 @@
     <div class="content-header">
       <h3>Select Date & Time</h3>
       <div class="groomer-info">
-        <span class="groomer-icon">👨‍💼</span>
+        <mat-icon class="groomer-icon" inline>person</mat-icon>
         <span>Booking for: {{ selectedGroomer.first_name }} {{ selectedGroomer.last_name }}</span>
       </div>
     </div>
@@ -55,7 +55,7 @@
 
         <!-- Selected Date Display -->
         <div class="selected-date-display" *ngIf="selectedDate">
-          <span class="calendar-icon">📅</span>
+          <mat-icon class="calendar-icon" inline>calendar_today</mat-icon>
           <span class="date-text">{{ formatDateDisplay(selectedDate) }}</span>
         </div>
       </div>
@@ -65,7 +65,7 @@
         <h4>Choose a Time</h4>
 
         <div *ngIf="!selectedDate" class="no-date-message">
-          <span class="clock-icon">🕐</span>
+          <mat-icon class="clock-icon" inline>schedule</mat-icon>
           <p>Please select a date first</p>
         </div>
 
@@ -77,7 +77,7 @@
             [class.unavailable]="!slot.available"
             (click)="selectTimeSlot(slot)"
           >
-            <span class="slot-icon">🕐</span>
+            <mat-icon class="slot-icon" inline>schedule</mat-icon>
             <span class="slot-time">{{ slot.time }}</span>
             <span class="unavailable-badge" *ngIf="!slot.available">Booked</span>
             <div class="check-icon" *ngIf="selectedTimeSlot === slot.time">✓</div>
@@ -86,7 +86,7 @@
 
         <!-- Selected Time Display -->
         <div class="selected-time-display" *ngIf="selectedTimeSlot">
-          <span class="clock-icon">🕐</span>
+          <mat-icon class="clock-icon" inline>schedule</mat-icon>
           <span class="time-text">{{ selectedTimeSlot }}</span>
         </div>
       </div>
@@ -94,7 +94,7 @@
 
     <!-- Summary -->
     <div class="datetime-summary" *ngIf="selectedDate && selectedTimeSlot">
-      <div class="summary-icon">✓</div>
+      <mat-icon class="summary-icon">check_circle</mat-icon>
       <div class="summary-text">
         <div class="summary-title">Appointment Scheduled</div>
         <div class="summary-details">
@@ -105,7 +105,7 @@
 
     <!-- Validation Message -->
     <div class="validation-message" *ngIf="selectedDate && !selectedTimeSlot">
-      <span class="info-icon">ℹ️</span>
+      <mat-icon class="info-icon" inline>info</mat-icon>
       <span>Please select a time slot to continue</span>
     </div>
   </div>

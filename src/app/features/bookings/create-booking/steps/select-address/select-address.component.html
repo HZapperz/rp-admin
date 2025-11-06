@@ -7,14 +7,14 @@
 
   <!-- Error State -->
   <div *ngIf="error" class="error-state">
-    <span class="error-icon">⚠️</span>
+    <mat-icon class="error-icon">warning</mat-icon>
     <p>{{ error }}</p>
     <button class="retry-btn" (click)="loadAddresses()">Retry</button>
   </div>
 
   <!-- No Client Selected -->
   <div *ngIf="!selectedClient && !isLoading" class="info-state">
-    <span class="info-icon">👤</span>
+    <mat-icon class="info-icon">person</mat-icon>
     <p>Please select a client first</p>
     <small>You must select a client before choosing an address</small>
   </div>
@@ -24,13 +24,13 @@
     <div class="content-header">
       <h3>Select Service Address</h3>
       <div class="client-info">
-        <span class="client-icon">👤</span>
+        <mat-icon class="client-icon" inline>person</mat-icon>
         <span>{{ selectedClient.first_name }} {{ selectedClient.last_name }}'s Addresses</span>
       </div>
     </div>
 
     <div *ngIf="addresses.length === 0" class="empty-state">
-      <span class="empty-icon">📍</span>
+      <mat-icon class="empty-icon">place</mat-icon>
       <p>No addresses found</p>
       <small>This client has not added any addresses yet</small>
     </div>
@@ -76,21 +76,21 @@
           </div>
 
           <div class="additional-info" *ngIf="address.additional_info">
-            <span class="info-icon">ℹ️</span>
+            <mat-icon class="info-icon" inline>info</mat-icon>
             <span class="info-text">{{ address.additional_info }}</span>
           </div>
         </div>
 
         <!-- Selected Indicator -->
         <div class="select-indicator" *ngIf="selectedAddress?.id === address.id">
-          <span class="check-icon">✓</span>
+          <mat-icon class="check-icon">check</mat-icon>
         </div>
       </div>
     </div>
 
     <!-- Selected Address Summary -->
     <div class="selected-summary" *ngIf="selectedAddress">
-      <div class="summary-icon">✓</div>
+      <mat-icon class="summary-icon">check_circle</mat-icon>
       <div class="summary-content">
         <div class="summary-title">Service Address Selected</div>
         <div class="summary-address">

@@ -7,14 +7,14 @@
 
   <!-- Error State -->
   <div *ngIf="error" class="error-state">
-    <span class="error-icon">⚠️</span>
+    <mat-icon class="error-icon">warning</mat-icon>
     <p>{{ error }}</p>
     <button class="retry-btn" (click)="loadPets()">Retry</button>
   </div>
 
   <!-- No Client Selected -->
   <div *ngIf="!selectedClient && !isLoading" class="info-state">
-    <span class="info-icon">👤</span>
+    <mat-icon class="info-icon">person</mat-icon>
     <p>Please select a client first</p>
     <small>You must select a client before choosing pets</small>
   </div>
@@ -29,7 +29,7 @@
     </div>
 
     <div *ngIf="pets.length === 0" class="empty-state">
-      <span class="empty-icon">🐾</span>
+      <mat-icon class="empty-icon">pets</mat-icon>
       <p>No pets found for this client</p>
       <small>This client has not added any pets yet</small>
     </div>
@@ -72,7 +72,7 @@
 
           <div class="pet-warnings" *ngIf="!pet.rabies_certificate_url">
             <div class="warning-badge">
-              <span class="warning-icon">⚠️</span>
+              <mat-icon class="warning-icon" inline>warning</mat-icon>
               Missing rabies certificate
             </div>
           </div>
@@ -85,14 +85,14 @@
 
         <!-- Selected Checkmark -->
         <div class="select-indicator" *ngIf="isPetSelected(pet)">
-          <span class="check-icon">✓</span>
+          <mat-icon class="check-icon">check</mat-icon>
         </div>
       </div>
     </div>
 
     <!-- Selection Note -->
     <div class="selection-note" *ngIf="pets.length > 0">
-      <span class="note-icon">💡</span>
+      <mat-icon class="note-icon" inline>lightbulb</mat-icon>
       <span>You can select multiple pets for this booking</span>
     </div>
   </div>

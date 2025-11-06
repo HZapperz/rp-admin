@@ -9,7 +9,7 @@
         placeholder="Search by name, email, or phone..."
         class="search-input"
       />
-      <span class="search-icon">🔍</span>
+      <mat-icon class="search-icon">search</mat-icon>
     </div>
     <div class="results-count" *ngIf="!isLoading">
       {{ filteredClients.length }} {{ filteredClients.length === 1 ? 'client' : 'clients' }} found
@@ -24,7 +24,7 @@
 
   <!-- Error State -->
   <div *ngIf="error" class="error-state">
-    <span class="error-icon">⚠️</span>
+    <mat-icon class="error-icon">warning</mat-icon>
     <p>{{ error }}</p>
     <button class="retry-btn" (click)="loadClients()">Retry</button>
   </div>
@@ -32,7 +32,7 @@
   <!-- Clients List -->
   <div *ngIf="!isLoading && !error" class="clients-list">
     <div *ngIf="filteredClients.length === 0" class="empty-state">
-      <span class="empty-icon">👤</span>
+      <mat-icon class="empty-icon">person</mat-icon>
       <p>No clients found</p>
       <small>Try adjusting your search</small>
     </div>
@@ -55,7 +55,9 @@
       <div class="client-info">
         <div class="client-name">
           {{ client.first_name }} {{ client.last_name }}
-          <span *ngIf="selectedClient?.id === client.id" class="selected-badge">✓ Selected</span>
+          <span *ngIf="selectedClient?.id === client.id" class="selected-badge">
+            <mat-icon inline>check</mat-icon> Selected
+          </span>
         </div>
         <div class="client-email">{{ client.email }}</div>
         <div *ngIf="client.phone" class="client-phone">{{ client.phone }}</div>
@@ -79,8 +81,8 @@
 
       <!-- Select Icon -->
       <div class="select-icon">
-        <span *ngIf="selectedClient?.id === client.id" class="check-icon">✓</span>
-        <span *ngIf="selectedClient?.id !== client.id" class="arrow-icon">→</span>
+        <mat-icon *ngIf="selectedClient?.id === client.id" class="check-icon">check</mat-icon>
+        <mat-icon *ngIf="selectedClient?.id !== client.id" class="arrow-icon">arrow_forward</mat-icon>
       </div>
     </div>
   </div>

@@ -1,11 +1,12 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { ClientService, Pet } from '../../../../../core/services/client.service';
 
 @Component({
   selector: 'app-select-pets',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './select-pets.component.html',
   styleUrls: ['./select-pets.component.scss']
 })

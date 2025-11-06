@@ -1,101 +1,101 @@
-/* Global Styles */
+// ============================================================================
+// GLOBAL STYLES - Royal Pawz Admin Portal
+// ============================================================================
 
-/* CSS Reset & Box Sizing */
+// Import Custom Theme and Design Tokens
+@use './theme/material-theme';
+@use './theme/design-tokens' as tokens;
+@use './theme/mixins' as mix;
+
+// ----------------------------------------------------------------------------
+// CSS Reset & Box Sizing
+// ----------------------------------------------------------------------------
+
 *, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Root Variables */
-:root {
-  /* Colors */
-  --primary-color: #6366f1;
-  --primary-dark: #4f46e5;
-  --secondary-color: #10b981;
-  --danger-color: #ef4444;
-  --warning-color: #f59e0b;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --background: #f8fafc;
-  --surface: #ffffff;
-  --border: #e2e8f0;
+// ----------------------------------------------------------------------------
+// Base HTML & Body Styles
+// ----------------------------------------------------------------------------
 
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-
-  /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-size-base: 16px;
-  --line-height-base: 1.5;
-
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-base: 200ms ease;
-  --transition-slow: 300ms ease;
-}
-
-/* Base Styles */
 html {
-  font-size: var(--font-size-base);
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
 
 body {
-  font-family: var(--font-family);
-  line-height: var(--line-height-base);
-  color: var(--text-primary);
-  background-color: var(--background);
+  font-family: tokens.$font-family-primary;
+  line-height: tokens.$line-height-normal;
+  color: tokens.$gray-900;
+  background-color: tokens.$gray-50;
   min-height: 100vh;
   overflow-x: hidden;
 }
 
-/* Typography */
+// ----------------------------------------------------------------------------
+// Typography
+// ----------------------------------------------------------------------------
+
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: tokens.$font-weight-semibold;
+  line-height: tokens.$line-height-tight;
   margin: 0;
+  color: tokens.$gray-900;
 }
 
-h1 { font-size: 2.25rem; }
-h2 { font-size: 1.875rem; }
-h3 { font-size: 1.5rem; }
-h4 { font-size: 1.25rem; }
-h5 { font-size: 1.125rem; }
-h6 { font-size: 1rem; }
+h1 { font-size: tokens.$font-size-3xl; }
+h2 { font-size: tokens.$font-size-2xl; }
+h3 { font-size: tokens.$font-size-xl; }
+h4 { font-size: tokens.$font-size-lg; }
+h5 { font-size: tokens.$font-size-md; }
+h6 { font-size: tokens.$font-size-base; }
 
 p {
   margin: 0;
+  color: tokens.$gray-700;
 }
 
 a {
-  color: var(--primary-color);
+  color: tokens.$primary-600;
   text-decoration: none;
-  transition: color var(--transition-base);
+  transition: color tokens.$transition-base;
+
+  &:hover {
+    color: tokens.$primary-700;
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include mix.focus-ring;
+  }
 }
 
-a:hover {
-  color: var(--primary-dark);
+strong, b {
+  font-weight: tokens.$font-weight-semibold;
 }
 
-/* Form Elements */
+small {
+  font-size: tokens.$font-size-sm;
+}
+
+code {
+  font-family: tokens.$font-family-mono;
+  font-size: 0.875em;
+  background-color: tokens.$gray-100;
+  padding: 0.125rem 0.375rem;
+  border-radius: tokens.$radius-sm;
+  color: tokens.$primary-700;
+}
+
+// ----------------------------------------------------------------------------
+// Form Elements
+// ----------------------------------------------------------------------------
+
 button, input, select, textarea {
   font-family: inherit;
   font-size: inherit;
@@ -106,62 +106,71 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    @include mix.focus-ring;
+  }
 }
 
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+input, textarea, select {
+  &:focus-visible {
+    @include mix.focus-ring;
+  }
 }
 
-/* Images */
+// ----------------------------------------------------------------------------
+// Images & Media
+// ----------------------------------------------------------------------------
+
 img {
   max-width: 100%;
   height: auto;
   display: block;
 }
 
-/* Lists */
+svg {
+  display: block;
+}
+
+// ----------------------------------------------------------------------------
+// Lists
+// ----------------------------------------------------------------------------
+
 ul, ol {
   list-style: none;
 }
 
-/* Tables */
+// ----------------------------------------------------------------------------
+// Tables
+// ----------------------------------------------------------------------------
+
 table {
   border-collapse: collapse;
   width: 100%;
 }
 
-/* Focus Styles */
-*:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
+// ----------------------------------------------------------------------------
+// Scrollbar Styles
+// ----------------------------------------------------------------------------
+
+* {
+  @include mix.custom-scrollbar;
 }
 
-/* Scrollbar Styles */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+// ----------------------------------------------------------------------------
+// Utility Classes
+// ----------------------------------------------------------------------------
 
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: var(--radius-full);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-/* Utility Classes */
 .container {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 var(--spacing-md);
+  padding: 0 tokens.$spacing-6;
 }
 
 .sr-only {
@@ -176,41 +185,170 @@ table {
   border-width: 0;
 }
 
-/* Responsive Typography */
-@media (max-width: 768px) {
-  :root {
-    --font-size-base: 14px;
+// Loading States
+.loading-spinner,
+.spinner {
+  @include mix.spinner;
+}
+
+.loading-state {
+  @include mix.flex-column;
+  align-items: center;
+  justify-content: center;
+  gap: tokens.$spacing-4;
+  padding: tokens.$spacing-12;
+  color: tokens.$gray-600;
+
+  .spinner {
+    margin-bottom: tokens.$spacing-2;
   }
 
-  h1 { font-size: 1.875rem; }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.25rem; }
-  h4 { font-size: 1.125rem; }
-  h5 { font-size: 1rem; }
-  h6 { font-size: 0.875rem; }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --font-size-base: 13px;
+  p {
+    color: tokens.$gray-600;
+    font-size: tokens.$font-size-sm;
   }
 }
 
-/* Loading State */
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--border);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+// Empty States
+.empty-state,
+.info-state,
+.error-state {
+  @include mix.flex-column;
+  align-items: center;
+  justify-content: center;
+  gap: tokens.$spacing-3;
+  padding: tokens.$spacing-12;
+  text-align: center;
+
+  .mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: tokens.$gray-400;
+  }
+
+  p {
+    color: tokens.$gray-700;
+    font-weight: tokens.$font-weight-medium;
+    font-size: tokens.$font-size-base;
+  }
+
+  small {
+    color: tokens.$gray-500;
+    font-size: tokens.$font-size-sm;
+  }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.error-state {
+  .mat-icon {
+    color: tokens.$error;
+  }
+
+  p {
+    color: tokens.$error-dark;
+  }
 }
 
-/* Print Styles */
+// Info Banners
+.info-banner {
+  @include mix.state-info;
+  padding: tokens.$spacing-4;
+  border-radius: tokens.$radius-base;
+  display: flex;
+  align-items: flex-start;
+  gap: tokens.$spacing-3;
+
+  .mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+.success-banner {
+  @include mix.state-success;
+  padding: tokens.$spacing-4;
+  border-radius: tokens.$radius-base;
+  display: flex;
+  align-items: flex-start;
+  gap: tokens.$spacing-3;
+
+  .mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+.warning-banner {
+  @include mix.state-warning;
+  padding: tokens.$spacing-4;
+  border-radius: tokens.$radius-base;
+  display: flex;
+  align-items: flex-start;
+  gap: tokens.$spacing-3;
+
+  .mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+.error-banner {
+  @include mix.state-error;
+  padding: tokens.$spacing-4;
+  border-radius: tokens.$radius-base;
+  display: flex;
+  align-items: flex-start;
+  gap: tokens.$spacing-3;
+
+  .mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Responsive Typography
+// ----------------------------------------------------------------------------
+
+@include mix.respond-below(md) {
+  html {
+    font-size: 14px;
+  }
+
+  h1 { font-size: tokens.$font-size-2xl; }
+  h2 { font-size: tokens.$font-size-xl; }
+  h3 { font-size: tokens.$font-size-lg; }
+  h4 { font-size: tokens.$font-size-md; }
+  h5 { font-size: tokens.$font-size-base; }
+  h6 { font-size: tokens.$font-size-sm; }
+}
+
+@include mix.respond-below(sm) {
+  html {
+    font-size: 13px;
+  }
+
+  .container {
+    padding: 0 tokens.$spacing-4;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Animation Classes
+// ----------------------------------------------------------------------------
+
+.fade-in {
+  @include mix.fade-in;
+}
+
+.scale-in {
+  @include mix.scale-in;
+}
+
+.slide-in-up {
+  @include mix.slide-in-up;
+}
+
+// ----------------------------------------------------------------------------
+// Print Styles
+// ----------------------------------------------------------------------------
+
 @media print {
   * {
     background: transparent !important;
@@ -247,5 +385,10 @@ table {
 
   h2, h3 {
     page-break-after: avoid;
+  }
+
+  // Hide non-printable elements
+  nav, aside, .no-print {
+    display: none !important;
   }
 }
