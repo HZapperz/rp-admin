@@ -251,21 +251,23 @@ export class BookingService {
     };
   }
 
-  async approveBooking(bookingId: string, groomerId: string, timeSlotStart: string, timeSlotEnd: string): Promise<boolean> {
+  async approveBooking(bookingId: string, groomerId: string, scheduledDate: string, timeSlotStart: string, timeSlotEnd: string): Promise<boolean> {
     try {
       console.log('Attempting to approve booking...', {
         bookingId,
         groomerId,
+        scheduledDate,
         timeSlotStart,
         timeSlotEnd,
         currentUser: this.supabase.session?.user?.id
       });
 
-      // Update booking with groomer assignment, time slots, and confirm status
+      // Update booking with groomer assignment, date, time slots, and confirm status
       const { data, error } = await this.supabase
         .from('bookings')
         .update({
           groomer_id: groomerId,
+          scheduled_date: scheduledDate,
           scheduled_time_start: timeSlotStart,
           scheduled_time_end: timeSlotEnd,
           status: 'confirmed',

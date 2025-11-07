@@ -6,6 +6,7 @@ import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { EmailService } from '../../../core/services/email.service';
+import { getAddonDisplayName, getAddonDisplayPrice } from '../../../core/constants/addons';
 
 @Component({
   selector: 'app-booking-detail-modal',
@@ -23,6 +24,9 @@ export class BookingDetailModalComponent implements OnInit {
   availableGroomers: any[] = [];
   selectedGroomerId: string = '';
   selectedTimeSlot: { label: string; start: string; end: string } | null = null;
+  selectedDate: string = ''; // YYYY-MM-DD format
+  minDate: string = '';
+  maxDate: string = '';
   showRejectDialog = false;
   rejectionReason: string = '';
 
@@ -100,11 +104,48 @@ export class BookingDetailModalComponent implements OnInit {
     return labels[packageType] || packageType;
   }
 
+  getShiftLabel(shift: 'morning' | 'afternoon'): string {
+    const labels: Record<string, string> = {
+      'morning': 'Morning Shift (8:30 AM - 12:15 PM)',
+      'afternoon': 'Afternoon Shift (1:00 PM - 5:00 PM)'
+    };
+    return labels[shift] || shift;
+  }
+
+  getAddonName(addonName: string): string {
+    return getAddonDisplayName(addonName);
+  }
+
+  getAddonPrice(addonName: string, storedPrice: number): number {
+    return getAddonDisplayPrice(addonName, storedPrice);
+  }
+
   async openApproveModal() {
     if (!this.booking) return;
+
+    // Reset selections
     this.selectedGroomerId = '';
     this.selectedTimeSlot = null;
-    this.availableGroomers = await this.groomerService.getAvailableGroomers(this.booking.scheduled_date);
+
+    // Initialize date to original booking date
+    this.selectedDate = this.booking.scheduled_date;
+
+    // Set date constraints
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Min date: Tomorrow (can't schedule for today or past)
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    this.minDate = tomorrow.toISOString().split('T')[0];
+
+    // Max date: 90 days from today
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 90);
+    this.maxDate = maxDate.toISOString().split('T')[0];
+
+    // Fetch available groomers for the selected date
+    this.availableGroomers = await this.groomerService.getAvailableGroomers(this.selectedDate);
     this.showGroomerModal = true;
   }
 
@@ -114,9 +155,40 @@ export class BookingDetailModalComponent implements OnInit {
     this.selectedTimeSlot = null;
   }
 
+  async onDateChange() {
+    if (!this.selectedDate) return;
+
+    // Validate the selected date
+    const selectedDateObj = new Date(this.selectedDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDateObj < today) {
+      alert('Cannot select a past date. Please choose today or a future date.');
+      this.selectedDate = this.booking?.scheduled_date || '';
+      return;
+    }
+
+    // Reset groomer and time slot selections when date changes
+    this.selectedGroomerId = '';
+    this.selectedTimeSlot = null;
+
+    // Fetch available groomers for the new date
+    try {
+      this.availableGroomers = await this.groomerService.getAvailableGroomers(this.selectedDate);
+
+      if (this.availableGroomers.length === 0) {
+        alert('No groomers are available for this date. Please select a different date.');
+      }
+    } catch (error) {
+      console.error('Error fetching groomers for date:', error);
+      alert('Failed to load available groomers. Please try again.');
+    }
+  }
+
   async assignGroomerAndApprove() {
-    if (!this.booking || !this.selectedGroomerId || !this.selectedTimeSlot) {
-      alert('Please select both a groomer and a time slot');
+    if (!this.booking || !this.selectedGroomerId || !this.selectedTimeSlot || !this.selectedDate) {
+      alert('Please select a date, groomer, and time slot');
       return;
     }
 
@@ -125,12 +197,14 @@ export class BookingDetailModalComponent implements OnInit {
       console.log('Approving booking...', {
         bookingId: this.booking.id,
         groomerId: this.selectedGroomerId,
+        scheduledDate: this.selectedDate,
         timeSlot: this.selectedTimeSlot
       });
 
       const success = await this.bookingService.approveBooking(
         this.booking.id,
         this.selectedGroomerId,
+        this.selectedDate,
         this.selectedTimeSlot.start,
         this.selectedTimeSlot.end
       );

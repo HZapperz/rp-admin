@@ -99,7 +99,12 @@
               <td>
                 <div class="date-time">
                   <div>{{ formatDate(booking.scheduled_date) }}</div>
-                  <div class="time">{{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</div>
+                  @if (booking.shift_preference) {
+                    <div class="requested-time">Requested: {{ booking.shift_preference === 'morning' ? 'Morning' : 'Afternoon' }} Shift</div>
+                  }
+                  @if (booking.scheduled_time_start && booking.scheduled_time_end) {
+                    <div class="time">Assigned: {{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</div>
+                  }
                 </div>
               </td>
               <td>{{ booking.service_name || booking.service?.name || 'N/A' }}</td>

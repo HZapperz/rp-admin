@@ -20,12 +20,26 @@
             </span>
             <span class="booking-date">{{ formatDate(booking.scheduled_date) }}</span>
           </div>
-          @if (booking.scheduled_time_start && booking.scheduled_time_end) {
-            <div class="time-slot">
-              <span class="icon">🕐</span>
-              <span>{{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</span>
-            </div>
-          }
+          <div class="time-details">
+            @if (booking.shift_preference) {
+              <div class="time-slot requested">
+                <span class="icon">📝</span>
+                <span><strong>Client Requested:</strong> {{ getShiftLabel(booking.shift_preference) }}</span>
+              </div>
+            }
+            @if (booking.scheduled_time_start && booking.scheduled_time_end) {
+              <div class="time-slot assigned">
+                <span class="icon">🕐</span>
+                <span><strong>Admin Assigned:</strong> {{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</span>
+              </div>
+            }
+            @if (booking.assigned_time_slot) {
+              <div class="time-slot-detail">
+                <span class="icon">⏰</span>
+                <span><strong>Time Slot:</strong> {{ booking.assigned_time_slot }}</span>
+              </div>
+            }
+          </div>
         </div>
 
         <!-- Client Information -->
@@ -109,7 +123,7 @@
                         <strong>Add-ons:</strong>
                         <ul>
                           @for (addon of bookingPet.addons; track addon.id) {
-                            <li>{{ addon.addon_name }} - {{ formatCurrency(addon.addon_price) }}</li>
+                            <li>{{ getAddonName(addon.addon_name) }} - {{ formatCurrency(getAddonPrice(addon.addon_name, addon.addon_price)) }}</li>
                           }
                         </ul>
                       </div>
@@ -282,6 +296,25 @@
           <button class="close-btn" (click)="closeGroomerModal()">✕</button>
         </div>
         <div class="modal-body">
+          <!-- Date Selection -->
+          <div class="form-section">
+            <label class="form-label">Select Date</label>
+            <input
+              type="date"
+              class="form-input"
+              [(ngModel)]="selectedDate"
+              [min]="minDate"
+              [max]="maxDate"
+              (change)="onDateChange()"
+            />
+            <div class="date-info">
+              <span class="current-date-label">Original requested date: {{ formatDate(booking.scheduled_date) }}</span>
+              @if (selectedDate !== booking.scheduled_date) {
+                <span class="date-changed-badge">⚠️ Date will be changed</span>
+              }
+            </div>
+          </div>
+
           <!-- Time Slot Selection -->
           <div class="form-section">
             <label class="form-label">Select Time Slot</label>
@@ -326,7 +359,7 @@
           <button
             class="btn btn-primary"
             (click)="assignGroomerAndApprove()"
-            [disabled]="!selectedGroomerId || !selectedTimeSlot">
+            [disabled]="!selectedGroomerId || !selectedTimeSlot || !selectedDate">
             Approve & Assign
           </button>
         </div>

@@ -98,6 +98,9 @@ export interface Booking {
   subtotal_before_tax?: number;
   tax_amount?: number;
   tax_rate?: number;
+  // Time preference fields
+  shift_preference?: 'morning' | 'afternoon';
+  assigned_time_slot?: string;
 }
 
 export interface BookingPet {
