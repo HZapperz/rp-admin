@@ -7,7 +7,8 @@ import {
   OperatingHours,
   Holiday,
   SpecialHours,
-  BookingConflict
+  BookingConflict,
+  BookingTimeSlot
 } from '../../../core/services/business-settings.service';
 
 interface DayConfig {
@@ -33,7 +34,7 @@ export class BusinessSettingsModalComponent implements OnInit {
   @Output() settingsSaved = new EventEmitter<void>();
 
   // Active tab
-  activeTab: 'days' | 'hours' | 'holidays' | 'special' = 'days';
+  activeTab: 'days' | 'hours' | 'holidays' | 'special' | 'timeslots' = 'days';
 
   // Days configuration
   daysConfig: DayConfig[] = [];
@@ -56,6 +57,18 @@ export class BusinessSettingsModalComponent implements OnInit {
     closes_at: '',
     is_closed: false,
     reason: ''
+  };
+
+  // Booking time slots
+  timeSlots: BookingTimeSlot[] = [];
+  editingTimeSlot: BookingTimeSlot | null = null;
+  newTimeSlot = {
+    label: '',
+    display_time: '',
+    start_time: '',
+    end_time: '',
+    is_active: true,
+    sort_order: 0
   };
 
   // UI state
@@ -98,6 +111,11 @@ export class BusinessSettingsModalComponent implements OnInit {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 90);
     const endDate = futureDate.toISOString().split('T')[0];
+
+    // Load booking time slots
+    this.businessSettingsService.getBookingTimeSlots().subscribe(slots => {
+      this.timeSlots = slots;
+    });
 
     this.businessSettingsService.getSpecialHours(today, endDate).subscribe(special => {
       this.specialHours = special;
@@ -343,6 +361,133 @@ export class BusinessSettingsModalComponent implements OnInit {
         setTimeout(() => this.success = '', 2000);
       } else {
         this.error = 'Failed to delete special hours';
+      }
+    });
+  }
+
+  // =======================
+  // BOOKING TIME SLOTS
+  // =======================
+
+  addTimeSlot() {
+    if (!this.newTimeSlot.label || !this.newTimeSlot.start_time || !this.newTimeSlot.end_time) {
+      this.error = 'Please fill in all required fields';
+      return;
+    }
+
+    // Set sort order to be last
+    this.newTimeSlot.sort_order = this.timeSlots.length;
+
+    this.businessSettingsService.createBookingTimeSlot(this.newTimeSlot).subscribe(success => {
+      if (success) {
+        this.success = 'Time slot added successfully!';
+        setTimeout(() => this.success = '', 2000);
+        // Reload time slots
+        this.businessSettingsService.getBookingTimeSlots().subscribe(slots => {
+          this.timeSlots = slots;
+        });
+        // Reset form
+        this.newTimeSlot = {
+          label: '',
+          display_time: '',
+          start_time: '',
+          end_time: '',
+          is_active: true,
+          sort_order: 0
+        };
+      } else {
+        this.error = 'Failed to add time slot';
+      }
+    });
+  }
+
+  editTimeSlot(slot: BookingTimeSlot) {
+    this.editingTimeSlot = { ...slot };
+  }
+
+  saveTimeSlot() {
+    if (!this.editingTimeSlot) return;
+
+    const { id, ...updates } = this.editingTimeSlot;
+    this.businessSettingsService.updateBookingTimeSlot(id, updates).subscribe(success => {
+      if (success) {
+        this.success = 'Time slot updated successfully!';
+        setTimeout(() => this.success = '', 2000);
+        // Update local array
+        const index = this.timeSlots.findIndex(s => s.id === id);
+        if (index !== -1) {
+          this.timeSlots[index] = { ...this.editingTimeSlot } as BookingTimeSlot;
+        }
+        this.editingTimeSlot = null;
+      } else {
+        this.error = 'Failed to update time slot';
+      }
+    });
+  }
+
+  cancelEditTimeSlot() {
+    this.editingTimeSlot = null;
+  }
+
+  deleteTimeSlot(id: string) {
+    if (!confirm('Are you sure you want to delete this time slot?')) {
+      return;
+    }
+
+    this.businessSettingsService.deleteBookingTimeSlot(id).subscribe(success => {
+      if (success) {
+        this.timeSlots = this.timeSlots.filter(s => s.id !== id);
+        this.success = 'Time slot deleted successfully!';
+        setTimeout(() => this.success = '', 2000);
+      } else {
+        this.error = 'Failed to delete time slot';
+      }
+    });
+  }
+
+  toggleTimeSlotActive(slot: BookingTimeSlot) {
+    const updates = { is_active: !slot.is_active };
+    this.businessSettingsService.updateBookingTimeSlot(slot.id, updates).subscribe(success => {
+      if (success) {
+        slot.is_active = !slot.is_active;
+        this.success = `Time slot ${slot.is_active ? 'activated' : 'deactivated'}!`;
+        setTimeout(() => this.success = '', 2000);
+      } else {
+        this.error = 'Failed to update time slot';
+      }
+    });
+  }
+
+  moveTimeSlotUp(index: number) {
+    if (index === 0) return;
+
+    const slots = [...this.timeSlots];
+    [slots[index], slots[index - 1]] = [slots[index - 1], slots[index]];
+
+    // Update sort orders
+    const updates = slots.map((slot, i) => ({ id: slot.id, sort_order: i }));
+    this.businessSettingsService.updateBookingTimeSlotsOrder(updates).subscribe(success => {
+      if (success) {
+        this.timeSlots = slots;
+      } else {
+        this.error = 'Failed to reorder time slots';
+      }
+    });
+  }
+
+  moveTimeSlotDown(index: number) {
+    if (index === this.timeSlots.length - 1) return;
+
+    const slots = [...this.timeSlots];
+    [slots[index], slots[index + 1]] = [slots[index + 1], slots[index]];
+
+    // Update sort orders
+    const updates = slots.map((slot, i) => ({ id: slot.id, sort_order: i }));
+    this.businessSettingsService.updateBookingTimeSlotsOrder(updates).subscribe(success => {
+      if (success) {
+        this.timeSlots = slots;
+      } else {
+        this.error = 'Failed to reorder time slots';
       }
     });
   }

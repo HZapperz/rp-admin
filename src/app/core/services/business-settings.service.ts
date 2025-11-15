@@ -63,6 +63,18 @@ export interface BookingConflict {
   status: string;
 }
 
+export interface BookingTimeSlot {
+  id: string;
+  label: string;
+  display_time: string;
+  start_time: string; // HH:MM:SS format
+  end_time: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -287,6 +299,97 @@ export class BusinessSettingsService {
       map(response => !response.error),
       catchError(error => {
         console.error('Error deleting special hours:', error);
+        return of(false);
+      })
+    );
+  }
+
+  // =======================
+  // BOOKING TIME SLOTS
+  // =======================
+
+  /**
+   * Get all booking time slots
+   */
+  getBookingTimeSlots(): Observable<BookingTimeSlot[]> {
+    return from(
+      this.supabase.from('booking_time_slots')
+        .select('*')
+        .order('sort_order', { ascending: true })
+    ).pipe(
+      map(response => response.data || []),
+      catchError(error => {
+        console.error('Error fetching booking time slots:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Create a new booking time slot
+   */
+  createBookingTimeSlot(slot: Omit<BookingTimeSlot, 'id' | 'created_at' | 'updated_at'>): Observable<boolean> {
+    return from(
+      this.supabase.from('booking_time_slots')
+        .insert(slot)
+    ).pipe(
+      map(response => !response.error),
+      catchError(error => {
+        console.error('Error creating booking time slot:', error);
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * Update a booking time slot
+   */
+  updateBookingTimeSlot(id: string, updates: Partial<BookingTimeSlot>): Observable<boolean> {
+    return from(
+      this.supabase.from('booking_time_slots')
+        .update(updates)
+        .eq('id', id)
+    ).pipe(
+      map(response => !response.error),
+      catchError(error => {
+        console.error('Error updating booking time slot:', error);
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * Delete a booking time slot
+   */
+  deleteBookingTimeSlot(id: string): Observable<boolean> {
+    return from(
+      this.supabase.from('booking_time_slots')
+        .delete()
+        .eq('id', id)
+    ).pipe(
+      map(response => !response.error),
+      catchError(error => {
+        console.error('Error deleting booking time slot:', error);
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * Reorder booking time slots
+   */
+  updateBookingTimeSlotsOrder(slots: Array<{id: string, sort_order: number}>): Observable<boolean> {
+    // Execute updates in parallel
+    const updates = slots.map(slot =>
+      this.supabase.from('booking_time_slots')
+        .update({ sort_order: slot.sort_order })
+        .eq('id', slot.id)
+    );
+
+    return from(Promise.all(updates)).pipe(
+      map(responses => responses.every(r => !r.error)),
+      catchError(error => {
+        console.error('Error reordering booking time slots:', error);
         return of(false);
       })
     );

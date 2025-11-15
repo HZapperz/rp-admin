@@ -1,10 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
 import { KPIData, BookingWithDetails } from '../../core/models/types';
-import { BookingDetailModalComponent } from '../../shared/components/booking-detail-modal/booking-detail-modal.component';
 import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
 import { BusinessSettingsService, OperatingDay, OperatingHours } from '../../core/services/business-settings.service';
 
@@ -20,7 +19,7 @@ interface DaySlot {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, BookingDetailModalComponent, BusinessSettingsModalComponent],
+  imports: [CommonModule, RouterModule, BusinessSettingsModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -41,10 +40,6 @@ export class DashboardComponent implements OnInit {
   scheduleSlots: DaySlot[] = [];
   allBookings: BookingWithDetails[] = [];
 
-  // Booking Detail Modal
-  selectedBooking: BookingWithDetails | null = null;
-  showBookingModal = false;
-
   // Business Settings Modal
   showBusinessSettingsModal = false;
   operatingDaysSummary = 'Loading...';
@@ -52,7 +47,8 @@ export class DashboardComponent implements OnInit {
   constructor(
     private analyticsService: AnalyticsService,
     private bookingService: BookingService,
-    private businessSettingsService: BusinessSettingsService
+    private businessSettingsService: BusinessSettingsService,
+    private router: Router
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -245,24 +241,9 @@ export class DashboardComponent implements OnInit {
     return `${displayHour}:${minutes} ${ampm}`;
   }
 
-  async openBookingDetail(booking: BookingWithDetails): Promise<void> {
-    // Fetch full booking details including pets
-    const fullBooking = await this.bookingService.getBookingById(booking.id);
-    if (fullBooking) {
-      this.selectedBooking = fullBooking;
-      this.showBookingModal = true;
-    }
-  }
-
-  closeBookingModal(): void {
-    this.showBookingModal = false;
-    this.selectedBooking = null;
-  }
-
-  async onBookingUpdated(): Promise<void> {
-    // Reload the schedule after a booking is updated
-    await this.loadSchedule();
-    await this.loadKPIs();
+  openBookingDetail(booking: BookingWithDetails): void {
+    // Navigate to booking details page
+    this.router.navigate(['/bookings/details', booking.id]);
   }
 
   // Business Settings Methods

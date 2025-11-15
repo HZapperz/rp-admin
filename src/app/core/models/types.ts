@@ -28,6 +28,20 @@ export interface Pet {
   rabies_certificate_url?: string;
   created_at: string;
   updated_at: string;
+  // Health & Behavior fields
+  date_of_birth?: string;
+  has_allergies?: boolean;
+  allergy_details?: string;
+  has_skin_conditions?: boolean;
+  skin_condition_details?: string;
+  is_friendly?: boolean;
+  blow_dryer_reaction?: 'calm' | 'nervous' | 'fearful' | 'unknown';
+  water_reaction?: 'calm' | 'nervous' | 'fearful' | 'unknown';
+  has_behavioral_issues?: boolean;
+  behavioral_issue_details?: string;
+  additional_notes?: string;
+  rabies_vaccination_date?: string;
+  rabies_expiration_date?: string;
 }
 
 // Service Types
@@ -101,6 +115,24 @@ export interface Booking {
   // Time preference fields
   shift_preference?: 'morning' | 'afternoon';
   assigned_time_slot?: string;
+  // Additional fields from database
+  distance_miles?: number;
+  tip_amount?: number;
+  payment_authorized_at?: string;
+  payment_captured_at?: string;
+  payment_method_type?: string;
+  payment_method_last4?: string;
+  groomer_notes?: string;
+  actual_start_time?: string;
+  actual_end_time?: string;
+  payment_link_url?: string;
+  payment_link_sent_at?: string;
+  stripe_customer_id?: string;
+  payment_method_id?: string;
+  approval_email_sent?: boolean;
+  approval_email_sent_at?: string;
+  tip_payment_intent_id?: string;
+  tip_charged_at?: string;
 }
 
 export interface BookingPet {

@@ -125,13 +125,4 @@
       </table>
     </div>
   }
-
-  <!-- Booking Detail Modal -->
-  @if (showBookingModal && selectedBooking) {
-    <app-booking-detail-modal
-      [booking]="selectedBooking"
-      (close)="closeBookingModal()"
-      (bookingUpdated)="onBookingUpdated()">
-    </app-booking-detail-modal>
-  }
 </div>

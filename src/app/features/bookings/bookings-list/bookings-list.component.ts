@@ -5,12 +5,11 @@ import { Router } from '@angular/router';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { BookingWithDetails, BookingStatus } from '../../../core/models/types';
-import { BookingDetailModalComponent } from '../../../shared/components/booking-detail-modal/booking-detail-modal.component';
 
 @Component({
   selector: 'app-bookings-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, BookingDetailModalComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './bookings-list.component.html',
   styleUrls: ['./bookings-list.component.scss']
 })
@@ -22,10 +21,6 @@ export class BookingsListComponent implements OnInit {
 
   selectedStatus: string = 'all';
   searchTerm: string = '';
-
-  // Booking Detail Modal
-  showBookingModal = false;
-  selectedBooking: BookingWithDetails | null = null;
 
   constructor(
     private bookingService: BookingService,
@@ -117,23 +112,9 @@ export class BookingsListComponent implements OnInit {
     return labels[status] || status;
   }
 
-  async openBookingDetail(booking: BookingWithDetails): Promise<void> {
-    // Fetch full booking details including pets
-    const fullBooking = await this.bookingService.getBookingById(booking.id);
-    if (fullBooking) {
-      this.selectedBooking = fullBooking;
-      this.showBookingModal = true;
-    }
-  }
-
-  closeBookingModal(): void {
-    this.showBookingModal = false;
-    this.selectedBooking = null;
-  }
-
-  async onBookingUpdated(): Promise<void> {
-    // Reload bookings after an update
-    await this.loadBookings();
+  openBookingDetail(booking: BookingWithDetails): void {
+    // Navigate to booking details page
+    this.router.navigate(['/bookings/details', booking.id]);
   }
 
   formatDate(dateString: string): string {

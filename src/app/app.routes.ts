@@ -54,6 +54,11 @@ export const routes: Routes = [
           import('./features/service-areas/service-areas.routes').then(m => m.routes)
       },
       {
+        path: 'services',
+        loadChildren: () =>
+          import('./features/services/services.routes').then(m => m.routes)
+      },
+      {
         path: 'profile',
         loadChildren: () =>
           import('./features/profile/profile.routes').then(m => m.routes)

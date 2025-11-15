@@ -177,14 +177,26 @@ export class CreateBookingComponent implements OnInit {
     try {
       // Build pets array with service details from petServices
       const pets: PetBooking[] = this.petServices.map(ps => {
+        // Calculate package price (without addons)
+        const packagePrice = this.calculatePackagePrice(ps.package_type!, ps.pet_size);
+
+        // Calculate addons total and build addons array
+        const addons = ps.add_ons.map(addonId => {
+          const addonPrice = this.calculateAddonPrice(addonId, ps.pet_size);
+          return {
+            name: this.getAddonName(addonId),
+            price: addonPrice
+          };
+        });
+
         return {
           pet_id: ps.pet_id,
-          service_size: ps.pet_size as 'SMALL' | 'MEDIUM' | 'LARGE',
-          package_type: ps.package_type!,
-          base_price: ps.price,
-          package_price: ps.price,
+          service_size: ps.pet_size.toLowerCase() as 'small' | 'medium' | 'large' | 'xl',
+          package_type: ps.package_type!.toLowerCase() as 'basic' | 'premium' | 'deluxe',
+          base_price: packagePrice,
+          package_price: packagePrice,
           total_price: ps.price,
-          addons: [] // Add-ons are included in the total price already
+          addons: addons.length > 0 ? addons : undefined
         };
       });
 
@@ -214,6 +226,39 @@ export class CreateBookingComponent implements OnInit {
     } finally {
       this.isSubmitting = false;
     }
+  }
+
+  // Helper methods for pricing calculations
+  private calculatePackagePrice(packageType: string, size: string): number {
+    // Package prices mapped from select-service component
+    const packages: Record<string, Record<string, number>> = {
+      'BASIC': { 'SMALL': 59, 'MEDIUM': 79, 'LARGE': 99, 'XL': 119 },
+      'PREMIUM': { 'SMALL': 95, 'MEDIUM': 125, 'LARGE': 150, 'XL': 175 },
+      'DELUXE': { 'SMALL': 115, 'MEDIUM': 145, 'LARGE': 175, 'XL': 205 }
+    };
+
+    return packages[packageType]?.[size] || 0;
+  }
+
+  private calculateAddonPrice(addonId: string, size: string): number {
+    // Addon prices - flat rate regardless of size
+    const addons: Record<string, number> = {
+      'flea-treatment': 20,
+      'de-shedding': 30,
+      'skunk-works': 100
+    };
+
+    return addons[addonId] || 0;
+  }
+
+  private getAddonName(addonId: string): string {
+    const names: Record<string, string> = {
+      'flea-treatment': 'Flea Treatment',
+      'de-shedding': 'De-Shedding',
+      'skunk-works': 'Skunk Works'
+    };
+
+    return names[addonId] || addonId;
   }
 
   // Cancel and go back

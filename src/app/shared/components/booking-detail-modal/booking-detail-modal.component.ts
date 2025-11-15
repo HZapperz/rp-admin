@@ -97,9 +97,9 @@ export class BookingDetailModalComponent implements OnInit {
 
   getPackageLabel(packageType: string): string {
     const labels: Record<string, string> = {
-      'basic': 'Basic Package',
-      'premium': 'Premium Package',
-      'deluxe': 'Deluxe Package'
+      'basic': 'Royal Bath',
+      'premium': 'Royal Groom',
+      'deluxe': 'Royal Spa'
     };
     return labels[packageType] || packageType;
   }

@@ -1,0 +1,608 @@
+<div class="booking-details-container">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p class="text-gray-600 mt-4">Loading booking details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container">
+    <div class="error-icon">⚠️</div>
+    <p class="text-red-600 text-lg">{{ error }}</p>
+    <button (click)="goBack()" class="btn-back mt-4">
+      Go Back to Bookings
+    </button>
+  </div>
+
+  <!-- Booking Details -->
+  <div *ngIf="booking && !loading" class="booking-content">
+    <!-- Header -->
+    <div class="page-header">
+      <button (click)="goBack()" class="btn-back-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      </button>
+      <div class="header-title">
+        <h1>Booking Details</h1>
+        <p class="booking-id">ID: {{ booking.id }}</p>
+      </div>
+      <button (click)="toggleEditMode()" class="btn-edit" [class.active]="editMode">
+        {{ editMode ? 'Cancel' : 'Edit' }}
+      </button>
+    </div>
+
+    <div class="content-grid">
+      <!-- Main Content Column -->
+      <div class="main-column">
+        <!-- Status & Timeline Section -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Status & Timeline</h2>
+            <span class="status-badge" [ngClass]="getStatusBadgeClass(booking.status)">
+              {{ booking.status | titlecase }}
+            </span>
+          </div>
+          <div class="timeline">
+            <div *ngFor="let event of timelineEvents" class="timeline-event">
+              <div class="timeline-icon" [ngClass]="'timeline-' + event.type">
+                {{ event.icon }}
+              </div>
+              <div class="timeline-content">
+                <h4>{{ event.label }}</h4>
+                <p>{{ formatDateTime(event.timestamp) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scheduled Time Info -->
+          <div class="scheduled-info" *ngIf="booking.scheduled_date">
+            <div class="info-row">
+              <span class="label">Scheduled Date:</span>
+              <span class="value">{{ formatDate(booking.scheduled_date) }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.shift_preference">
+              <span class="label">Shift Preference:</span>
+              <span class="value">{{ booking.shift_preference | titlecase }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.scheduled_time_start">
+              <span class="label">Scheduled Time:</span>
+              <span class="value">
+                {{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end || '') }}
+              </span>
+            </div>
+            <div class="info-row" *ngIf="booking.assigned_time_slot">
+              <span class="label">Assigned Slot:</span>
+              <span class="value">{{ booking.assigned_time_slot }}</span>
+            </div>
+          </div>
+
+          <!-- Actual Service Time -->
+          <div class="service-time" *ngIf="booking.actual_start_time || booking.actual_end_time">
+            <h3 class="section-subtitle">Actual Service Time</h3>
+            <div class="info-row" *ngIf="booking.actual_start_time">
+              <span class="label">Started:</span>
+              <span class="value">{{ formatDateTime(booking.actual_start_time) }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.actual_end_time">
+              <span class="label">Ended:</span>
+              <span class="value">{{ formatDateTime(booking.actual_end_time) }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.actual_start_time && booking.actual_end_time">
+              <span class="label">Duration:</span>
+              <span class="value">
+                {{ calculateDuration(booking.actual_start_time, booking.actual_end_time) }} minutes
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Client Information -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Client Information</h2>
+          </div>
+          <div class="client-info" *ngIf="booking.client">
+            <div class="avatar-section">
+              <div class="avatar" *ngIf="!booking.client.avatar_url">
+                {{ booking.client.first_name[0] }}{{ booking.client.last_name[0] }}
+              </div>
+              <img *ngIf="booking.client.avatar_url" [src]="booking.client.avatar_url" alt="Client avatar" class="avatar-img">
+              <div>
+                <h3>{{ booking.client.first_name }} {{ booking.client.last_name }}</h3>
+                <p class="text-sm text-gray-600">Client ID: {{ booking.client.id }}</p>
+              </div>
+            </div>
+            <div class="contact-info">
+              <div class="info-row">
+                <span class="label">Email:</span>
+                <a [href]="'mailto:' + booking.client.email" class="value link">{{ booking.client.email }}</a>
+              </div>
+              <div class="info-row">
+                <span class="label">Phone:</span>
+                <a [href]="'tel:' + booking.client.phone" class="value link">{{ booking.client.phone }}</a>
+              </div>
+            </div>
+            <div class="address-info">
+              <h4 class="section-subtitle">Service Address</h4>
+              <p class="address">
+                {{ booking.address }}<br>
+                {{ booking.city }}, {{ booking.state }} {{ booking.zip_code }}
+              </p>
+              <p class="distance" *ngIf="booking.distance_miles">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {{ booking.distance_miles }} miles from business
+              </p>
+            </div>
+          </div>
+
+          <!-- Booking Notes (Editable) -->
+          <div class="notes-section">
+            <h4 class="section-subtitle">Booking Notes</h4>
+            <textarea
+              *ngIf="editMode"
+              [(ngModel)]="editingFields.notes"
+              class="notes-textarea"
+              rows="3"
+              placeholder="Add notes about this booking..."></textarea>
+            <p *ngIf="!editMode" class="notes-text">{{ booking.notes || 'No notes provided' }}</p>
+          </div>
+        </div>
+
+        <!-- Pet Information -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Pet Information</h2>
+          </div>
+          <div *ngFor="let petBooking of booking.pets" class="pet-card">
+            <div class="pet-header">
+              <img
+                *ngIf="petBooking.pet?.photo_url"
+                [src]="petBooking.pet?.photo_url"
+                alt="Pet photo"
+                class="pet-photo">
+              <div class="pet-basic-info">
+                <h3>{{ petBooking.pet?.name }}</h3>
+                <p class="pet-breed">{{ petBooking.pet?.breed }}</p>
+                <div class="pet-badges">
+                  <span class="badge" [ngClass]="getSizeBadgeClass(petBooking.service_size)">
+                    {{ petBooking.service_size | uppercase }}
+                  </span>
+                  <span class="badge package-badge" [ngClass]="'package-' + petBooking.package_type">
+                    {{ petBooking.package_type | titlecase }}
+                  </span>
+                </div>
+              </div>
+              <div class="pet-pricing">
+                <div class="price-row">
+                  <span class="label">Package:</span>
+                  <span class="value">${{ petBooking.package_price }}</span>
+                </div>
+                <div class="price-row" *ngIf="petBooking.base_price !== petBooking.package_price">
+                  <span class="label">Base Price:</span>
+                  <span class="value">${{ petBooking.base_price }}</span>
+                </div>
+                <div class="price-row total-price">
+                  <span class="label">Total:</span>
+                  <span class="value">${{ petBooking.total_price }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add-ons -->
+            <div *ngIf="petBooking.addons && petBooking.addons.length > 0" class="addons-section">
+              <h4 class="section-subtitle">Add-ons</h4>
+              <div class="addons-list">
+                <div *ngFor="let addon of petBooking.addons" class="addon-item">
+                  <span class="addon-name">{{ addon.addon_name }}</span>
+                  <span class="addon-price">${{ addon.addon_price }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Enhanced Pet Health Information -->
+            <div class="pet-health-info">
+              <h4 class="section-subtitle">Health & Behavior</h4>
+
+              <div class="health-grid">
+                <!-- Age -->
+                <div class="health-item" *ngIf="petBooking.pet?.age">
+                  <span class="health-label">Age:</span>
+                  <span class="health-value">{{ petBooking.pet?.age }}</span>
+                </div>
+
+                <!-- Friendly Status -->
+                <div class="health-item">
+                  <span class="health-label">Friendly:</span>
+                  <span class="health-value" [ngClass]="petBooking.pet?.is_friendly ? 'text-green-600' : 'text-red-600'">
+                    {{ petBooking.pet?.is_friendly ? 'Yes ✓' : 'No ✗' }}
+                  </span>
+                </div>
+
+                <!-- Allergies -->
+                <div class="health-item">
+                  <span class="health-label">Allergies:</span>
+                  <span class="health-value" [ngClass]="petBooking.pet?.has_allergies ? 'text-orange-600' : 'text-green-600'">
+                    {{ petBooking.pet?.has_allergies ? 'Yes' : 'None' }}
+                  </span>
+                </div>
+                <div class="health-detail" *ngIf="petBooking.pet?.has_allergies && petBooking.pet?.allergy_details">
+                  <p class="detail-text">{{ petBooking.pet?.allergy_details }}</p>
+                </div>
+
+                <!-- Skin Conditions -->
+                <div class="health-item">
+                  <span class="health-label">Skin Conditions:</span>
+                  <span class="health-value" [ngClass]="petBooking.pet?.has_skin_conditions ? 'text-orange-600' : 'text-green-600'">
+                    {{ petBooking.pet?.has_skin_conditions ? 'Yes' : 'None' }}
+                  </span>
+                </div>
+                <div class="health-detail" *ngIf="petBooking.pet?.has_skin_conditions && petBooking.pet?.skin_condition_details">
+                  <p class="detail-text">{{ petBooking.pet?.skin_condition_details }}</p>
+                </div>
+
+                <!-- Behavioral Issues -->
+                <div class="health-item">
+                  <span class="health-label">Behavioral Issues:</span>
+                  <span class="health-value" [ngClass]="petBooking.pet?.has_behavioral_issues ? 'text-orange-600' : 'text-green-600'">
+                    {{ petBooking.pet?.has_behavioral_issues ? 'Yes' : 'None' }}
+                  </span>
+                </div>
+                <div class="health-detail" *ngIf="petBooking.pet?.has_behavioral_issues && petBooking.pet?.behavioral_issue_details">
+                  <p class="detail-text">{{ petBooking.pet?.behavioral_issue_details }}</p>
+                </div>
+
+                <!-- Reactions -->
+                <div class="health-item" *ngIf="petBooking.pet?.blow_dryer_reaction">
+                  <span class="health-label">Blow Dryer Reaction:</span>
+                  <span class="health-value">{{ petBooking.pet?.blow_dryer_reaction | titlecase }}</span>
+                </div>
+
+                <div class="health-item" *ngIf="petBooking.pet?.water_reaction">
+                  <span class="health-label">Water Reaction:</span>
+                  <span class="health-value">{{ petBooking.pet?.water_reaction | titlecase }}</span>
+                </div>
+              </div>
+
+              <!-- Additional Notes -->
+              <div class="pet-notes" *ngIf="petBooking.pet?.additional_notes || petBooking.pet?.special_notes">
+                <h5 class="notes-label">Additional Notes:</h5>
+                <p class="notes-text">{{ petBooking.pet?.additional_notes || petBooking.pet?.special_notes }}</p>
+              </div>
+
+              <!-- Pet-specific booking notes -->
+              <div class="pet-notes" *ngIf="petBooking.notes">
+                <h5 class="notes-label">Booking-specific Notes:</h5>
+                <p class="notes-text">{{ petBooking.notes }}</p>
+              </div>
+
+              <!-- Rabies Certificate -->
+              <div class="certificate-section" *ngIf="petBooking.pet?.rabies_certificate_url">
+                <a
+                  [href]="petBooking.pet?.rabies_certificate_url"
+                  target="_blank"
+                  class="certificate-link">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  View Rabies Certificate
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Details -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Service Details</h2>
+          </div>
+          <div class="service-details">
+            <div class="info-row">
+              <span class="label">Service Name:</span>
+              <span class="value">{{ booking.service_name || 'Grooming Service' }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.service_description">
+              <span class="label">Description:</span>
+              <span class="value">{{ booking.service_description }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.service_duration">
+              <span class="label">Estimated Duration:</span>
+              <span class="value">{{ booking.service_duration }} minutes</span>
+            </div>
+            <div class="info-row" *ngIf="booking.rush_service">
+              <span class="label">Rush Service:</span>
+              <span class="value text-orange-600">Yes (+${{ booking.rush_fee }})</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Payment Information</h2>
+            <span class="status-badge" [ngClass]="booking.payment_status === 'authorized' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'">
+              {{ booking.payment_status | titlecase }}
+            </span>
+          </div>
+
+          <div class="payment-details">
+            <!-- Pricing Breakdown -->
+            <div class="price-breakdown">
+              <div class="price-row">
+                <span class="label">Original Subtotal:</span>
+                <span class="value">${{ booking.original_subtotal }}</span>
+              </div>
+              <div class="price-row" *ngIf="booking.discount_amount && booking.discount_amount > 0">
+                <span class="label text-green-600">Discount:</span>
+                <span class="value text-green-600">-${{ booking.discount_amount }}</span>
+              </div>
+              <div class="price-row">
+                <span class="label">Subtotal Before Tax:</span>
+                <span class="value">${{ booking.subtotal_before_tax }}</span>
+              </div>
+              <div class="price-row">
+                <span class="label">Tax ({{ booking.tax_rate ? (booking.tax_rate * 100).toFixed(2) + '%' : 'Tax' }}):</span>
+                <span class="value">${{ booking.tax_amount }}</span>
+              </div>
+              <div class="price-row">
+                <span class="label">Service Fee:</span>
+                <span class="value">${{ booking.service_fee }}</span>
+              </div>
+              <div class="price-row">
+                <span class="label">Processing Fee:</span>
+                <span class="value">${{ booking.processing_fee }}</span>
+              </div>
+              <div class="price-row total">
+                <span class="label">Total Amount:</span>
+                <span class="value">${{ booking.authorized_amount || booking.total_amount }}</span>
+              </div>
+              <div class="price-row" *ngIf="booking.tip_amount && booking.tip_amount > 0">
+                <span class="label">Tip:</span>
+                <span class="value">${{ booking.tip_amount }}</span>
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="payment-method" *ngIf="booking.payment_method_type">
+              <h4 class="section-subtitle">Payment Method</h4>
+              <div class="info-row">
+                <span class="label">Type:</span>
+                <span class="value">{{ booking.payment_method_type | titlecase }}</span>
+              </div>
+              <div class="info-row" *ngIf="booking.payment_method_last4">
+                <span class="label">Last 4 Digits:</span>
+                <span class="value">•••• {{ booking.payment_method_last4 }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Currency:</span>
+                <span class="value">{{ booking.currency?.toUpperCase() || 'USD' }}</span>
+              </div>
+            </div>
+
+            <!-- Transaction IDs -->
+            <div class="transaction-ids">
+              <h4 class="section-subtitle">Transaction Details</h4>
+              <div class="info-row" *ngIf="booking.payment_intent_id">
+                <span class="label">Payment Intent:</span>
+                <span class="value code">{{ booking.payment_intent_id }}</span>
+              </div>
+              <div class="info-row" *ngIf="booking.stripe_charge_id">
+                <span class="label">Charge ID:</span>
+                <span class="value code">{{ booking.stripe_charge_id }}</span>
+              </div>
+              <div class="info-row" *ngIf="booking.stripe_customer_id">
+                <span class="label">Customer ID:</span>
+                <span class="value code">{{ booking.stripe_customer_id }}</span>
+              </div>
+              <div class="info-row" *ngIf="booking.tip_payment_intent_id">
+                <span class="label">Tip Payment Intent:</span>
+                <span class="value code">{{ booking.tip_payment_intent_id }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Groomer Information -->
+        <div class="card" *ngIf="booking.groomer">
+          <div class="card-header">
+            <h2>Groomer Information</h2>
+          </div>
+          <div class="groomer-info">
+            <div class="avatar-section">
+              <div class="avatar" *ngIf="!booking.groomer.avatar_url">
+                {{ booking.groomer.first_name[0] }}{{ booking.groomer.last_name[0] }}
+              </div>
+              <img *ngIf="booking.groomer.avatar_url" [src]="booking.groomer.avatar_url" alt="Groomer avatar" class="avatar-img">
+              <div>
+                <h3>{{ booking.groomer.first_name }} {{ booking.groomer.last_name }}</h3>
+                <p class="text-sm text-gray-600">Groomer ID: {{ booking.groomer.id }}</p>
+              </div>
+            </div>
+            <div class="contact-info">
+              <div class="info-row">
+                <span class="label">Email:</span>
+                <a [href]="'mailto:' + booking.groomer.email" class="value link">{{ booking.groomer.email }}</a>
+              </div>
+              <div class="info-row">
+                <span class="label">Phone:</span>
+                <a [href]="'tel:' + booking.groomer.phone" class="value link">{{ booking.groomer.phone }}</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Groomer Notes (Editable) -->
+          <div class="notes-section">
+            <h4 class="section-subtitle">Groomer Notes</h4>
+            <textarea
+              *ngIf="editMode"
+              [(ngModel)]="editingFields.groomer_notes"
+              class="notes-textarea"
+              rows="3"
+              placeholder="Add groomer notes..."></textarea>
+            <p *ngIf="!editMode" class="notes-text">{{ booking.groomer_notes || 'No groomer notes' }}</p>
+          </div>
+        </div>
+
+        <!-- Before/After Photos -->
+        <div class="card" *ngIf="(booking.before_photos && booking.before_photos.length > 0) || (booking.after_photos && booking.after_photos.length > 0)">
+          <div class="card-header">
+            <h2>Service Photos</h2>
+          </div>
+
+          <div class="photos-section">
+            <div *ngIf="booking.before_photos && booking.before_photos.length > 0">
+              <h4 class="section-subtitle">Before Photos</h4>
+              <div class="photo-grid">
+                <img
+                  *ngFor="let photo of booking.before_photos"
+                  [src]="photo"
+                  alt="Before photo"
+                  class="photo-thumbnail"
+                  (click)="openPhotoGallery(photo)">
+              </div>
+            </div>
+
+            <div *ngIf="booking.after_photos && booking.after_photos.length > 0">
+              <h4 class="section-subtitle">After Photos</h4>
+              <div class="photo-grid">
+                <img
+                  *ngFor="let photo of booking.after_photos"
+                  [src]="photo"
+                  alt="After photo"
+                  class="photo-thumbnail"
+                  (click)="openPhotoGallery(photo)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancellation Info -->
+        <div class="card alert-card" *ngIf="booking.cancelled_at">
+          <div class="card-header">
+            <h2>Cancellation Information</h2>
+          </div>
+          <div class="cancellation-info">
+            <div class="info-row">
+              <span class="label">Cancelled At:</span>
+              <span class="value">{{ formatDateTime(booking.cancelled_at) }}</span>
+            </div>
+            <div class="info-row" *ngIf="booking.cancellation_reason">
+              <span class="label">Reason:</span>
+              <span class="value">{{ booking.cancellation_reason }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save Changes Button (Edit Mode) -->
+        <div *ngIf="editMode" class="edit-actions">
+          <button (click)="saveChanges()" class="btn-save">Save Changes</button>
+          <button (click)="toggleEditMode()" class="btn-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Sidebar Column -->
+      <div class="sidebar-column">
+        <!-- Admin Notes -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Admin Notes</h2>
+          </div>
+
+          <!-- Add Note Form -->
+          <div class="add-note-form">
+            <textarea
+              [(ngModel)]="newNote"
+              placeholder="Add an internal note..."
+              class="note-input"
+              rows="3"></textarea>
+            <div class="note-form-footer">
+              <select [(ngModel)]="newNotePriority" class="priority-select">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+              <button
+                (click)="saveNote()"
+                [disabled]="!newNote.trim() || savingNote"
+                class="btn-add-note">
+                {{ savingNote ? 'Saving...' : 'Add Note' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Notes List -->
+          <div class="notes-list">
+            <div *ngFor="let note of adminNotes" class="note-item">
+              <div class="note-header">
+                <span class="note-author">
+                  {{ note.admin?.first_name }} {{ note.admin?.last_name }}
+                </span>
+                <span class="note-priority" [ngClass]="getPriorityBadgeClass(note.priority || 'medium')">
+                  {{ note.priority || 'medium' }}
+                </span>
+              </div>
+              <p class="note-content">{{ note.note }}</p>
+              <div class="note-footer">
+                <span class="note-date">{{ formatDateTime(note.created_at) }}</span>
+                <button (click)="deleteNote(note.id)" class="btn-delete-note">Delete</button>
+              </div>
+            </div>
+            <p *ngIf="adminNotes.length === 0" class="no-notes">No admin notes yet</p>
+          </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="card" *ngIf="modifications.length > 0">
+          <div class="card-header">
+            <h2>Activity Log</h2>
+          </div>
+          <div class="activity-list">
+            <div *ngFor="let mod of modifications" class="activity-item">
+              <div class="activity-header">
+                <span class="activity-type">{{ mod.modification_type | titlecase }}</span>
+                <span class="activity-date">{{ formatDateTime(mod.created_at) }}</span>
+              </div>
+              <p *ngIf="mod.modified_by" class="activity-user">
+                By: {{ mod.modified_by.first_name }} {{ mod.modified_by.last_name }}
+              </p>
+              <p *ngIf="mod.reason" class="activity-reason">{{ mod.reason }}</p>
+              <div *ngIf="mod.price_change !== 0" class="activity-price">
+                Price Change: <span [ngClass]="mod.price_change > 0 ? 'text-green-600' : 'text-red-600'">
+                  {{ mod.price_change > 0 ? '+' : '' }}${{ mod.price_change }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo Gallery Lightbox -->
+  <div *ngIf="photoGalleryOpen" class="photo-lightbox" (click)="closePhotoGallery()">
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+      <button class="lightbox-close" (click)="closePhotoGallery()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <button class="lightbox-prev" (click)="navigatePhoto('prev')">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <img [src]="selectedPhoto" alt="Full size photo" class="lightbox-image">
+      <button class="lightbox-next" (click)="navigatePhoto('next')">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>

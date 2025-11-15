@@ -1,6 +1,8 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
+import { PackageService, ServicePackage } from '../../../../../core/services/package.service';
 
 export interface PetServiceSelection {
   pet_id: string;
@@ -20,6 +22,7 @@ export interface PackageOption {
     SMALL: number;
     MEDIUM: number;
     LARGE: number;
+    XL: number;
   };
 }
 
@@ -31,13 +34,14 @@ export interface AddOnOption {
     SMALL: number;
     MEDIUM: number;
     LARGE: number;
+    XL?: number;
   };
 }
 
 @Component({
   selector: 'app-select-service',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, HttpClientModule, MatIconModule],
   templateUrl: './select-service.component.html',
   styleUrls: ['./select-service.component.scss']
 })
@@ -46,60 +50,84 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   @Output() servicesSelected = new EventEmitter<PetServiceSelection[]>();
 
   petServices: PetServiceSelection[] = [];
+  packages: PackageOption[] = [];
+  loading = true;
 
-  packages: PackageOption[] = [
-    {
-      type: 'BASIC',
-      name: 'Basic Groom',
-      description: 'Essential grooming services',
-      features: ['Bath', 'Brush', 'Nail Trim', 'Ear Cleaning'],
-      priceBySize: { SMALL: 45, MEDIUM: 60, LARGE: 75 }
-    },
-    {
-      type: 'PREMIUM',
-      name: 'Premium Groom',
-      description: 'Complete grooming experience',
-      features: ['Everything in Basic', 'Haircut/Styling', 'Teeth Brushing', 'Paw Pad Treatment'],
-      priceBySize: { SMALL: 70, MEDIUM: 90, LARGE: 110 }
-    },
-    {
-      type: 'DELUXE',
-      name: 'Deluxe Spa',
-      description: 'Ultimate pampering session',
-      features: ['Everything in Premium', 'Deep Conditioning', 'Facial Treatment', 'Aromatherapy', 'Bandana/Bow'],
-      priceBySize: { SMALL: 100, MEDIUM: 130, LARGE: 160 }
-    }
-  ];
+  constructor(private packageService: PackageService) {}
 
   addOns: AddOnOption[] = [
     {
-      id: 'FLEA_TREATMENT',
-      name: 'Flea & Tick Treatment',
-      description: 'Professional flea and tick prevention',
-      priceBySize: { SMALL: 15, MEDIUM: 20, LARGE: 25 }
+      id: 'flea-treatment',
+      name: 'Flea Treatment',
+      description: 'Professional flea treatment and prevention',
+      priceBySize: { SMALL: 20, MEDIUM: 20, LARGE: 20, XL: 20 }
     },
     {
-      id: 'DE_SHEDDING',
-      name: 'De-shedding Treatment',
-      description: 'Reduce excessive shedding',
-      priceBySize: { SMALL: 20, MEDIUM: 25, LARGE: 30 }
+      id: 'de-shedding',
+      name: 'De-Shedding',
+      description: 'Deep de-shedding treatment to reduce shedding',
+      priceBySize: { SMALL: 30, MEDIUM: 30, LARGE: 30, XL: 30 }
     },
     {
-      id: 'TEETH_CLEANING',
-      name: 'Advanced Teeth Cleaning',
-      description: 'Deep dental hygiene',
-      priceBySize: { SMALL: 25, MEDIUM: 30, LARGE: 35 }
-    },
-    {
-      id: 'NAIL_GRINDING',
-      name: 'Nail Grinding',
-      description: 'Smooth nail finishing',
-      priceBySize: { SMALL: 10, MEDIUM: 12, LARGE: 15 }
+      id: 'skunk-works',
+      name: 'Skunk Works',
+      description: 'Specialized treatment for skunk spray odor removal',
+      priceBySize: { SMALL: 100, MEDIUM: 100, LARGE: 100, XL: 100 }
     }
   ];
 
   ngOnInit(): void {
+    this.loadPackages();
     this.initializePetServices();
+  }
+
+  loadPackages(): void {
+    this.loading = true;
+    this.packageService.getPackages().subscribe({
+      next: (packages: ServicePackage[]) => {
+        this.packages = packages.map(pkg => ({
+          type: pkg.packageType.toUpperCase() as 'BASIC' | 'PREMIUM' | 'DELUXE',
+          name: pkg.name,
+          description: pkg.description,
+          features: pkg.includes,
+          priceBySize: {
+            SMALL: pkg.prices.small,
+            MEDIUM: pkg.prices.medium,
+            LARGE: pkg.prices.large,
+            XL: pkg.prices.xl
+          }
+        }));
+        this.loading = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading packages:', error);
+        this.loading = false;
+        // Fallback to default packages if API fails
+        this.packages = [
+          {
+            type: 'BASIC',
+            name: 'Royal Bath',
+            description: 'Essential grooming package with bath, nail care, and ear cleaning',
+            features: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning'],
+            priceBySize: { SMALL: 59, MEDIUM: 79, LARGE: 99, XL: 119 }
+          },
+          {
+            type: 'PREMIUM',
+            name: 'Royal Groom',
+            description: 'Complete grooming service with haircut, teeth cleaning, and nail buffing',
+            features: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning', 'Hair Trim', 'Teeth Cleaning', 'Nail Buffing'],
+            priceBySize: { SMALL: 95, MEDIUM: 125, LARGE: 150, XL: 175 }
+          },
+          {
+            type: 'DELUXE',
+            name: 'Royal Spa',
+            description: 'Premium spa experience with aromatherapy, paw care, and all grooming services',
+            features: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning', 'Hair Trim', 'Teeth Cleaning', 'Nose & Paws Treatment', 'Nail Buffing', 'Aromatherapy Oils & Essentials'],
+            priceBySize: { SMALL: 115, MEDIUM: 145, LARGE: 175, XL: 205 }
+          }
+        ];
+      }
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -156,7 +184,11 @@ export class SelectServiceComponent implements OnInit, OnChanges {
     petService.add_ons.forEach(addOnId => {
       const addOn = this.addOns.find(a => a.id === addOnId);
       if (addOn) {
-        total += addOn.priceBySize[petService.pet_size as keyof typeof addOn.priceBySize];
+        const sizeKey = petService.pet_size as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+        const price = addOn.priceBySize[sizeKey];
+        if (price !== undefined) {
+          total += price;
+        }
       }
     });
 

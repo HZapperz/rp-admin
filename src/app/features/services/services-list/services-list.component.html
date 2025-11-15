@@ -1,0 +1,109 @@
+<div class="services-list-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">Service Packages</h1>
+      <p class="page-subtitle">Manage your grooming service packages</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="addPackage()" class="add-button">
+      <mat-icon>add</mat-icon>
+      Add Package
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <p>Loading service packages...</p>
+  </div>
+
+  <!-- Packages Grid -->
+  <div *ngIf="!loading" class="packages-grid">
+    <div *ngFor="let pkg of packages" class="package-card" [class.inactive]="!pkg.is_active">
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="header-left">
+          <span class="package-icon">{{ pkg.icon }}</span>
+          <div class="package-title">
+            <h3>{{ pkg.name }}</h3>
+            <span class="package-badge" [class]="getPackageTypeColor(pkg.package_type)">
+              {{ getPackageTypeLabel(pkg.package_type) }}
+            </span>
+          </div>
+        </div>
+        <div class="header-right">
+          <span *ngIf="pkg.is_popular" class="popular-badge">⭐ Popular</span>
+          <span class="status-badge" [class.active]="pkg.is_active" [class.inactive]="!pkg.is_active">
+            {{ pkg.is_active ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <p class="package-description">{{ pkg.description }}</p>
+
+      <!-- Duration -->
+      <div class="package-info">
+        <mat-icon>schedule</mat-icon>
+        <span>{{ pkg.duration }} minutes</span>
+      </div>
+
+      <!-- Pricing -->
+      <div class="pricing-grid">
+        <div class="price-item">
+          <span class="price-label">Small</span>
+          <span class="price-value">{{ formatPrice(pkg.price_small) }}</span>
+        </div>
+        <div class="price-item">
+          <span class="price-label">Medium</span>
+          <span class="price-value">{{ formatPrice(pkg.price_medium) }}</span>
+        </div>
+        <div class="price-item">
+          <span class="price-label">Large</span>
+          <span class="price-value">{{ formatPrice(pkg.price_large) }}</span>
+        </div>
+        <div class="price-item">
+          <span class="price-label">XL</span>
+          <span class="price-value">{{ formatPrice(pkg.price_xl) }}</span>
+        </div>
+      </div>
+
+      <!-- Includes -->
+      <div class="includes-section">
+        <h4>Includes:</h4>
+        <ul class="includes-list">
+          <li *ngFor="let item of pkg.includes">
+            <mat-icon>check_circle</mat-icon>
+            {{ item }}
+          </li>
+        </ul>
+      </div>
+
+      <!-- Actions -->
+      <div class="card-actions">
+        <button mat-button (click)="editPackage(pkg)" class="edit-button">
+          <mat-icon>edit</mat-icon>
+          Edit
+        </button>
+        <button mat-button (click)="toggleStatus(pkg)" [class.activate]="!pkg.is_active" [class.deactivate]="pkg.is_active">
+          <mat-icon>{{ pkg.is_active ? 'visibility_off' : 'visibility' }}</mat-icon>
+          {{ pkg.is_active ? 'Deactivate' : 'Activate' }}
+        </button>
+        <button mat-button color="warn" (click)="deletePackage(pkg)" *ngIf="pkg.is_active" class="delete-button">
+          <mat-icon>delete</mat-icon>
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && packages.length === 0" class="empty-state">
+    <mat-icon>inventory_2</mat-icon>
+    <h3>No service packages found</h3>
+    <p>Create your first service package to get started</p>
+    <button mat-raised-button color="primary" (click)="addPackage()">
+      <mat-icon>add</mat-icon>
+      Add Package
+    </button>
+  </div>
+</div>

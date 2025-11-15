@@ -26,6 +26,7 @@ export class LayoutComponent implements OnInit {
     { label: 'Bookings', route: '/bookings', icon: '📅' },
     { label: 'Clients', route: '/clients', icon: '👥' },
     { label: 'Groomers', route: '/groomers', icon: '✂️' },
+    { label: 'Services', route: '/services', icon: '✨' },
     { label: 'Analytics', route: '/analytics', icon: '📈' },
     { label: 'Promotions', route: '/promotions', icon: '🎁' },
     { label: 'Complaints', route: '/complaints', icon: '📝' },
