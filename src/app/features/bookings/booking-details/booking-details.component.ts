@@ -4,6 +4,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { BookingService } from '../../../core/services/booking.service';
 import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { GroomerService } from '../../../core/services/groomer.service';
+import { EmailService } from '../../../core/services/email.service';
 import { BookingWithDetails } from '../../../core/models/types';
 import { FormsModule } from '@angular/forms';
 
@@ -41,6 +43,8 @@ export class BookingDetailsComponent implements OnInit {
   private bookingService = inject(BookingService);
   private adminNotesService = inject(AdminNotesService);
   private supabase = inject(SupabaseService);
+  private groomerService = inject(GroomerService);
+  private emailService = inject(EmailService);
 
   booking: BookingWithDetails | null = null;
   loading = true;
@@ -65,6 +69,31 @@ export class BookingDetailsComponent implements OnInit {
   // Edit mode
   editMode = false;
   editingFields: any = {};
+
+  // Groomer assignment
+  showAssignmentForm = false;
+  availableGroomers: any[] = [];
+  selectedGroomerId: string = '';
+  selectedTimeSlot: { label: string; start: string; end: string } | null = null;
+  selectedDate: string = '';
+  minDate: string = '';
+  maxDate: string = '';
+  showRejectDialog = false;
+  rejectionReason: string = '';
+  assigningGroomer = false;
+
+  // Time slots configuration
+  morningSlots = [
+    { label: '8:30 AM - 9:45 AM', start: '08:30:00', end: '09:45:00' },
+    { label: '9:45 AM - 11:00 AM', start: '09:45:00', end: '11:00:00' },
+    { label: '11:00 AM - 12:15 PM', start: '11:00:00', end: '12:15:00' },
+  ];
+
+  afternoonSlots = [
+    { label: '1:00 PM - 2:15 PM', start: '13:00:00', end: '14:15:00' },
+    { label: '2:15 PM - 3:30 PM', start: '14:15:00', end: '15:30:00' },
+    { label: '3:30 PM - 4:45 PM', start: '15:30:00', end: '16:45:00' },
+  ];
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -374,5 +403,200 @@ export class BookingDetailsComponent implements OnInit {
 
   goBack() {
     this.router.navigate(['/bookings']);
+  }
+
+  // Groomer Assignment Methods
+  async showGroomerAssignment() {
+    if (!this.booking) return;
+
+    // Reset selections
+    this.selectedGroomerId = '';
+    this.selectedTimeSlot = null;
+
+    // Initialize date to original booking date
+    this.selectedDate = this.booking.scheduled_date;
+
+    // Set date constraints
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Min date: Tomorrow (can't schedule for today or past)
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    this.minDate = tomorrow.toISOString().split('T')[0];
+
+    // Max date: 90 days from today
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 90);
+    this.maxDate = maxDate.toISOString().split('T')[0];
+
+    // Fetch available groomers for the selected date
+    try {
+      this.availableGroomers = await this.groomerService.getAvailableGroomers(this.selectedDate);
+      this.showAssignmentForm = true;
+    } catch (error) {
+      console.error('Error fetching groomers:', error);
+      alert('Failed to load available groomers. Please try again.');
+    }
+  }
+
+  hideAssignmentForm() {
+    this.showAssignmentForm = false;
+    this.selectedGroomerId = '';
+    this.selectedTimeSlot = null;
+  }
+
+  async onDateChange() {
+    if (!this.selectedDate) return;
+
+    // Validate the selected date
+    const selectedDateObj = new Date(this.selectedDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDateObj < today) {
+      alert('Cannot select a past date. Please choose today or a future date.');
+      this.selectedDate = this.booking?.scheduled_date || '';
+      return;
+    }
+
+    // Reset groomer and time slot selections when date changes
+    this.selectedGroomerId = '';
+    this.selectedTimeSlot = null;
+
+    // Fetch available groomers for the new date
+    try {
+      this.availableGroomers = await this.groomerService.getAvailableGroomers(this.selectedDate);
+
+      if (this.availableGroomers.length === 0) {
+        alert('No groomers are available for this date. Please select a different date.');
+      }
+    } catch (error) {
+      console.error('Error fetching groomers for date:', error);
+      alert('Failed to load available groomers. Please try again.');
+    }
+  }
+
+  selectTimeSlot(slot: { label: string; start: string; end: string }) {
+    this.selectedTimeSlot = slot;
+  }
+
+  async assignGroomerAndApprove() {
+    if (!this.booking || !this.selectedGroomerId || !this.selectedTimeSlot || !this.selectedDate) {
+      alert('Please select a date, groomer, and time slot');
+      return;
+    }
+
+    if (this.assigningGroomer) return; // Prevent double submission
+
+    try {
+      this.assigningGroomer = true;
+
+      // Step 1: Approve the booking in Supabase
+      console.log('Approving booking...', {
+        bookingId: this.booking.id,
+        groomerId: this.selectedGroomerId,
+        scheduledDate: this.selectedDate,
+        timeSlot: this.selectedTimeSlot
+      });
+
+      const success = await this.bookingService.approveBooking(
+        this.booking.id,
+        this.selectedGroomerId,
+        this.selectedDate,
+        this.selectedTimeSlot.start,
+        this.selectedTimeSlot.end
+      );
+
+      if (!success) {
+        alert('Failed to approve booking. Please try again.');
+        this.assigningGroomer = false;
+        return;
+      }
+
+      console.log('Booking approved successfully. Fetching updated booking details...');
+
+      // Step 2: Fetch the updated booking with groomer details
+      const updatedBooking = await this.bookingService.getBookingById(this.booking.id);
+
+      if (!updatedBooking) {
+        console.error('Failed to fetch updated booking details');
+        alert('Booking approved but failed to send confirmation emails. Please check the booking details.');
+        this.showAssignmentForm = false;
+        this.assigningGroomer = false;
+        await this.loadBookingDetails(this.booking.id);
+        return;
+      }
+
+      console.log('Updated booking fetched:', {
+        hasPets: !!updatedBooking.pets,
+        petsCount: updatedBooking.pets?.length || 0,
+        hasGroomer: !!updatedBooking.groomer,
+        hasClient: !!updatedBooking.client
+      });
+
+      // If the updated booking doesn't have pets, use the original booking's pets
+      if (!updatedBooking.pets || updatedBooking.pets.length === 0) {
+        console.warn('Updated booking missing pets data, using original booking pets');
+        updatedBooking.pets = this.booking.pets;
+      }
+
+      // Step 3: Send confirmation emails to client, groomer, and admin
+      const adminEmail = 'admin@royalpawzusa.com';
+
+      console.log('Sending confirmation emails...');
+
+      const emailResult = await this.emailService.sendBookingApprovalEmails(
+        updatedBooking,
+        adminEmail
+      );
+
+      if (emailResult.success) {
+        console.log('All confirmation emails sent successfully');
+        alert('Booking approved and confirmation emails sent successfully!');
+      } else {
+        console.warn('Booking approved but some emails may have failed:', emailResult.error);
+        alert('Booking approved! However, there was an issue sending some confirmation emails.');
+      }
+
+      // Step 4: Reload booking details and close assignment form
+      this.showAssignmentForm = false;
+      this.assigningGroomer = false;
+      await this.loadBookingDetails(this.booking.id);
+
+    } catch (error) {
+      console.error('Error in assignGroomerAndApprove:', error);
+      alert('An unexpected error occurred. Please try again.');
+      this.assigningGroomer = false;
+    }
+  }
+
+  openRejectDialog() {
+    this.rejectionReason = '';
+    this.showRejectDialog = true;
+  }
+
+  closeRejectDialog() {
+    this.showRejectDialog = false;
+    this.rejectionReason = '';
+  }
+
+  async confirmReject() {
+    if (!this.booking) return;
+
+    if (!this.rejectionReason.trim()) {
+      alert('Please provide a reason for rejection');
+      return;
+    }
+
+    const success = await this.bookingService.rejectBooking(this.booking.id, this.rejectionReason);
+
+    if (success) {
+      alert('Booking rejected successfully');
+      this.showRejectDialog = false;
+      await this.loadBookingDetails(this.booking.id);
+    } else {
+      alert('Failed to reject booking. Please try again.');
+    }
   }
 }

@@ -407,6 +407,114 @@
           </div>
         </div>
 
+        <!-- Groomer Assignment (for pending bookings without groomer) -->
+        <div class="card groomer-assignment-card" *ngIf="booking.status === 'pending' && !booking.groomer">
+          <div class="card-header">
+            <h2>Assign Groomer</h2>
+            <span class="status-badge bg-yellow-100 text-yellow-800">Needs Assignment</span>
+          </div>
+
+          <div class="assignment-container">
+            <p class="assignment-description">
+              This booking is pending groomer assignment. Select a date, groomer, and time slot to approve and confirm the booking.
+            </p>
+
+            <button
+              *ngIf="!showAssignmentForm"
+              (click)="showGroomerAssignment()"
+              class="btn-assign">
+              Assign Groomer & Approve Booking
+            </button>
+
+            <!-- Assignment Form -->
+            <div *ngIf="showAssignmentForm" class="assignment-form">
+              <!-- Date Selection -->
+              <div class="form-group">
+                <label class="form-label">Scheduled Date</label>
+                <input
+                  type="date"
+                  [(ngModel)]="selectedDate"
+                  [min]="minDate"
+                  [max]="maxDate"
+                  (change)="onDateChange()"
+                  class="form-input"
+                  required>
+              </div>
+
+              <!-- Groomer Selection -->
+              <div class="form-group">
+                <label class="form-label">Select Groomer</label>
+                <select
+                  [(ngModel)]="selectedGroomerId"
+                  class="form-select"
+                  [disabled]="!selectedDate || availableGroomers.length === 0"
+                  required>
+                  <option value="">-- Choose a groomer --</option>
+                  <option *ngFor="let groomer of availableGroomers" [value]="groomer.id">
+                    {{ groomer.first_name }} {{ groomer.last_name }}
+                  </option>
+                </select>
+                <p *ngIf="selectedDate && availableGroomers.length === 0" class="form-help-text text-red-600">
+                  No groomers available for this date
+                </p>
+              </div>
+
+              <!-- Time Slot Selection -->
+              <div class="form-group">
+                <label class="form-label">Select Time Slot</label>
+
+                <div class="time-slots-section">
+                  <h4 class="shift-title">Morning Shift (8:30 AM - 12:15 PM)</h4>
+                  <div class="time-slots-grid">
+                    <button
+                      *ngFor="let slot of morningSlots"
+                      (click)="selectTimeSlot(slot)"
+                      [class.selected]="selectedTimeSlot?.start === slot.start"
+                      [disabled]="!selectedGroomerId"
+                      class="time-slot-btn">
+                      {{ slot.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="time-slots-section">
+                  <h4 class="shift-title">Afternoon Shift (1:00 PM - 5:00 PM)</h4>
+                  <div class="time-slots-grid">
+                    <button
+                      *ngFor="let slot of afternoonSlots"
+                      (click)="selectTimeSlot(slot)"
+                      [class.selected]="selectedTimeSlot?.start === slot.start"
+                      [disabled]="!selectedGroomerId"
+                      class="time-slot-btn">
+                      {{ slot.label }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="form-actions">
+                <button
+                  (click)="assignGroomerAndApprove()"
+                  [disabled]="!selectedDate || !selectedGroomerId || !selectedTimeSlot || assigningGroomer"
+                  class="btn-approve">
+                  {{ assigningGroomer ? 'Approving...' : 'Approve Booking' }}
+                </button>
+                <button
+                  (click)="openRejectDialog()"
+                  class="btn-reject">
+                  Reject Booking
+                </button>
+                <button
+                  (click)="hideAssignmentForm()"
+                  class="btn-cancel-assignment">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Groomer Information -->
         <div class="card" *ngIf="booking.groomer">
           <div class="card-header">
@@ -580,6 +688,41 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Booking Dialog -->
+  <div *ngIf="showRejectDialog" class="reject-dialog-overlay" (click)="closeRejectDialog()">
+    <div class="reject-dialog" (click)="$event.stopPropagation()">
+      <div class="reject-dialog-header">
+        <h3>Reject Booking</h3>
+        <button (click)="closeRejectDialog()" class="dialog-close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="reject-dialog-body">
+        <p class="reject-warning">Are you sure you want to reject this booking? This action cannot be undone.</p>
+        <label class="form-label">Rejection Reason (required)</label>
+        <textarea
+          [(ngModel)]="rejectionReason"
+          class="rejection-textarea"
+          rows="4"
+          placeholder="Please provide a reason for rejecting this booking..."
+          required></textarea>
+      </div>
+      <div class="reject-dialog-footer">
+        <button
+          (click)="confirmReject()"
+          [disabled]="!rejectionReason.trim()"
+          class="btn-confirm-reject">
+          Confirm Rejection
+        </button>
+        <button (click)="closeRejectDialog()" class="btn-cancel-dialog">
+          Cancel
+        </button>
       </div>
     </div>
   </div>
