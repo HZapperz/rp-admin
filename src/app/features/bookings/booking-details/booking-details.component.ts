@@ -624,6 +624,27 @@ export class BookingDetailsComponent implements OnInit {
     window.open(publicUrl, '_blank');
   }
 
+  getPetPhotoUrl(photoUrl: string | undefined): string {
+    if (!photoUrl) return 'https://via.placeholder.com/60?text=Pet';
+
+    // If it's already a full URL, return it
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
+
+    // The photo_url from database format: "pet-photos/user_id/filename.jpg"
+    // Extract bucket and path
+    const parts = photoUrl.split('/');
+    if (parts.length >= 2) {
+      const bucket = parts[0];
+      const path = parts.slice(1).join('/');
+      return this.supabase.getPublicUrl(bucket, path);
+    }
+
+    // Fallback: assume pet-photos bucket and use the whole string as path
+    return this.supabase.getPublicUrl('pet-photos', photoUrl);
+  }
+
   // Time Change Methods
   openTimeChangeModal() {
     if (!this.booking) return;

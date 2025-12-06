@@ -136,10 +136,19 @@ export class SupabaseService {
 
   // Storage utilities
   getPublicUrl(bucket: string, path: string): string {
-    const { data } = this.supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
-    return data.publicUrl;
+    // Manually construct the URL to ensure it uses our custom domain
+    // Format: {supabase_url}/storage/v1/object/public/{bucket}/{path}
+    const baseUrl = environment.supabase.url;
+
+    // Clean up the path - remove leading slashes
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+    // Handle case where bucket name might be duplicated in path
+    const pathWithoutBucket = cleanPath.startsWith(`${bucket}/`)
+      ? cleanPath.slice(bucket.length + 1)
+      : cleanPath;
+
+    return `${baseUrl}/storage/v1/object/public/${bucket}/${pathWithoutBucket}`;
   }
 
   async uploadFile(

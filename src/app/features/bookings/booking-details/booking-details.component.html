@@ -173,7 +173,7 @@
             <div class="pet-header">
               <img
                 *ngIf="petBooking.pet?.photo_url"
-                [src]="petBooking.pet?.photo_url"
+                [src]="getPetPhotoUrl(petBooking.pet?.photo_url)"
                 alt="Pet photo"
                 class="pet-photo">
               <div class="pet-basic-info">
