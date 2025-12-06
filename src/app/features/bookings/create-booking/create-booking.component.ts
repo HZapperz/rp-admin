@@ -54,6 +54,17 @@ export class CreateBookingComponent implements OnInit {
   // UI state
   isSubmitting = false;
   submitError: string | null = null;
+  currentStepIndex = 0;
+
+  steps = [
+    { index: 0, label: 'Client' },
+    { index: 1, label: 'Pets' },
+    { index: 2, label: 'Services' },
+    { index: 3, label: 'Groomer' },
+    { index: 4, label: 'Date & Time' },
+    { index: 5, label: 'Address' },
+    { index: 6, label: 'Review' }
+  ];
 
   constructor(
     private adminBookingService: AdminBookingService,
@@ -65,6 +76,7 @@ export class CreateBookingComponent implements OnInit {
     this.bookingData = {
       payment_type: 'pay_on_completion'
     };
+    this.currentStepIndex = 0;
   }
 
   // Step 1: Client selected
@@ -270,6 +282,41 @@ export class CreateBookingComponent implements OnInit {
 
   // Navigation helpers
   goToStep(stepIndex: number): void {
-    this.stepper.selectedIndex = stepIndex;
+    if (this.stepper) {
+      this.stepper.selectedIndex = stepIndex;
+    }
+    this.currentStepIndex = stepIndex;
+  }
+
+  nextStep(): void {
+    if (this.canProceedToNextStep() && this.currentStepIndex < this.steps.length - 1) {
+      this.currentStepIndex++;
+      // Sync with mat-stepper if it exists (for backward compatibility)
+      if (this.stepper && this.stepper.selectedIndex !== this.currentStepIndex) {
+        this.stepper.selectedIndex = this.currentStepIndex;
+      }
+    }
+  }
+
+  previousStep(): void {
+    if (this.currentStepIndex > 0) {
+      this.currentStepIndex--;
+      // Sync with mat-stepper if it exists (for backward compatibility)
+      if (this.stepper && this.stepper.selectedIndex !== this.currentStepIndex) {
+        this.stepper.selectedIndex = this.currentStepIndex;
+      }
+    }
+  }
+
+  canProceedToNextStep(): boolean {
+    switch (this.currentStepIndex) {
+      case 0: return this.isStep1Complete();
+      case 1: return this.isStep2Complete();
+      case 2: return this.isStep3Complete();
+      case 3: return this.isStep4Complete();
+      case 4: return this.isStep5Complete();
+      case 5: return this.isStep6Complete();
+      default: return true;
+    }
   }
 }

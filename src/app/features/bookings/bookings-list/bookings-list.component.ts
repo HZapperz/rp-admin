@@ -21,6 +21,7 @@ export class BookingsListComponent implements OnInit {
 
   selectedStatus: string = 'all';
   searchTerm: string = '';
+  expandedCards: Set<string> = new Set();
 
   constructor(
     private bookingService: BookingService,
@@ -134,5 +135,18 @@ export class BookingsListComponent implements OnInit {
 
   navigateToCreateBooking(): void {
     this.router.navigate(['/bookings/create']);
+  }
+
+  toggleCard(bookingId: string, event: Event): void {
+    event.stopPropagation();
+    if (this.expandedCards.has(bookingId)) {
+      this.expandedCards.delete(bookingId);
+    } else {
+      this.expandedCards.add(bookingId);
+    }
+  }
+
+  isCardExpanded(bookingId: string): boolean {
+    return this.expandedCards.has(bookingId);
   }
 }

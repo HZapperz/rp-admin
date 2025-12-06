@@ -319,15 +319,66 @@
 
   // Responsive
   @media (max-width: 768px) {
-    .pets-grid {
-      grid-template-columns: 1fr !important;
-    }
+    .pets-content {
+      .selection-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
 
-    .pet-card {
-      grid-template-columns: auto auto 1fr !important;
+        h3 {
+          font-size: 1.125rem;
+        }
 
-      .select-indicator {
-        display: none;
+        .selection-count {
+          font-size: 0.8125rem;
+          padding: 0.375rem 0.875rem;
+        }
+      }
+
+      .pets-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+      }
+
+      .pet-card {
+        grid-template-columns: auto auto 1fr !important;
+        gap: 0.75rem;
+        padding: 1.25rem;
+
+        .pet-avatar {
+          width: 50px;
+          height: 50px;
+
+          .avatar-initials {
+            font-size: 1.25rem;
+          }
+        }
+
+        .pet-info {
+          .pet-header {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+
+            .pet-name {
+              font-size: 1rem;
+            }
+          }
+
+          .pet-breed {
+            font-size: 0.8125rem;
+          }
+        }
+
+        .select-indicator {
+          display: none;
+        }
+      }
+
+      .selection-note {
+        padding: 0.875rem 1rem;
+        font-size: 0.8125rem;
       }
     }
   }

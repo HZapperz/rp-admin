@@ -16,7 +16,11 @@
   <div class="filters">
     <div class="filter-group">
       <label for="status">Status:</label>
-      <select id="status" (change)="onStatusFilterChange($event)" [value]="selectedStatus">
+      <select
+        id="status"
+        (change)="onStatusFilterChange($event)"
+        [value]="selectedStatus"
+      >
         <option value="all">All Statuses</option>
         <option value="unassigned">🔴 Unassigned (Needs Groomer)</option>
         <option value="pending">Pending</option>
@@ -40,89 +44,260 @@
   </div>
 
   @if (isLoading) {
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>Loading bookings...</p>
-    </div>
-  }
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Loading bookings...</p>
+  </div>
+  } @if (error) {
+  <div class="error-message">{{ error }}</div>
+  } @if (!isLoading && !error) {
+  <div class="bookings-stats">
+    <span
+      >Showing {{ filteredBookings.length }} of
+      {{ bookings.length }} bookings</span
+    >
+  </div>
 
-  @if (error) {
-    <div class="error-message">{{ error }}</div>
-  }
+  <!-- Desktop Table View -->
+  <div class="bookings-table-container desktop-view">
+    <table class="bookings-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Groomer</th>
+          <th>Request Date & Time</th>
+          <th>Service</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (filteredBookings.length === 0) {
+        <tr>
+          <td colspan="7" class="no-bookings">No bookings found</td>
+        </tr>
+        } @for (booking of filteredBookings; track booking.id) {
+        <tr class="booking-row" (click)="openBookingDetail(booking)">
+          <td>
+            <div class="user-info">
+              <div class="user-name">
+                {{ booking.client?.first_name }} {{ booking.client?.last_name }}
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (booking.groomer) {
+            <div class="user-info">
+              <div class="user-name">
+                {{ booking.groomer.first_name }} {{ booking.groomer.last_name }}
+              </div>
+            </div>
+            } @else {
+            <span class="not-assigned">Not assigned</span>
+            }
+          </td>
+          <td>
+            <div class="date-time">
+              <div>{{ formatDate(booking.scheduled_date) }}</div>
+              @if (booking.shift_preference) {
+              <div class="requested-time">
+                Requested:
+                {{
+                  booking.shift_preference === "morning"
+                    ? "Morning"
+                    : "Afternoon"
+                }}
+                Shift
+              </div>
+              } @if (booking.scheduled_time_start && booking.scheduled_time_end)
+              {
+              <div class="time">
+                Assigned: {{ booking.scheduled_time_start }} -
+                {{ booking.scheduled_time_end }}
+              </div>
+              }
+            </div>
+          </td>
+          <td>{{ booking.service_name || booking.service?.name || "N/A" }}</td>
+          <td class="amount">{{ formatCurrency(booking.total_amount) }}</td>
+          <td>
+            <span
+              class="status-badge"
+              [ngClass]="getStatusClass(booking.status)"
+            >
+              {{ getStatusLabel(booking.status) }}
+            </span>
+          </td>
+          <td class="actions">
+            <button
+              class="btn btn-view"
+              (click)="$event.stopPropagation(); openBookingDetail(booking)"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              View Details
+            </button>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 
-  @if (!isLoading && !error) {
-    <div class="bookings-stats">
-      <span>Showing {{ filteredBookings.length }} of {{ bookings.length }} bookings</span>
+  <!-- Mobile Card View -->
+  <div class="bookings-cards-container mobile-view">
+    @if (filteredBookings.length === 0) {
+    <div class="no-bookings-card">
+      <p>No bookings found</p>
     </div>
+    } @for (booking of filteredBookings; track booking.id) {
+    <div class="booking-card" [class.expanded]="isCardExpanded(booking.id)">
+      <div class="booking-card-header">
+        <div class="header-left">
+          <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
+            {{ getStatusLabel(booking.status) }}
+          </span>
+        </div>
+        <button
+          class="expand-toggle-btn"
+          (click)="toggleCard(booking.id, $event)"
+          [attr.aria-expanded]="isCardExpanded(booking.id)"
+          aria-label="Toggle booking details"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            [class.rotated]="isCardExpanded(booking.id)"
+          >
+            <path
+              d="M6 9l6 6 6-6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
 
-    <div class="bookings-table-container">
-      <table class="bookings-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Client</th>
-            <th>Groomer</th>
-            <th>Request Date & Time</th>
-            <th>Service</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (filteredBookings.length === 0) {
-            <tr>
-              <td colspan="8" class="no-bookings">No bookings found</td>
-            </tr>
-          }
-          @for (booking of filteredBookings; track booking.id) {
-            <tr class="booking-row" (click)="openBookingDetail(booking)">
-              <td class="booking-id">{{ booking.id.substring(0, 8) }}...</td>
-              <td>
-                <div class="user-info">
-                  <div class="user-name">
-                    {{ booking.client?.first_name }} {{ booking.client?.last_name }}
-                  </div>
-                </div>
-              </td>
-              <td>
-                @if (booking.groomer) {
-                  <div class="user-info">
-                    <div class="user-name">
-                      {{ booking.groomer.first_name }} {{ booking.groomer.last_name }}
-                    </div>
-                  </div>
-                } @else {
-                  <span class="not-assigned">Not assigned</span>
-                }
-              </td>
-              <td>
-                <div class="date-time">
-                  <div>{{ formatDate(booking.scheduled_date) }}</div>
-                  @if (booking.shift_preference) {
-                    <div class="requested-time">Requested: {{ booking.shift_preference === 'morning' ? 'Morning' : 'Afternoon' }} Shift</div>
-                  }
-                  @if (booking.scheduled_time_start && booking.scheduled_time_end) {
-                    <div class="time">Assigned: {{ booking.scheduled_time_start }} - {{ booking.scheduled_time_end }}</div>
-                  }
-                </div>
-              </td>
-              <td>{{ booking.service_name || booking.service?.name || 'N/A' }}</td>
-              <td class="amount">{{ formatCurrency(booking.total_amount) }}</td>
-              <td>
-                <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
-                  {{ getStatusLabel(booking.status) }}
-                </span>
-              </td>
-              <td class="actions">
-                <button class="btn btn-view" (click)="$event.stopPropagation(); openBookingDetail(booking)">
-                  View Details
-                </button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <!-- Always visible summary -->
+      <div class="booking-card-summary">
+        <div class="summary-row">
+          <span class="summary-label">Client:</span>
+          <span class="summary-value"
+            >{{ booking.client?.first_name }}
+            {{ booking.client?.last_name }}</span
+          >
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Date:</span>
+          <span class="summary-value">{{
+            formatDate(booking.scheduled_date)
+          }}</span>
+        </div>
+        <div class="summary-row amount-row">
+          <span class="summary-label">Amount:</span>
+          <span class="summary-value amount">{{
+            formatCurrency(booking.total_amount)
+          }}</span>
+        </div>
+      </div>
+
+      <!-- Expandable details -->
+      <div
+        class="booking-card-details"
+        [class.expanded]="isCardExpanded(booking.id)"
+      >
+        <div class="booking-info-row">
+          <span class="info-label">Groomer:</span>
+          <span class="info-value">
+            @if (booking.groomer) {
+            {{ booking.groomer.first_name }} {{ booking.groomer.last_name }}
+            } @else {
+            <span class="not-assigned">Not assigned</span>
+            }
+          </span>
+        </div>
+
+        @if (booking.shift_preference) {
+        <div class="booking-info-row">
+          <span class="info-label">Shift:</span>
+          <span class="info-value">{{
+            booking.shift_preference === "morning" ? "Morning" : "Afternoon"
+          }}</span>
+        </div>
+        } @if (booking.scheduled_time_start && booking.scheduled_time_end) {
+        <div class="booking-info-row">
+          <span class="info-label">Time:</span>
+          <span class="info-value"
+            >{{ booking.scheduled_time_start }} -
+            {{ booking.scheduled_time_end }}</span
+          >
+        </div>
+        }
+
+        <div class="booking-info-row">
+          <span class="info-label">Service:</span>
+          <span class="info-value">{{
+            booking.service_name || booking.service?.name || "N/A"
+          }}</span>
+        </div>
+      </div>
+
+      <!-- Always visible footer with View Details button -->
+      <div class="booking-card-footer">
+        <button
+          class="btn btn-view"
+          (click)="$event.stopPropagation(); openBookingDetail(booking)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          View Details
+        </button>
+      </div>
     </div>
+    }
+  </div>
   }
 </div>

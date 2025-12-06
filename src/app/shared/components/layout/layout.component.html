@@ -1,50 +1,89 @@
 <div class="layout">
+  <!-- Mobile Backdrop -->
+  @if (isSidebarOpen) {
+  <div
+    class="sidebar-backdrop"
+    (click)="closeSidebar()"
+    (touchstart)="closeSidebar()"
+  ></div>
+  }
+
   <!-- Sidebar -->
   <aside class="sidebar" [class.open]="isSidebarOpen">
     <div class="sidebar-header">
-      <h2>🐾 Royal Pawz</h2>
-      <span class="admin-badge">Admin</span>
+      <div class="sidebar-header-content">
+        <h2>Royal Pawz</h2>
+        <span class="admin-badge">Admin</span>
+      </div>
+      <button
+        class="sidebar-close-btn"
+        (click)="closeSidebar()"
+        aria-label="Close sidebar"
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <nav class="sidebar-nav">
       @for (item of navItems; track item.route) {
-        <a
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          class="nav-item"
-        >
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span class="nav-label">{{ item.label }}</span>
-        </a>
+      <a
+        [routerLink]="item.route"
+        routerLinkActive="active"
+        class="nav-item"
+        (click)="onNavClick()"
+      >
+        <span class="nav-icon material-icons">{{ item.icon }}</span>
+        <span class="nav-label">{{ item.label }}</span>
+      </a>
       }
     </nav>
 
     <div class="sidebar-footer">
       @if (currentUser) {
-        <div class="user-info">
-          <div class="user-avatar">{{ currentUser.name.charAt(0) }}</div>
-          <div class="user-details">
-            <div class="user-name">{{ currentUser.name }}</div>
-            <div class="user-email">{{ currentUser.email }}</div>
-          </div>
+      <div class="user-info">
+        <div class="user-avatar">{{ currentUser.name.charAt(0) }}</div>
+        <div class="user-details">
+          <div class="user-name">{{ currentUser.name }}</div>
+          <div class="user-email">{{ currentUser.email }}</div>
         </div>
-        <button (click)="signOut()" class="sign-out-btn">
-          Sign Out
-        </button>
+      </div>
+      <button (click)="signOut()" class="sign-out-btn">Sign Out</button>
       }
     </div>
   </aside>
 
   <!-- Main Content -->
   <div class="main-content">
-    <!-- Header -->
-    <header class="header">
-      <button (click)="toggleSidebar()" class="menu-btn">
-        ☰
+    <!-- Mobile Header -->
+    <header class="header mobile-only">
+      <button
+        (click)="toggleSidebar()"
+        class="menu-btn"
+        aria-label="Toggle sidebar"
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
       </button>
-      <div class="header-title">
-        Royal Pawz Admin Panel
-      </div>
     </header>
 
     <!-- Content Area -->

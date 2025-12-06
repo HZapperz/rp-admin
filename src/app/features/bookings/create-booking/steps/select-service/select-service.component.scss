@@ -429,18 +429,98 @@
 
   // Responsive
   @media (max-width: 968px) {
-    .packages-grid {
-      grid-template-columns: 1fr !important;
-    }
+    .services-content {
+      .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
 
-    .addons-grid {
-      grid-template-columns: 1fr !important;
-    }
+        h3 {
+          font-size: 1.125rem;
+        }
 
-    .content-header {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 1rem;
+        .total-price {
+          width: 100%;
+          justify-content: space-between;
+          padding: 0.625rem 1.25rem;
+
+          .amount {
+            font-size: 1.25rem;
+          }
+        }
+      }
+
+      .pets-services-list {
+        gap: 1.5rem;
+      }
+
+      .pet-service-section {
+        padding: 1.25rem;
+
+        .pet-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+          margin-bottom: 1.25rem;
+          padding-bottom: 0.75rem;
+
+          .pet-info {
+            .pet-name {
+              font-size: 1.125rem;
+            }
+          }
+
+          .pet-price {
+            font-size: 1.125rem;
+          }
+        }
+      }
+
+      .packages-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.875rem;
+      }
+
+      .addons-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.875rem;
+      }
+    }
+  }
+
+  @media (max-width: 640px) {
+    .services-content {
+      .pet-service-section {
+        padding: 1rem;
+
+        .package-card {
+          padding: 1.25rem;
+
+          .package-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+
+            .package-name {
+              font-size: 1rem;
+            }
+
+            .package-price {
+              font-size: 1.125rem;
+            }
+          }
+        }
+
+        .addon-card {
+          padding: 0.875rem;
+        }
+      }
+
+      .service-summary {
+        padding: 1.25rem;
+      }
     }
   }
 }

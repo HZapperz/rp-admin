@@ -324,22 +324,83 @@
 
   // Responsive
   @media (max-width: 968px) {
-    .groomers-list .groomer-card {
-      grid-template-columns: auto 1fr auto;
-      gap: 1rem;
+    .search-section {
+      margin-bottom: 1.5rem;
+    }
 
-      .groomer-stats {
-        display: none;
+    .groomers-list {
+      max-height: 500px;
+      gap: 0.875rem;
+
+      .groomer-card {
+        grid-template-columns: auto 1fr auto;
+        gap: 1rem;
+        padding: 1.25rem;
+
+        .groomer-avatar {
+          width: 60px;
+          height: 60px;
+
+          .avatar-initials {
+            font-size: 1.5rem;
+          }
+        }
+
+        .groomer-stats {
+          display: none;
+        }
       }
     }
   }
 
   @media (max-width: 640px) {
-    .groomers-list .groomer-card {
-      grid-template-columns: auto 1fr;
+    .search-section {
+      margin-bottom: 1.25rem;
 
-      .select-icon {
-        display: none;
+      .search-box {
+        margin-bottom: 0.75rem;
+      }
+    }
+
+    .groomers-list {
+      max-height: 400px;
+      gap: 0.75rem;
+
+      .groomer-card {
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+        padding: 1rem;
+
+        .groomer-avatar {
+          width: 50px;
+          height: 50px;
+
+          .avatar-initials {
+            font-size: 1.25rem;
+          }
+        }
+
+        .groomer-info {
+          .groomer-name {
+            font-size: 1rem;
+          }
+
+          .groomer-email,
+          .groomer-phone {
+            font-size: 0.8125rem;
+          }
+
+          .groomer-specialties {
+            .specialty-badge {
+              font-size: 0.6875rem;
+              padding: 0.1875rem 0.5rem;
+            }
+          }
+        }
+
+        .select-icon {
+          display: none;
+        }
       }
     }
   }

@@ -280,6 +280,7 @@
     .clients-list .client-card {
       grid-template-columns: auto 1fr auto;
       gap: 1rem;
+      padding: 1.25rem;
 
       .client-stats {
         display: none;
@@ -288,11 +289,46 @@
   }
 
   @media (max-width: 640px) {
-    .clients-list .client-card {
-      grid-template-columns: auto 1fr;
+    .search-section {
+      margin-bottom: 1.5rem;
 
-      .select-icon {
-        display: none;
+      .search-box {
+        margin-bottom: 0.75rem;
+      }
+    }
+
+    .clients-list {
+      max-height: 400px;
+      gap: 0.75rem;
+
+      .client-card {
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+        padding: 1rem;
+
+        .client-avatar {
+          width: 50px;
+          height: 50px;
+
+          .avatar-initials {
+            font-size: 1.25rem;
+          }
+        }
+
+        .client-info {
+          .client-name {
+            font-size: 1rem;
+          }
+
+          .client-email,
+          .client-phone {
+            font-size: 0.8125rem;
+          }
+        }
+
+        .select-icon {
+          display: none;
+        }
       }
     }
   }

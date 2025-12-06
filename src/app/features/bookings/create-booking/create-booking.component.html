@@ -2,203 +2,252 @@
   <!-- Header -->
   <div class="header">
     <div class="header-content">
-      <button mat-icon-button (click)="cancel()" class="back-button">
-        <mat-icon>arrow_back</mat-icon>
+      <button (click)="cancel()" class="back-button" aria-label="Go back">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            d="M19 12H5M12 19l-7-7 7-7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
-      <h1>Create New Booking</h1>
+      <div class="header-text">
+        <h1>Create New Booking</h1>
+        <p class="subtitle">Follow the steps below to create a new booking</p>
+      </div>
     </div>
   </div>
 
   <!-- Progress indicator -->
-  <mat-progress-bar
-    *ngIf="isSubmitting"
-    mode="indeterminate"
-    color="primary"
-  ></mat-progress-bar>
+  @if (isSubmitting) {
+  <div class="progress-bar-container">
+    <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+  </div>
+  }
 
-  <!-- Stepper -->
-  <mat-stepper #stepper orientation="horizontal" linear="false" class="booking-stepper">
-
-    <!-- Step 1: Select Client -->
-    <mat-step [completed]="isStep1Complete()" label="Client">
-      <div class="step-content">
-        <app-select-client
-          (clientSelected)="onClientSelected($event)"
-        ></app-select-client>
-
-        <div class="step-actions">
-          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep1Complete()">
-            Next
-          </button>
-        </div>
-      </div>
-    </mat-step>
-
-    <!-- Step 2: Select Pets -->
-    <mat-step [completed]="isStep2Complete()" label="Pets">
-      <div class="step-content">
-        <app-select-pets
-          [selectedClient]="selectedClient"
-          (petsSelected)="onPetsSelected($event)"
-        ></app-select-pets>
-
-        <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep2Complete()">
-            Next
-          </button>
-        </div>
-      </div>
-    </mat-step>
-
-    <!-- Step 3: Select Services -->
-    <mat-step [completed]="isStep3Complete()" label="Services">
-      <div class="step-content">
-        <app-select-service
-          [selectedPets]="selectedPets"
-          (servicesSelected)="onServicesSelected($event)"
-        ></app-select-service>
-
-        <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep3Complete()">
-            Next
-          </button>
-        </div>
-      </div>
-    </mat-step>
-
-    <!-- Step 4: Select Groomer -->
-    <mat-step [completed]="isStep4Complete()" label="Groomer">
-      <div class="step-content">
-        <app-select-groomer
-          (groomerSelected)="onGroomerSelected($event)"
-        ></app-select-groomer>
-
-        <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep4Complete()">
-            Next
-          </button>
-        </div>
-      </div>
-    </mat-step>
-
-    <!-- Step 5: Select Date & Time -->
-    <mat-step [completed]="isStep5Complete()" label="Date & Time">
-      <div class="step-content">
-        <app-select-date-time
-          [selectedGroomer]="selectedGroomer"
-          (dateTimeSelected)="onDateTimeSelected($event)"
-        ></app-select-date-time>
-
-        <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep5Complete()">
-            Next
-          </button>
-        </div>
-      </div>
-    </mat-step>
-
-    <!-- Step 6: Select Address -->
-    <mat-step [completed]="isStep6Complete()" label="Address">
-      <div class="step-content">
-        <app-select-address
-          [selectedClient]="selectedClient"
-          (addressSelected)="onAddressSelected($event)"
-        ></app-select-address>
-
-        <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext [disabled]="!isStep6Complete()">
-            Next
-          </button>
-        </div>
-      </div>
-    </mat-step>
-
-    <!-- Step 7: Payment & Review -->
-    <mat-step [completed]="isStep7Complete()" label="Review">
-      <div class="step-content">
-        <app-payment-summary
-          [selectedClient]="selectedClient"
-          [selectedPets]="selectedPets"
-          [petServices]="petServices"
-          [selectedGroomer]="selectedGroomer"
-          [selectedDateTime]="selectedDateTime"
-          [selectedAddress]="selectedAddress"
-          (paymentConfigured)="onPaymentConfigured($event)"
-        ></app-payment-summary>
-
-        <!-- Error message -->
-        <div *ngIf="submitError" class="error-message">
-          <mat-icon>error</mat-icon>
-          <span>{{ submitError }}</span>
-        </div>
-
-        <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button
-            mat-raised-button
-            color="primary"
-            (click)="submitBooking()"
-            [disabled]="!isStep7Complete() || isSubmitting"
+  <!-- Main Content -->
+  <div class="main-content-wrapper">
+    <!-- Stepper Container -->
+    <div class="stepper-container">
+      <!-- Custom Stepper -->
+      <div class="custom-stepper">
+        <div class="stepper-header">
+          @for (step of steps; track step.index; let i = $index) {
+          <div
+            class="stepper-step"
+            [class.active]="currentStepIndex === i"
+            [class.completed]="currentStepIndex > i"
           >
-            <mat-icon *ngIf="!isSubmitting">check</mat-icon>
-            <span *ngIf="isSubmitting">Creating...</span>
-            <span *ngIf="!isSubmitting">Create Booking</span>
-          </button>
+            <div class="step-number">
+              @if (currentStepIndex > i) {
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline
+                  points="20 6 9 17 4 12"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              } @else {
+              {{ i + 1 }}
+              }
+            </div>
+            <div class="step-label">{{ step.label }}</div>
+          </div>
+          @if (i < steps.length - 1) {
+          <div
+            class="stepper-line"
+            [class.completed]="currentStepIndex > i"
+          ></div>
+          } }
         </div>
       </div>
-    </mat-step>
 
-  </mat-stepper>
-
-  <!-- Summary Sidebar (sticky) -->
-  <div class="summary-sidebar" *ngIf="selectedClient">
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>Booking Summary</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="summary-section" *ngIf="selectedClient">
-          <h3>Client</h3>
-          <p>{{ selectedClient.first_name }} {{ selectedClient.last_name }}</p>
+      <!-- Step Content -->
+      <div class="step-content-wrapper">
+        <!-- Step 1: Select Client -->
+        @if (currentStepIndex === 0) {
+        <div class="step-content">
+          <app-select-client
+            (clientSelected)="onClientSelected($event)"
+          ></app-select-client>
         </div>
+        }
 
-        <div class="summary-section" *ngIf="selectedPets.length > 0">
-          <h3>Pets ({{ selectedPets.length }})</h3>
-          <ul>
-            <li *ngFor="let pet of selectedPets">{{ pet.name }}</li>
-          </ul>
+        <!-- Step 2: Select Pets -->
+        @if (currentStepIndex === 1) {
+        <div class="step-content">
+          <app-select-pets
+            [selectedClient]="selectedClient"
+            (petsSelected)="onPetsSelected($event)"
+          ></app-select-pets>
         </div>
+        }
 
-        <div class="summary-section" *ngIf="selectedGroomer">
-          <h3>Groomer</h3>
-          <p>{{ selectedGroomer.first_name }} {{ selectedGroomer.last_name }}</p>
+        <!-- Step 3: Select Services -->
+        @if (currentStepIndex === 2) {
+        <div class="step-content">
+          <app-select-service
+            [selectedPets]="selectedPets"
+            (servicesSelected)="onServicesSelected($event)"
+          ></app-select-service>
         </div>
+        }
 
-        <div class="summary-section" *ngIf="selectedDateTime">
-          <h3>Date & Time</h3>
-          <p>{{ selectedDateTime.date | date }}</p>
-          <p class="time-slot">{{ selectedDateTime.time_slot }}</p>
+        <!-- Step 4: Select Groomer -->
+        @if (currentStepIndex === 3) {
+        <div class="step-content">
+          <app-select-groomer
+            (groomerSelected)="onGroomerSelected($event)"
+          ></app-select-groomer>
         </div>
+        }
 
-        <div class="summary-section" *ngIf="selectedAddress">
-          <h3>Address</h3>
-          <p>{{ selectedAddress.street }}</p>
-          <p>{{ selectedAddress.city }}, {{ selectedAddress.state }} {{ selectedAddress.zip_code }}</p>
+        <!-- Step 5: Select Date & Time -->
+        @if (currentStepIndex === 4) {
+        <div class="step-content">
+          <app-select-date-time
+            [selectedGroomer]="selectedGroomer"
+            (dateTimeSelected)="onDateTimeSelected($event)"
+          ></app-select-date-time>
         </div>
+        }
 
-        <div class="summary-section" *ngIf="paymentConfig">
-          <h3>Payment</h3>
-          <p *ngIf="paymentConfig.payment_type === 'pay_on_completion'">Pay on Completion</p>
-          <p *ngIf="paymentConfig.payment_type === 'cash_on_service'">Cash on Service</p>
-          <p *ngIf="paymentConfig.payment_type === 'use_saved_card'">Use Saved Card</p>
-          <p *ngIf="paymentConfig.final_amount" class="total-amount">${{ paymentConfig.final_amount.toFixed(2) }}</p>
+        <!-- Step 6: Select Address -->
+        @if (currentStepIndex === 5) {
+        <div class="step-content">
+          <app-select-address
+            [selectedClient]="selectedClient"
+            (addressSelected)="onAddressSelected($event)"
+          ></app-select-address>
         </div>
-      </mat-card-content>
-    </mat-card>
+        }
+
+        <!-- Step 7: Payment & Review -->
+        @if (currentStepIndex === 6) {
+        <div class="step-content">
+          <app-payment-summary
+            [selectedClient]="selectedClient"
+            [selectedPets]="selectedPets"
+            [petServices]="petServices"
+            [selectedGroomer]="selectedGroomer"
+            [selectedDateTime]="selectedDateTime"
+            [selectedAddress]="selectedAddress"
+            (paymentConfigured)="onPaymentConfigured($event)"
+          ></app-payment-summary>
+
+          <!-- Error message -->
+          @if (submitError) {
+          <div class="error-message">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{{ submitError }}</span>
+          </div>
+          }
+        </div>
+        }
+
+        <!-- Step Actions -->
+        <div class="step-actions">
+          @if (currentStepIndex > 0) {
+          <button class="btn btn-secondary" (click)="previousStep()">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M19 12H5M12 19l-7-7 7-7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Back
+          </button>
+          } @else {
+          <div></div>
+          }
+
+          <div class="actions-right">
+            @if (currentStepIndex < 6) {
+            <button
+              class="btn btn-primary"
+              (click)="nextStep()"
+              [disabled]="!canProceedToNextStep()"
+            >
+              Next
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            } @else {
+            <button
+              class="btn btn-primary btn-submit"
+              (click)="submitBooking()"
+              [disabled]="!isStep7Complete() || isSubmitting"
+            >
+              @if (isSubmitting) {
+              <div class="spinner-small"></div>
+              Creating... } @else {
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline
+                  points="20 6 9 17 4 12"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Create Booking }
+            </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
