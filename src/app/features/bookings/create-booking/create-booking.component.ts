@@ -226,7 +226,7 @@ export class CreateBookingComponent implements OnInit {
 
       console.log('Submitting booking:', bookingRequest);
 
-      const result = await this.adminBookingService.createBooking(bookingRequest);
+      const result = await this.adminBookingService.createBooking(bookingRequest).toPromise();
 
       console.log('Booking created successfully:', result);
 

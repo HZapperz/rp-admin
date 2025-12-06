@@ -209,8 +209,10 @@
   }
   
   // Firefox scrollbar styling
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  & {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
 
   .nav-item {
     display: flex;
@@ -266,8 +268,12 @@
     }
 
     .nav-label {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 500;
+
+      @media (max-width: 768px) {
+        font-size: 1rem;
+      }
 
       @media (min-width: 769px) {
         font-size: 0.875rem;

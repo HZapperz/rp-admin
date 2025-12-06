@@ -1,0 +1,311 @@
+<div class="groomers-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>✂️ Groomers Management</h1>
+        <p class="subtitle">
+          Manage and view all groomer information and earnings
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Section -->
+  <div class="search-section">
+    <div class="search-box">
+      <svg
+        class="search-icon"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by name, email, or phone..."
+        (input)="onSearch($event)"
+        [value]="searchTerm"
+      />
+    </div>
+    <div class="results-count" *ngIf="!isLoading">
+      {{ groomers.length }}
+      {{ groomers.length === 1 ? "groomer" : "groomers" }} found
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading) {
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading groomers...</p>
+  </div>
+  }
+
+  <!-- Desktop Table View -->
+  @if (!isLoading) {
+  <div class="groomers-table-container desktop-view">
+    <table class="groomers-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Commission</th>
+          <th>Bookings</th>
+          <th>Gross Revenue</th>
+          <th>Stripe Fees</th>
+          <th>Net Revenue</th>
+          <th>Groomer Earnings</th>
+          <th>Rating</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (groomers.length === 0) {
+        <tr>
+          <td colspan="10" class="no-groomers">No groomers found</td>
+        </tr>
+        } @for (groomer of groomers; track groomer.id) {
+        <tr (click)="viewGroomer(groomer.id)" class="groomer-row">
+          <td>
+            <div class="groomer-name-cell">
+              <div class="groomer-avatar">
+                @if (groomer.avatar_url) {
+                <img
+                  [src]="groomer.avatar_url"
+                  [alt]="groomer.first_name + ' ' + groomer.last_name"
+                  (error)="onAvatarError(groomer.id)"
+                />
+                } @if (!groomer.avatar_url || hasAvatarFailed(groomer.id)) {
+                <span class="avatar-initials">
+                  {{ getInitials(groomer.first_name, groomer.last_name) }}
+                </span>
+                }
+              </div>
+              <div class="groomer-name-info">
+                <div class="groomer-name">
+                  {{ groomer.first_name }} {{ groomer.last_name }}
+                </div>
+                <div class="groomer-phone">
+                  {{ groomer.phone || "No phone" }}
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>{{ groomer.email }}</td>
+          <td>
+            <span class="commission-badge">
+              {{ formatCommissionRate(groomer.commission_rate || 0.35) }}
+            </span>
+          </td>
+          <td>
+            <div class="bookings-cell">
+              <div class="bookings-count">
+                {{ groomer.stats?.completedBookings || 0 }}/{{
+                  groomer.stats?.totalBookings || 0
+                }}
+              </div>
+              <div class="completion-rate">
+                {{ (groomer.stats?.completionRate || 0).toFixed(0) }}%
+              </div>
+            </div>
+          </td>
+          <td class="currency">
+            {{ formatCurrency(groomer.stats?.totalGrossRevenue || 0) }}
+          </td>
+          <td class="currency fee">
+            -{{ formatCurrency(groomer.stats?.totalStripeFees || 0) }}
+          </td>
+          <td class="currency net">
+            {{ formatCurrency(groomer.stats?.totalNetRevenue || 0) }}
+          </td>
+          <td class="currency earnings">
+            {{ formatCurrency(groomer.stats?.totalGroomerEarnings || 0) }}
+          </td>
+          <td>
+            @if ((groomer.stats?.averageRating || 0) > 0) {
+            <span class="rating"
+              >{{ (groomer.stats?.averageRating || 0).toFixed(1) }} ⭐</span
+            >
+            } @else {
+            <span class="no-rating">N/A</span>
+            }
+          </td>
+          <td>
+            <button
+              class="btn-view-details"
+              (click)="viewGroomer(groomer.id); $event.stopPropagation()"
+            >
+              View Details
+            </button>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile Card View -->
+  <div class="groomers-cards-container mobile-view">
+    @if (groomers.length === 0) {
+    <div class="no-groomers-card">
+      <p>No groomers found</p>
+    </div>
+    } @for (groomer of groomers; track groomer.id) {
+    <div class="groomer-card" [class.expanded]="isCardExpanded(groomer.id)">
+      <div class="groomer-card-header">
+        <div class="header-left">
+          <div class="groomer-avatar-large">
+            @if (groomer.avatar_url) {
+            <img
+              [src]="groomer.avatar_url"
+              [alt]="groomer.first_name + ' ' + groomer.last_name"
+              (error)="onAvatarError(groomer.id)"
+            />
+            } @if (!groomer.avatar_url || hasAvatarFailed(groomer.id)) {
+            <span class="avatar-initials">
+              {{ getInitials(groomer.first_name, groomer.last_name) }}
+            </span>
+            }
+          </div>
+          <div class="groomer-info">
+            <h3 class="groomer-name">
+              {{ groomer.first_name }} {{ groomer.last_name }}
+            </h3>
+            <p class="groomer-email">{{ groomer.email }}</p>
+          </div>
+        </div>
+        <button
+          class="expand-toggle-btn"
+          (click)="toggleCard(groomer.id, $event)"
+          [attr.aria-expanded]="isCardExpanded(groomer.id)"
+          aria-label="Toggle groomer details"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            [class.rotated]="isCardExpanded(groomer.id)"
+          >
+            <path
+              d="M6 9l6 6 6-6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <!-- Always visible summary -->
+      <div class="groomer-card-summary">
+        <div class="summary-row">
+          <span class="summary-label">Commission:</span>
+          <span class="summary-value">
+            <span class="commission-badge">
+              {{ formatCommissionRate(groomer.commission_rate || 0.35) }}
+            </span>
+          </span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Bookings:</span>
+          <span class="summary-value"
+            >{{ groomer.stats?.completedBookings || 0 }}/{{
+              groomer.stats?.totalBookings || 0
+            }}</span
+          >
+        </div>
+        <div class="summary-row amount-row">
+          <span class="summary-label">Earnings:</span>
+          <span class="summary-value amount">{{
+            formatCurrency(groomer.stats?.totalGroomerEarnings || 0)
+          }}</span>
+        </div>
+      </div>
+      <!-- Expandable details -->
+      <div
+        class="groomer-card-details"
+        [class.expanded]="isCardExpanded(groomer.id)"
+      >
+        <div class="detail-section">
+          <div class="detail-row">
+            <span class="detail-label">Phone:</span>
+            <span class="detail-value">{{ groomer.phone || "N/A" }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Rating:</span>
+            <span class="detail-value">
+              @if ((groomer.stats?.averageRating || 0) > 0) {
+              <span class="rating"
+                >{{ (groomer.stats?.averageRating || 0).toFixed(1) }} ⭐</span
+              >
+              } @else {
+              <span class="no-rating">N/A</span>
+              }
+            </span>
+          </div>
+        </div>
+        <div class="earnings-grid">
+          <div class="earnings-item">
+            <span class="earnings-label">Gross Revenue</span>
+            <span class="earnings-value">{{
+              formatCurrency(groomer.stats?.totalGrossRevenue || 0)
+            }}</span>
+          </div>
+          <div class="earnings-item negative">
+            <span class="earnings-label">Stripe Fees</span>
+            <span class="earnings-value"
+              >-{{ formatCurrency(groomer.stats?.totalStripeFees || 0) }}</span
+            >
+          </div>
+          <div class="earnings-item positive">
+            <span class="earnings-label">Net Revenue</span>
+            <span class="earnings-value">{{
+              formatCurrency(groomer.stats?.totalNetRevenue || 0)
+            }}</span>
+          </div>
+          <div class="earnings-item primary">
+            <span class="earnings-label">Groomer Earnings</span>
+            <span class="earnings-value">{{
+              formatCurrency(groomer.stats?.totalGroomerEarnings || 0)
+            }}</span>
+          </div>
+        </div>
+      </div>
+      <!-- View Details Button (Always visible) -->
+      <div class="groomer-card-footer">
+        <button class="btn-view-details" (click)="viewGroomer(groomer.id)">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          View Details
+        </button>
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>
