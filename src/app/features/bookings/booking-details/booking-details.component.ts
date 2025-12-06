@@ -685,23 +685,12 @@ export class BookingDetailsComponent implements OnInit {
     try {
       this.savingTimeChange = true;
 
-      // Get current user ID
-      const currentUserId = this.supabase.session?.user?.id;
-
-      if (!currentUserId) {
-        alert('Unable to identify current user. Please log in again.');
-        this.savingTimeChange = false;
-        return;
-      }
-
       // Call the booking service to change the time
       const result = await this.bookingService.changeBookingTime(
         this.booking.id,
         this.newScheduledDate,
         this.newTimeSlot.start,
-        this.newTimeSlot.end,
-        this.timeChangeReason,
-        currentUserId
+        this.newTimeSlot.end
       );
 
       if (!result.success) {

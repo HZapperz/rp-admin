@@ -352,12 +352,10 @@ export class BookingService {
     bookingId: string,
     newDate: string,
     newTimeStart: string,
-    newTimeEnd: string,
-    reason: string,
-    modifiedBy: string
+    newTimeEnd: string
   ): Promise<{ success: boolean; oldValues?: { scheduled_date: string; scheduled_time_start: string; scheduled_time_end: string } }> {
     try {
-      // 1. Fetch current booking to get old values
+      // 1. Fetch current booking to get old values (for email notification)
       const { data: currentBooking, error: fetchError } = await this.supabase
         .from('bookings')
         .select('scheduled_date, scheduled_time_start, scheduled_time_end')
@@ -389,28 +387,6 @@ export class BookingService {
       if (updateError) {
         console.error('Error updating booking time:', updateError);
         return { success: false };
-      }
-
-      // 3. Insert modification record
-      const { error: modificationError } = await this.supabase
-        .from('booking_modifications')
-        .insert({
-          booking_id: bookingId,
-          modified_by: modifiedBy,
-          modification_type: 'time_change',
-          old_value: oldValues,
-          new_value: {
-            scheduled_date: newDate,
-            scheduled_time_start: newTimeStart,
-            scheduled_time_end: newTimeEnd
-          },
-          price_change: 0,
-          reason: reason
-        });
-
-      if (modificationError) {
-        console.error('Error recording modification:', modificationError);
-        // Don't fail the whole operation if modification logging fails
       }
 
       return { success: true, oldValues };

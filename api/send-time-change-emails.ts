@@ -1,7 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend only if API key exists
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'confirmations@royalpawzusa.com';
 
 interface TimeChangeEmailData {
@@ -354,14 +356,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Check if Resend is configured
+    if (!resend) {
+      console.error('RESEND_API_KEY is not configured');
+      return res.status(500).json({
+        success: false,
+        error: 'Email service is not configured. RESEND_API_KEY is missing.'
+      });
+    }
+
     const emailData: TimeChangeEmailData = req.body;
+
+    console.log('Received time change email request:', {
+      bookingId: emailData?.booking?.id,
+      hasClient: !!emailData?.client,
+      hasGroomer: !!emailData?.groomer,
+      hasPets: !!emailData?.pets,
+      hasReason: !!emailData?.reason
+    });
 
     if (!emailData.booking || !emailData.client || !emailData.groomer || !emailData.pets || !emailData.reason) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required email data'
+        error: 'Missing required email data',
+        received: {
+          hasBooking: !!emailData?.booking,
+          hasClient: !!emailData?.client,
+          hasGroomer: !!emailData?.groomer,
+          hasPets: !!emailData?.pets,
+          hasReason: !!emailData?.reason
+        }
       });
     }
+
+    console.log('Sending emails to:', {
+      clientEmail: emailData.client.email,
+      groomerEmail: emailData.groomer.email,
+      fromEmail: FROM_EMAIL
+    });
 
     const results = await Promise.allSettled([
       // Send to client
