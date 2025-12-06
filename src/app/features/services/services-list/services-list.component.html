@@ -1,39 +1,85 @@
-<div class="services-list-container">
-  <!-- Header -->
+<div class="services-page">
   <div class="page-header">
     <div class="header-content">
-      <h1 class="page-title">Service Packages</h1>
-      <p class="page-subtitle">Manage your grooming service packages</p>
+      <div>
+        <h1>✨ Service Packages</h1>
+        <p class="subtitle">
+          Manage your grooming service packages and pricing
+        </p>
+      </div>
     </div>
-    <button mat-raised-button color="primary" (click)="addPackage()" class="add-button">
-      <mat-icon>add</mat-icon>
+    <button class="add-button" (click)="addPackage()">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
       Add Package
     </button>
   </div>
 
+  <!-- Error Message -->
+  @if (error) {
+  <div class="error-message">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    {{ error }}
+  </div>
+  }
+
   <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
+  @if (loading) {
+  <div class="loading-state">
+    <div class="spinner"></div>
     <p>Loading service packages...</p>
   </div>
+  }
 
   <!-- Packages Grid -->
-  <div *ngIf="!loading" class="packages-grid">
-    <div *ngFor="let pkg of packages" class="package-card" [class.inactive]="!pkg.is_active">
+  @if (!loading) {
+  <div class="packages-grid">
+    @for (pkg of packages; track pkg.id) {
+    <div class="package-card" [class.inactive]="!pkg.is_active">
       <!-- Card Header -->
       <div class="card-header">
         <div class="header-left">
           <span class="package-icon">{{ pkg.icon }}</span>
           <div class="package-title">
             <h3>{{ pkg.name }}</h3>
-            <span class="package-badge" [class]="getPackageTypeColor(pkg.package_type)">
+            <span
+              class="package-badge"
+              [class]="getPackageTypeColor(pkg.package_type)"
+            >
               {{ getPackageTypeLabel(pkg.package_type) }}
             </span>
           </div>
         </div>
         <div class="header-right">
-          <span *ngIf="pkg.is_popular" class="popular-badge">⭐ Popular</span>
-          <span class="status-badge" [class.active]="pkg.is_active" [class.inactive]="!pkg.is_active">
-            {{ pkg.is_active ? 'Active' : 'Inactive' }}
+          @if (pkg.is_popular) {
+          <span class="popular-badge">⭐ Popular</span>
+          }
+          <span
+            class="status-badge"
+            [class.active]="pkg.is_active"
+            [class.inactive]="!pkg.is_active"
+          >
+            {{ pkg.is_active ? "Active" : "Inactive" }}
           </span>
         </div>
       </div>
@@ -43,7 +89,17 @@
 
       <!-- Duration -->
       <div class="package-info">
-        <mat-icon>schedule</mat-icon>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
         <span>{{ pkg.duration }} minutes</span>
       </div>
 
@@ -71,39 +127,401 @@
       <div class="includes-section">
         <h4>Includes:</h4>
         <ul class="includes-list">
-          <li *ngFor="let item of pkg.includes">
-            <mat-icon>check_circle</mat-icon>
+          @for (item of pkg.includes; track item) {
+          <li>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
             {{ item }}
           </li>
+          }
         </ul>
       </div>
 
       <!-- Actions -->
       <div class="card-actions">
-        <button mat-button (click)="editPackage(pkg)" class="edit-button">
-          <mat-icon>edit</mat-icon>
+        <button class="action-btn edit-button" (click)="editPackage(pkg)">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+            ></path>
+            <path
+              d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+            ></path>
+          </svg>
           Edit
         </button>
-        <button mat-button (click)="toggleStatus(pkg)" [class.activate]="!pkg.is_active" [class.deactivate]="pkg.is_active">
-          <mat-icon>{{ pkg.is_active ? 'visibility_off' : 'visibility' }}</mat-icon>
-          {{ pkg.is_active ? 'Deactivate' : 'Activate' }}
+        <button
+          class="action-btn"
+          [class.activate]="!pkg.is_active"
+          [class.deactivate]="pkg.is_active"
+          (click)="toggleStatus(pkg)"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            @if (pkg.is_active) {
+            <path
+              d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+            ></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            } @else {
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+            }
+          </svg>
+          {{ pkg.is_active ? "Deactivate" : "Activate" }}
         </button>
-        <button mat-button color="warn" (click)="deletePackage(pkg)" *ngIf="pkg.is_active" class="delete-button">
-          <mat-icon>delete</mat-icon>
+        @if (pkg.is_active) {
+        <button class="action-btn delete-button" (click)="deletePackage(pkg)">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+          </svg>
           Delete
         </button>
+        }
       </div>
     </div>
+    }
   </div>
+  }
 
   <!-- Empty State -->
-  <div *ngIf="!loading && packages.length === 0" class="empty-state">
-    <mat-icon>inventory_2</mat-icon>
+  @if (!loading && packages.length === 0) {
+  <div class="empty-state">
+    <svg
+      width="64"
+      height="64"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <path
+        d="M20 7h-4V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"
+      ></path>
+      <path d="M12 12v6"></path>
+      <path d="M9 15h6"></path>
+    </svg>
     <h3>No service packages found</h3>
     <p>Create your first service package to get started</p>
-    <button mat-raised-button color="primary" (click)="addPackage()">
-      <mat-icon>add</mat-icon>
+    <button class="add-button" (click)="addPackage()">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
       Add Package
     </button>
   </div>
+  }
 </div>
+
+<!-- Add Package Modal -->
+@if (showAddModal) {
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Add New Service Package</h2>
+      <button class="close-button" (click)="closeModal()" aria-label="Close">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      @if (error) {
+      <div class="error-message">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        {{ error }}
+      </div>
+      }
+
+      <form (ngSubmit)="submitPackage()" class="package-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="package-name">Package Name *</label>
+            <input
+              id="package-name"
+              type="text"
+              [(ngModel)]="newPackage.name"
+              name="name"
+              placeholder="e.g., Royal Bath"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="package-icon">Icon</label>
+            <input
+              id="package-icon"
+              type="text"
+              [(ngModel)]="newPackage.icon"
+              name="icon"
+              placeholder="✨"
+              maxlength="2"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="package-description">Description *</label>
+          <textarea
+            id="package-description"
+            [(ngModel)]="newPackage.description"
+            name="description"
+            placeholder="Describe what's included in this package..."
+            rows="3"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="package-type">Package Type *</label>
+            <select
+              id="package-type"
+              [(ngModel)]="newPackage.package_type"
+              name="package_type"
+              required
+            >
+              <option value="basic">Royal Bath</option>
+              <option value="premium">Royal Groom</option>
+              <option value="deluxe">Royal Spa</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="package-duration">Duration (minutes) *</label>
+            <input
+              id="package-duration"
+              type="number"
+              [(ngModel)]="newPackage.duration"
+              name="duration"
+              min="1"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Pricing by Size *</label>
+          <div class="pricing-inputs">
+            <div class="price-input-group">
+              <label for="price-small">Small</label>
+              <input
+                id="price-small"
+                type="number"
+                [(ngModel)]="newPackage.price_small"
+                name="price_small"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div class="price-input-group">
+              <label for="price-medium">Medium</label>
+              <input
+                id="price-medium"
+                type="number"
+                [(ngModel)]="newPackage.price_medium"
+                name="price_medium"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div class="price-input-group">
+              <label for="price-large">Large</label>
+              <input
+                id="price-large"
+                type="number"
+                [(ngModel)]="newPackage.price_large"
+                name="price_large"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div class="price-input-group">
+              <label for="price-xl">XL</label>
+              <input
+                id="price-xl"
+                type="number"
+                [(ngModel)]="newPackage.price_xl"
+                name="price_xl"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Includes *</label>
+          <div class="includes-input">
+            <input
+              type="text"
+              [(ngModel)]="newIncludeItem"
+              name="includeItem"
+              placeholder="Add an included service..."
+              (keyup.enter)="addIncludeItem()"
+            />
+            <button
+              type="button"
+              class="add-include-btn"
+              (click)="addIncludeItem()"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add
+            </button>
+          </div>
+          @if (newPackage.includes && newPackage.includes.length > 0) {
+          <div class="includes-list">
+            @for (item of newPackage.includes; track $index) {
+            <span class="include-tag">
+              {{ item }}
+              <button
+                type="button"
+                (click)="removeIncludeItem($index)"
+                class="remove-tag"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </span>
+            }
+          </div>
+          }
+        </div>
+
+        <div class="form-row">
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                [(ngModel)]="newPackage.is_popular"
+                name="is_popular"
+              />
+              <span>Mark as Popular</span>
+            </label>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                [(ngModel)]="newPackage.is_active"
+                name="is_active"
+                [checked]="newPackage.is_active !== false"
+              />
+              <span>Active</span>
+            </label>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn-cancel"
+        (click)="closeModal()"
+        [disabled]="isSubmitting"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn-submit"
+        (click)="submitPackage()"
+        [disabled]="isSubmitting"
+      >
+        @if (isSubmitting) {
+        <span class="spinner-small"></span>
+        Creating... } @else { Create Package }
+      </button>
+    </div>
+  </div>
+</div>
+}
