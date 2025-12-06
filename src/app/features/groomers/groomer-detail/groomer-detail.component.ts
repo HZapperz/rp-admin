@@ -539,10 +539,13 @@ export class GroomerDetailComponent implements OnInit {
 
   formatDate(dateString: string): string {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse ISO date string as UTC to avoid timezone conversion issues
+    const date = new Date(dateString + 'T00:00:00Z');
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   }
 }

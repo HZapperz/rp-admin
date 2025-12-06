@@ -65,7 +65,8 @@
         <span>Showing {{ filteredPromotions.length }} of {{ generalPromotions.length }} promotions</span>
       </div>
 
-    <div class="promotions-table-container">
+    <!-- Desktop Table View -->
+    <div class="promotions-table-container desktop-view">
       <table class="promotions-table">
         <thead>
           <tr>
@@ -157,6 +158,80 @@
           }
         </tbody>
       </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="promotions-cards-container mobile-view">
+      @if (filteredPromotions.length === 0) {
+        <div class="empty-state-mobile">
+          @if (generalPromotions.length === 0) {
+            <p>No general promotions created yet.</p>
+            <button class="btn-create-small" (click)="openCreateDialog()">Create First Promotion</button>
+          } @else {
+            <p>No promotions match your filters</p>
+          }
+        </div>
+      }
+
+      @for (promotion of filteredPromotions; track promotion.id) {
+        <div class="promotion-card" (click)="openEditDialog(promotion)">
+          <div class="promotion-card-header">
+            <span class="discount-badge">{{ promotion.discount_percentage }}% OFF</span>
+            <span class="status-badge" [ngClass]="getStatusClass(getPromotionStatus(promotion))">
+              {{ getStatusLabel(getPromotionStatus(promotion)) }}
+            </span>
+          </div>
+
+          <div class="promotion-card-body">
+            <h3 class="promotion-title">{{ promotion.title }}</h3>
+            @if (promotion.description) {
+              <p class="promotion-description">{{ promotion.description }}</p>
+            }
+
+            <div class="promotion-card-details">
+              <div class="detail-row">
+                <span class="label">Valid:</span>
+                <span class="value">{{ formatDate(promotion.valid_from) }} - {{ formatDate(promotion.valid_until) }}</span>
+              </div>
+              @if (getPromotionStatus(promotion) === 'active') {
+                <div class="detail-row">
+                  <span class="label">Remaining:</span>
+                  <span class="value highlight">{{ getDaysRemaining(promotion.valid_until) }} days left</span>
+                </div>
+              }
+              <div class="detail-row">
+                <span class="label">Usage:</span>
+                <span class="value">{{ getUsageLabel(promotion) }}</span>
+              </div>
+            </div>
+
+            @if (promotion.max_uses) {
+              <div class="usage-bar-mobile">
+                <div class="usage-fill" [style.width.%]="getUsagePercentage(promotion)"></div>
+              </div>
+            }
+          </div>
+
+          <div class="promotion-card-footer">
+            <button
+              class="btn-action btn-toggle-mobile"
+              [class.active]="promotion.is_active"
+              (click)="togglePromotionStatus(promotion, $event)">
+              {{ promotion.is_active ? 'Pause' : 'Activate' }}
+            </button>
+            <button
+              class="btn-action btn-edit-mobile"
+              (click)="openEditDialog(promotion); $event.stopPropagation()">
+              Edit
+            </button>
+            <button
+              class="btn-action btn-delete-mobile"
+              (click)="deletePromotion(promotion, $event)">
+              Delete
+            </button>
+          </div>
+        </div>
+      }
     </div>
     </div>
   }

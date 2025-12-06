@@ -82,6 +82,13 @@ export class BookingDetailsComponent implements OnInit {
   rejectionReason: string = '';
   assigningGroomer = false;
 
+  // Time change modal
+  showTimeChangeModal = false;
+  timeChangeReason = '';
+  newScheduledDate = '';
+  newTimeSlot: { label: string; start: string; end: string } | null = null;
+  savingTimeChange = false;
+
   // Time slots configuration
   morningSlots = [
     { label: '8:30 AM - 9:45 AM', start: '08:30:00', end: '09:45:00' },
@@ -366,11 +373,14 @@ export class BookingDetailsComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse ISO date string as UTC to avoid timezone conversion issues
+    const date = new Date(dateString + 'T00:00:00Z');
+    return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   }
 
@@ -597,6 +607,140 @@ export class BookingDetailsComponent implements OnInit {
       await this.loadBookingDetails(this.booking.id);
     } else {
       alert('Failed to reject booking. Please try again.');
+    }
+  }
+
+  viewRabiesCertificate(url: string) {
+    if (!url) return;
+
+    // If the URL is already a full URL (starts with http), open it directly
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      window.open(url, '_blank');
+      return;
+    }
+
+    // Otherwise, it's a storage path - convert it to a public URL
+    const publicUrl = this.supabase.getPublicUrl('pet-certificates', url);
+    window.open(publicUrl, '_blank');
+  }
+
+  // Time Change Methods
+  openTimeChangeModal() {
+    if (!this.booking) return;
+
+    // Initialize with current booking date
+    this.newScheduledDate = this.booking.scheduled_date;
+    this.newTimeSlot = null;
+    this.timeChangeReason = '';
+
+    // Set date constraints
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Min date: Tomorrow
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    this.minDate = tomorrow.toISOString().split('T')[0];
+
+    // Max date: 90 days from today
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 90);
+    this.maxDate = maxDate.toISOString().split('T')[0];
+
+    this.showTimeChangeModal = true;
+  }
+
+  closeTimeChangeModal() {
+    this.showTimeChangeModal = false;
+    this.newScheduledDate = '';
+    this.newTimeSlot = null;
+    this.timeChangeReason = '';
+  }
+
+  selectNewTimeSlot(slot: { label: string; start: string; end: string }) {
+    this.newTimeSlot = slot;
+  }
+
+  async confirmTimeChange() {
+    if (!this.booking) return;
+
+    // Validate inputs
+    if (!this.newScheduledDate) {
+      alert('Please select a new date');
+      return;
+    }
+
+    if (!this.newTimeSlot) {
+      alert('Please select a new time slot');
+      return;
+    }
+
+    if (!this.timeChangeReason.trim()) {
+      alert('Please provide a reason for the time change');
+      return;
+    }
+
+    if (this.savingTimeChange) return;
+
+    try {
+      this.savingTimeChange = true;
+
+      // Get current user ID
+      const currentUserId = this.supabase.session?.user?.id;
+
+      if (!currentUserId) {
+        alert('Unable to identify current user. Please log in again.');
+        this.savingTimeChange = false;
+        return;
+      }
+
+      // Call the booking service to change the time
+      const result = await this.bookingService.changeBookingTime(
+        this.booking.id,
+        this.newScheduledDate,
+        this.newTimeSlot.start,
+        this.newTimeSlot.end,
+        this.timeChangeReason,
+        currentUserId
+      );
+
+      if (!result.success) {
+        alert('Failed to update booking time. Please try again.');
+        this.savingTimeChange = false;
+        return;
+      }
+
+      // Fetch updated booking for email
+      const updatedBooking = await this.bookingService.getBookingById(this.booking.id);
+
+      if (updatedBooking && result.oldValues) {
+        // Send time change notification emails
+        const emailResult = await this.emailService.sendTimeChangeEmails(
+          updatedBooking,
+          result.oldValues.scheduled_date,
+          result.oldValues.scheduled_time_start,
+          result.oldValues.scheduled_time_end,
+          this.timeChangeReason
+        );
+
+        if (emailResult.success) {
+          alert('Booking time updated and notifications sent to customer and groomer!');
+        } else {
+          alert('Booking time updated, but there was an issue sending notification emails.');
+        }
+      } else {
+        alert('Booking time updated successfully!');
+      }
+
+      // Close modal and reload booking
+      this.closeTimeChangeModal();
+      this.savingTimeChange = false;
+      await this.loadBookingDetails(this.booking.id);
+
+    } catch (error) {
+      console.error('Error changing booking time:', error);
+      alert('An unexpected error occurred. Please try again.');
+      this.savingTimeChange = false;
     }
   }
 }

@@ -76,6 +76,17 @@
               <span class="label">Assigned Slot:</span>
               <span class="value">{{ booking.assigned_time_slot }}</span>
             </div>
+
+            <!-- Change Time Button (only for confirmed bookings) -->
+            <button
+              *ngIf="booking.status === 'confirmed'"
+              (click)="openTimeChangeModal()"
+              class="btn-change-time">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Change Date/Time
+            </button>
           </div>
 
           <!-- Actual Service Time -->
@@ -282,15 +293,14 @@
 
               <!-- Rabies Certificate -->
               <div class="certificate-section" *ngIf="petBooking.pet?.rabies_certificate_url">
-                <a
-                  [href]="petBooking.pet?.rabies_certificate_url"
-                  target="_blank"
+                <button
+                  (click)="viewRabiesCertificate(petBooking.pet?.rabies_certificate_url!)"
                   class="certificate-link">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   View Rabies Certificate
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -746,6 +756,106 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
       </button>
+    </div>
+  </div>
+
+  <!-- Time Change Modal -->
+  <div *ngIf="showTimeChangeModal" class="time-change-overlay" (click)="closeTimeChangeModal()">
+    <div class="time-change-dialog" (click)="$event.stopPropagation()">
+      <div class="time-change-dialog-header">
+        <h3>Change Booking Date/Time</h3>
+        <button (click)="closeTimeChangeModal()" class="dialog-close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="time-change-dialog-body">
+        <!-- Current Schedule Display -->
+        <div class="current-schedule-box">
+          <h4 class="current-schedule-title">Current Schedule</h4>
+          <div class="current-schedule-info">
+            <div class="schedule-detail">
+              <span class="schedule-label">Date:</span>
+              <span class="schedule-value">{{ formatDate(booking?.scheduled_date || '') }}</span>
+            </div>
+            <div class="schedule-detail">
+              <span class="schedule-label">Time:</span>
+              <span class="schedule-value">
+                {{ formatTime(booking?.scheduled_time_start || '') }} - {{ formatTime(booking?.scheduled_time_end || '') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Date Selection -->
+        <div class="form-group">
+          <label class="form-label">New Date *</label>
+          <input
+            type="date"
+            [(ngModel)]="newScheduledDate"
+            [min]="minDate"
+            [max]="maxDate"
+            class="form-input"
+            required>
+        </div>
+
+        <!-- Time Slot Selection -->
+        <div class="form-group" *ngIf="newScheduledDate">
+          <label class="form-label">New Time Slot *</label>
+
+          <div class="time-slots-section">
+            <h4 class="shift-title">Morning Shift</h4>
+            <div class="time-slots-grid">
+              <button
+                *ngFor="let slot of morningSlots"
+                (click)="selectNewTimeSlot(slot)"
+                [class.selected]="newTimeSlot?.start === slot.start"
+                class="time-slot-btn">
+                {{ slot.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="time-slots-section">
+            <h4 class="shift-title">Afternoon Shift</h4>
+            <div class="time-slots-grid">
+              <button
+                *ngFor="let slot of afternoonSlots"
+                (click)="selectNewTimeSlot(slot)"
+                [class.selected]="newTimeSlot?.start === slot.start"
+                class="time-slot-btn">
+                {{ slot.label }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reason (Required) -->
+        <div class="form-group">
+          <label class="form-label">Reason for Change *</label>
+          <textarea
+            [(ngModel)]="timeChangeReason"
+            class="reason-textarea"
+            rows="3"
+            placeholder="Explain why the booking time is being changed (e.g., customer requested change, scheduling conflict)..."
+            required></textarea>
+          <p class="form-help-text">This reason will be included in the notification emails sent to the customer and groomer.</p>
+        </div>
+      </div>
+
+      <div class="time-change-dialog-footer">
+        <button
+          (click)="confirmTimeChange()"
+          [disabled]="!newScheduledDate || !newTimeSlot || !timeChangeReason.trim() || savingTimeChange"
+          class="btn-confirm-change">
+          {{ savingTimeChange ? 'Saving...' : 'Confirm Change & Notify' }}
+        </button>
+        <button (click)="closeTimeChangeModal()" class="btn-cancel-dialog">
+          Cancel
+        </button>
+      </div>
     </div>
   </div>
 </div>

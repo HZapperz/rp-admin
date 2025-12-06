@@ -1,0 +1,134 @@
+<div class="page">
+  <h1>Groomers Management</h1>
+
+  <div class="search-box">
+    <input type="text" placeholder="Search groomers..." (input)="onSearch($event)" />
+  </div>
+
+  @if (isLoading) {
+    <div class="loading">Loading groomers...</div>
+  }
+
+  @if (!isLoading) {
+    <!-- Desktop Table View -->
+    <div class="table-container desktop-view">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Commission</th>
+            <th>Bookings</th>
+            <th>Gross Revenue</th>
+            <th>Stripe Fees</th>
+            <th>Net Revenue</th>
+            <th>Groomer Earnings</th>
+            <th>Rating</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (groomer of groomers; track groomer.id) {
+            <tr>
+              <td class="name-cell">
+                <div class="name">{{ groomer.first_name }} {{ groomer.last_name }}</div>
+                <div class="phone">{{ groomer.phone || 'No phone' }}</div>
+              </td>
+              <td>{{ groomer.email }}</td>
+              <td>
+                <span class="commission-badge">
+                  {{ formatCommissionRate(groomer.commission_rate || 0.35) }}
+                </span>
+              </td>
+              <td>
+                <div class="bookings-cell">
+                  <div>{{ groomer.stats?.completedBookings || 0 }}/{{ groomer.stats?.totalBookings || 0 }}</div>
+                  <div class="completion-rate">{{ (groomer.stats?.completionRate || 0).toFixed(0) }}%</div>
+                </div>
+              </td>
+              <td class="currency">{{ formatCurrency(groomer.stats?.totalGrossRevenue || 0) }}</td>
+              <td class="currency fee">-{{ formatCurrency(groomer.stats?.totalStripeFees || 0) }}</td>
+              <td class="currency net">{{ formatCurrency(groomer.stats?.totalNetRevenue || 0) }}</td>
+              <td class="currency earnings">{{ formatCurrency(groomer.stats?.totalGroomerEarnings || 0) }}</td>
+              <td>
+                @if ((groomer.stats?.averageRating || 0) > 0) {
+                  <span class="rating">{{ (groomer.stats?.averageRating || 0).toFixed(1) }} stars</span>
+                } @else {
+                  <span class="no-rating">N/A</span>
+                }
+              </td>
+              <td>
+                <button class="view-btn" (click)="viewGroomer(groomer.id)">
+                  View Details
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="groomers-cards-container mobile-view">
+      @for (groomer of groomers; track groomer.id) {
+        <div class="groomer-card" (click)="viewGroomer(groomer.id)">
+          <div class="groomer-card-header">
+            <div class="groomer-avatar">
+              {{ groomer.first_name[0] }}{{ groomer.last_name[0] }}
+            </div>
+            <div class="groomer-name-section">
+              <h3 class="groomer-name">{{ groomer.first_name }} {{ groomer.last_name }}</h3>
+              <p class="groomer-email">{{ groomer.email }}</p>
+            </div>
+            <span class="commission-badge">
+              {{ formatCommissionRate(groomer.commission_rate || 0.35) }}
+            </span>
+          </div>
+
+          <div class="groomer-card-body">
+            <div class="info-row">
+              <span class="label">Phone:</span>
+              <span class="value">{{ groomer.phone || 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Bookings:</span>
+              <span class="value">{{ groomer.stats?.completedBookings || 0 }}/{{ groomer.stats?.totalBookings || 0 }} ({{ (groomer.stats?.completionRate || 0).toFixed(0) }}%)</span>
+            </div>
+
+            @if ((groomer.stats?.averageRating || 0) > 0) {
+              <div class="info-row">
+                <span class="label">Rating:</span>
+                <span class="value rating">{{ (groomer.stats?.averageRating || 0).toFixed(1) }} stars</span>
+              </div>
+            }
+
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">Gross</span>
+                <span class="stat-value">{{ formatCurrency(groomer.stats?.totalGrossRevenue || 0) }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Net</span>
+                <span class="stat-value net">{{ formatCurrency(groomer.stats?.totalNetRevenue || 0) }}</span>
+              </div>
+              <div class="stat-item earnings-item">
+                <span class="stat-label">Earnings</span>
+                <span class="stat-value earnings">{{ formatCurrency(groomer.stats?.totalGroomerEarnings || 0) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="groomer-card-footer">
+            <button class="btn-view">View Details</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (groomers.length === 0) {
+      <div class="empty-state">
+        <p>No groomers found</p>
+      </div>
+    }
+  }
+</div>

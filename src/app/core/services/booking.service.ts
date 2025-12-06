@@ -348,6 +348,78 @@ export class BookingService {
     return true;
   }
 
+  async changeBookingTime(
+    bookingId: string,
+    newDate: string,
+    newTimeStart: string,
+    newTimeEnd: string,
+    reason: string,
+    modifiedBy: string
+  ): Promise<{ success: boolean; oldValues?: { scheduled_date: string; scheduled_time_start: string; scheduled_time_end: string } }> {
+    try {
+      // 1. Fetch current booking to get old values
+      const { data: currentBooking, error: fetchError } = await this.supabase
+        .from('bookings')
+        .select('scheduled_date, scheduled_time_start, scheduled_time_end')
+        .eq('id', bookingId)
+        .single();
+
+      if (fetchError || !currentBooking) {
+        console.error('Error fetching current booking:', fetchError);
+        return { success: false };
+      }
+
+      const oldValues = {
+        scheduled_date: currentBooking.scheduled_date,
+        scheduled_time_start: currentBooking.scheduled_time_start,
+        scheduled_time_end: currentBooking.scheduled_time_end
+      };
+
+      // 2. Update booking with new date/time
+      const { error: updateError } = await this.supabase
+        .from('bookings')
+        .update({
+          scheduled_date: newDate,
+          scheduled_time_start: newTimeStart,
+          scheduled_time_end: newTimeEnd,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (updateError) {
+        console.error('Error updating booking time:', updateError);
+        return { success: false };
+      }
+
+      // 3. Insert modification record
+      const { error: modificationError } = await this.supabase
+        .from('booking_modifications')
+        .insert({
+          booking_id: bookingId,
+          modified_by: modifiedBy,
+          modification_type: 'time_change',
+          old_value: oldValues,
+          new_value: {
+            scheduled_date: newDate,
+            scheduled_time_start: newTimeStart,
+            scheduled_time_end: newTimeEnd
+          },
+          price_change: 0,
+          reason: reason
+        });
+
+      if (modificationError) {
+        console.error('Error recording modification:', modificationError);
+        // Don't fail the whole operation if modification logging fails
+      }
+
+      return { success: true, oldValues };
+    } catch (error) {
+      console.error('Exception while changing booking time:', error);
+      return { success: false };
+    }
+  }
+
   async getBookingStats(): Promise<{
     total: number;
     pending: number;

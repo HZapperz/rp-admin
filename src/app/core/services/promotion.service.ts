@@ -374,11 +374,13 @@ export class PromotionService {
    * Format date for display
    */
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
+    // Parse ISO date string as UTC to avoid timezone conversion issues
+    const date = new Date(dateString + 'T00:00:00Z');
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   }
 

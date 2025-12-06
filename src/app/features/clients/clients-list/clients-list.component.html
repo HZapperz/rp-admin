@@ -1,0 +1,85 @@
+<div class="page">
+  <h1>Clients Management</h1>
+
+  <div class="search-box">
+    <input type="text" placeholder="Search clients..." (input)="onSearch($event)" />
+  </div>
+
+  @if (isLoading) {
+    <div class="loading">Loading clients...</div>
+  }
+
+  @if (!isLoading) {
+    <!-- Desktop Table View -->
+    <div class="table-container desktop-view">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Total Bookings</th>
+            <th>Total Spent</th>
+            <th>Last Booking</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (client of clients; track client.id) {
+            <tr (click)="viewClientDetail(client.id)" class="clickable-row">
+              <td>{{ client.first_name }} {{ client.last_name }}</td>
+              <td>{{ client.email }}</td>
+              <td>{{ client.phone || 'N/A' }}</td>
+              <td>{{ client.total_bookings }}</td>
+              <td>${{ client.total_spent.toFixed(2) }}</td>
+              <td>{{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="clients-cards-container mobile-view">
+      @for (client of clients; track client.id) {
+        <div class="client-card" (click)="viewClientDetail(client.id)">
+          <div class="client-card-header">
+            <div class="client-avatar">
+              {{ client.first_name[0] }}{{ client.last_name[0] }}
+            </div>
+            <div class="client-name-section">
+              <h3 class="client-name">{{ client.first_name }} {{ client.last_name }}</h3>
+              <p class="client-email">{{ client.email }}</p>
+            </div>
+          </div>
+          <div class="client-card-body">
+            <div class="info-row">
+              <span class="label">Phone:</span>
+              <span class="value">{{ client.phone || 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Bookings:</span>
+              <span class="value">{{ client.total_bookings }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Total Spent:</span>
+              <span class="value amount">${{ client.total_spent.toFixed(2) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Last Booking:</span>
+              <span class="value">{{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}</span>
+            </div>
+          </div>
+          <div class="client-card-footer">
+            <button class="btn-view">View Details</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (clients.length === 0) {
+      <div class="empty-state">
+        <p>No clients found</p>
+      </div>
+    }
+  }
+</div>

@@ -91,11 +91,13 @@ export class SelectClientComponent implements OnInit {
 
   formatDate(dateString: string | undefined): string {
     if (!dateString) return 'Never';
-    const date = new Date(dateString);
+    // Parse ISO date string as UTC to avoid timezone conversion issues
+    const date = new Date(dateString + 'T00:00:00Z');
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   }
 
