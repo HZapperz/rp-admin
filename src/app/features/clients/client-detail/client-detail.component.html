@@ -1,0 +1,325 @@
+<div class="client-detail-container">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading client details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <h2>Error Loading Client</h2>
+    <p>{{ error }}</p>
+    <button (click)="goBack()" class="btn btn-back">Back to Clients</button>
+  </div>
+
+  <!-- Client Detail Content -->
+  <div *ngIf="!loading && !error && clientData" class="detail-content">
+    <!-- Header -->
+    <div class="detail-header">
+      <button (click)="goBack()" class="btn btn-back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to Clients
+      </button>
+      <h1>Client Details</h1>
+    </div>
+
+    <!-- Client Overview -->
+    <div class="section overview-section">
+      <div class="client-profile">
+        <div class="profile-image">
+          <img
+            [src]="clientData.client.avatar_url || 'https://via.placeholder.com/150?text=No+Image'"
+            [alt]="clientData.client.first_name + ' ' + clientData.client.last_name"
+            onerror="this.src='https://via.placeholder.com/150?text=No+Image'"
+          />
+        </div>
+        <div class="profile-info">
+          <h2>{{ clientData.client.first_name }} {{ clientData.client.last_name }}</h2>
+          <div class="profile-details">
+            <div class="detail-item">
+              <span class="label">Email:</span>
+              <span class="value">{{ clientData.client.email }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Phone:</span>
+              <span class="value">{{ clientData.client.phone || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Member Since:</span>
+              <span class="value">{{ formatDate(clientData.client.created_at) }}</span>
+            </div>
+            <div class="detail-item" *ngIf="clientData.client.blocked_at">
+              <span class="label">Status:</span>
+              <span class="value status-blocked">Blocked</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">{{ clientData.client.total_bookings }}</div>
+          <div class="stat-label">Total Bookings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ formatCurrency(clientData.client.total_spent) }}</div>
+          <div class="stat-label">Total Spent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ clientData.client.last_booking_date ? formatDate(clientData.client.last_booking_date) : 'Never' }}</div>
+          <div class="stat-label">Last Booking</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pets Section -->
+    <div class="section">
+      <h3 class="section-title">Pets ({{ clientData.pets.length }})</h3>
+      <div *ngIf="clientData.pets.length === 0" class="empty-state">
+        No pets registered
+      </div>
+      <div class="pets-grid" *ngIf="clientData.pets.length > 0">
+        <div class="pet-card" *ngFor="let pet of clientData.pets">
+          <div class="pet-header">
+            <div class="pet-image-wrapper">
+              <img
+                [src]="getPetPhotoUrl(pet.photo_url)"
+                [alt]="pet.name"
+                class="pet-image"
+                onerror="this.src='https://via.placeholder.com/80?text=Pet'"
+              />
+            </div>
+            <div class="pet-basic-info">
+              <h4>{{ pet.name }}</h4>
+              <p class="pet-breed">{{ pet.breed || 'Unknown breed' }}</p>
+              <span class="pet-size" *ngIf="pet.size_category">{{ pet.size_category | uppercase }}</span>
+            </div>
+          </div>
+          <div class="pet-details">
+            <div *ngIf="pet.age || pet.date_of_birth" class="detail-line">
+              <strong>Age:</strong> {{ pet.age || calculateAge(pet.date_of_birth) }}
+            </div>
+            <div *ngIf="pet.has_allergies" class="detail-line">
+              <strong>Allergies:</strong> {{ pet.allergy_details || 'Yes' }}
+            </div>
+            <div *ngIf="pet.has_skin_conditions" class="detail-line">
+              <strong>Skin Conditions:</strong> {{ pet.skin_condition_details || 'Yes' }}
+            </div>
+            <div *ngIf="pet.blow_dryer_reaction" class="detail-line">
+              <strong>Blow Dryer Reaction:</strong> {{ pet.blow_dryer_reaction }}
+            </div>
+            <div *ngIf="pet.water_reaction" class="detail-line">
+              <strong>Water Reaction:</strong> {{ pet.water_reaction }}
+            </div>
+            <div *ngIf="pet.special_notes || pet.additional_notes" class="detail-line">
+              <strong>Notes:</strong> {{ pet.special_notes || pet.additional_notes }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Addresses Section -->
+    <div class="section">
+      <h3 class="section-title">Addresses ({{ clientData.addresses.length }})</h3>
+      <div *ngIf="clientData.addresses.length === 0" class="empty-state">
+        No addresses saved
+      </div>
+      <div class="addresses-list" *ngIf="clientData.addresses.length > 0">
+        <div class="address-card" *ngFor="let address of clientData.addresses">
+          <div class="address-header">
+            <span class="address-name">{{ address.name }}</span>
+            <div class="address-badges">
+              <span class="badge badge-default" *ngIf="address.is_default">Default</span>
+              <span class="badge badge-type">{{ address.address_type }}</span>
+            </div>
+          </div>
+          <div class="address-details">
+            {{ address.building }}<span *ngIf="address.apartment">, Apt {{ address.apartment }}</span><span *ngIf="address.floor">, Floor {{ address.floor }}</span><br/>
+            {{ address.street }}<br/>
+            {{ address.city }}, {{ address.state }} {{ address.zip_code }}
+            <div *ngIf="address.additional_info" class="address-notes">
+              {{ address.additional_info }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Methods Section -->
+    <div class="section">
+      <h3 class="section-title">Payment Methods ({{ clientData.paymentMethods.length }})</h3>
+      <div *ngIf="clientData.paymentMethods.length === 0" class="empty-state">
+        No payment methods saved
+      </div>
+      <div class="payment-methods-list" *ngIf="clientData.paymentMethods.length > 0">
+        <div class="payment-card" *ngFor="let pm of clientData.paymentMethods">
+          <div class="payment-header">
+            <span class="card-brand">{{ pm.brand | uppercase }}</span>
+            <span class="badge badge-default" *ngIf="pm.is_default">Default</span>
+          </div>
+          <div class="payment-details">
+            <div class="card-number">•••• •••• •••• {{ pm.last4 }}</div>
+            <div class="card-expiry">Expires: {{ pm.exp_month }}/{{ pm.exp_year }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking History Section -->
+    <div class="section">
+      <h3 class="section-title">Booking History ({{ clientData.bookings.length }})</h3>
+      <div *ngIf="clientData.bookings.length === 0" class="empty-state">
+        No bookings yet
+      </div>
+      <!-- Desktop Table View -->
+      <div class="bookings-table desktop-view" *ngIf="clientData.bookings.length > 0">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Service</th>
+              <th>Groomer</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let booking of clientData.bookings">
+              <td>{{ formatDate(booking.scheduled_date) }}</td>
+              <td>{{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end) }}</td>
+              <td>{{ booking.service_name || 'N/A' }}</td>
+              <td>{{ booking.groomer_name || 'Unassigned' }}</td>
+              <td>{{ formatCurrency(booking.total_amount) }}</td>
+              <td>
+                <span [class]="'status-badge ' + getStatusClass(booking.status)">
+                  {{ getStatusLabel(booking.status) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Mobile Card View -->
+      <div class="bookings-cards mobile-view" *ngIf="clientData.bookings.length > 0">
+        <div class="booking-card" *ngFor="let booking of clientData.bookings">
+          <div class="booking-card-header">
+            <div class="booking-date">{{ formatDate(booking.scheduled_date) }}</div>
+            <span [class]="'status-badge ' + getStatusClass(booking.status)">
+              {{ getStatusLabel(booking.status) }}
+            </span>
+          </div>
+          <div class="booking-card-details">
+            <div class="booking-detail-row">
+              <span class="detail-label">Time:</span>
+              <span class="detail-value">{{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end) }}</span>
+            </div>
+            <div class="booking-detail-row">
+              <span class="detail-label">Service:</span>
+              <span class="detail-value">{{ booking.service_name || 'N/A' }}</span>
+            </div>
+            <div class="booking-detail-row">
+              <span class="detail-label">Groomer:</span>
+              <span class="detail-value">{{ booking.groomer_name || 'Unassigned' }}</span>
+            </div>
+            <div class="booking-detail-row">
+              <span class="detail-label">Amount:</span>
+              <span class="detail-value amount">{{ formatCurrency(booking.total_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ratings Section -->
+    <div class="section">
+      <h3 class="section-title">Reviews Given ({{ clientData.ratings.length }})</h3>
+      <div *ngIf="clientData.ratings.length === 0" class="empty-state">
+        No reviews yet
+      </div>
+      <div class="ratings-list" *ngIf="clientData.ratings.length > 0">
+        <div class="rating-card" *ngFor="let rating of clientData.ratings">
+          <div class="rating-header">
+            <span class="groomer-name">Groomer: {{ rating.groomer?.first_name }} {{ rating.groomer?.last_name }}</span>
+            <span class="rating-date">{{ formatDate(rating.created_at) }}</span>
+          </div>
+          <div class="rating-scores">
+            <div class="score-item">
+              <span class="score-label">Experience:</span>
+              <span class="score-value">{{ rating.experience_rating }}/5 ⭐</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">Quality:</span>
+              <span class="score-value">{{ rating.quality_rating }}/5 ⭐</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">Recommendation:</span>
+              <span class="score-value">{{ rating.recommendation_rating }}/5 ⭐</span>
+            </div>
+          </div>
+          <div class="rating-comment" *ngIf="rating.comment">
+            "{{ rating.comment }}"
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Notes Section -->
+    <div class="section">
+      <h3 class="section-title">Admin Notes</h3>
+
+      <!-- Add Note Form -->
+      <div class="add-note-form">
+        <h4>Add New Note</h4>
+        <div class="form-group">
+          <label for="note-priority">Priority:</label>
+          <select id="note-priority" [(ngModel)]="newNotePriority" class="form-control">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="note-text">Note:</label>
+          <textarea
+            id="note-text"
+            [(ngModel)]="newNoteText"
+            class="form-control"
+            rows="3"
+            placeholder="Enter admin note..."
+          ></textarea>
+        </div>
+        <button
+          (click)="addAdminNote()"
+          [disabled]="!newNoteText.trim() || addingNote"
+          class="btn btn-primary"
+        >
+          {{ addingNote ? 'Adding...' : 'Add Note' }}
+        </button>
+      </div>
+
+      <!-- Notes List -->
+      <div *ngIf="clientData.adminNotes.length === 0" class="empty-state">
+        No admin notes yet
+      </div>
+      <div class="notes-list" *ngIf="clientData.adminNotes.length > 0">
+        <div class="note-card" *ngFor="let note of clientData.adminNotes">
+          <div class="note-header">
+            <span [class]="'priority-badge priority-' + note.priority">{{ note.priority || 'medium' }}</span>
+            <span class="note-author">{{ note.admin?.first_name }} {{ note.admin?.last_name }}</span>
+            <span class="note-date">{{ formatDate(note.created_at) }}</span>
+          </div>
+          <div class="note-content">
+            {{ note.note }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

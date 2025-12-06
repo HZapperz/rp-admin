@@ -1,18 +1,44 @@
-<div class="page">
-  <h1>Clients Management</h1>
-
-  <div class="search-box">
-    <input type="text" placeholder="Search clients..." (input)="onSearch($event)" />
+<div class="clients-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>👥 Clients Management</h1>
+        <p class="subtitle">Manage and view all client information</p>
+      </div>
+    </div>
   </div>
 
+  <!-- Search Section -->
+  <div class="search-section">
+    <div class="search-box">
+      <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by name, email, or phone..."
+        (input)="onSearch($event)"
+        [value]="searchTerm"
+      />
+    </div>
+    <div class="results-count" *ngIf="!isLoading">
+      {{ clients.length }} {{ clients.length === 1 ? 'client' : 'clients' }} found
+    </div>
+  </div>
+
+  <!-- Loading State -->
   @if (isLoading) {
-    <div class="loading">Loading clients...</div>
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading clients...</p>
+    </div>
   }
 
+  <!-- Desktop Table View -->
   @if (!isLoading) {
-    <!-- Desktop Table View -->
-    <div class="table-container desktop-view">
-      <table>
+    <div class="clients-table-container desktop-view">
+      <table class="clients-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -24,14 +50,47 @@
           </tr>
         </thead>
         <tbody>
+          @if (clients.length === 0) {
+            <tr>
+              <td colspan="6" class="no-clients">No clients found</td>
+            </tr>
+          }
           @for (client of clients; track client.id) {
-            <tr (click)="viewClientDetail(client.id)" class="clickable-row">
-              <td>{{ client.first_name }} {{ client.last_name }}</td>
+            <tr (click)="viewClientDetail(client.id)" class="client-row">
+              <td>
+                <div class="client-name-cell">
+                  <div class="client-avatar">
+                    @if (client.avatar_url) {
+                      <img
+                        [src]="client.avatar_url"
+                        [alt]="client.first_name + ' ' + client.last_name"
+                        (error)="onAvatarError(client.id)"
+                      />
+                    }
+                    @if (!client.avatar_url || hasAvatarFailed(client.id)) {
+                      <span class="avatar-initials">
+                        {{ getInitials(client.first_name, client.last_name) }}
+                      </span>
+                    }
+                  </div>
+                  <div class="client-name">
+                    {{ client.first_name }} {{ client.last_name }}
+                  </div>
+                </div>
+              </td>
               <td>{{ client.email }}</td>
               <td>{{ client.phone || 'N/A' }}</td>
-              <td>{{ client.total_bookings }}</td>
-              <td>${{ client.total_spent.toFixed(2) }}</td>
-              <td>{{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}</td>
+              <td>
+                <span class="stat-value">{{ client.total_bookings }}</span>
+              </td>
+              <td>
+                <span class="amount-value">${{ client.total_spent.toFixed(2) }}</span>
+              </td>
+              <td>
+                <span class="date-value">
+                  {{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}
+                </span>
+              </td>
             </tr>
           }
         </tbody>
@@ -40,46 +99,105 @@
 
     <!-- Mobile Card View -->
     <div class="clients-cards-container mobile-view">
+      @if (clients.length === 0) {
+        <div class="no-clients-card">
+          <p>No clients found</p>
+        </div>
+      }
       @for (client of clients; track client.id) {
-        <div class="client-card" (click)="viewClientDetail(client.id)">
+        <div class="client-card" [class.expanded]="isCardExpanded(client.id)">
           <div class="client-card-header">
-            <div class="client-avatar">
-              {{ client.first_name[0] }}{{ client.last_name[0] }}
+            <div class="header-left">
+              <div class="client-avatar-large">
+                @if (client.avatar_url) {
+                  <img
+                    [src]="client.avatar_url"
+                    [alt]="client.first_name + ' ' + client.last_name"
+                    (error)="onAvatarError(client.id)"
+                  />
+                }
+                @if (!client.avatar_url || hasAvatarFailed(client.id)) {
+                  <span class="avatar-initials">
+                    {{ getInitials(client.first_name, client.last_name) }}
+                  </span>
+                }
+              </div>
+              <div class="client-info">
+                <h3 class="client-name">{{ client.first_name }} {{ client.last_name }}</h3>
+                <p class="client-email">{{ client.email }}</p>
+              </div>
             </div>
-            <div class="client-name-section">
-              <h3 class="client-name">{{ client.first_name }} {{ client.last_name }}</h3>
-              <p class="client-email">{{ client.email }}</p>
+            <button
+              class="expand-toggle-btn"
+              (click)="toggleCard(client.id, $event)"
+              [attr.aria-expanded]="isCardExpanded(client.id)"
+              aria-label="Toggle client details"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                [class.rotated]="isCardExpanded(client.id)"
+              >
+                <path
+                  d="M6 9l6 6 6-6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <!-- Always visible summary -->
+          <div class="client-card-summary">
+            <div class="summary-row">
+              <span class="summary-label">Phone:</span>
+              <span class="summary-value">{{ client.phone || 'N/A' }}</span>
+            </div>
+            <div class="summary-row amount-row">
+              <span class="summary-label">Total Spent:</span>
+              <span class="summary-value amount">${{ client.total_spent.toFixed(2) }}</span>
             </div>
           </div>
-          <div class="client-card-body">
-            <div class="info-row">
-              <span class="label">Phone:</span>
-              <span class="value">{{ client.phone || 'N/A' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Bookings:</span>
-              <span class="value">{{ client.total_bookings }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Total Spent:</span>
-              <span class="value amount">${{ client.total_spent.toFixed(2) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Last Booking:</span>
-              <span class="value">{{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}</span>
+          <!-- Expandable details -->
+          <div
+            class="client-card-details"
+            [class.expanded]="isCardExpanded(client.id)"
+          >
+            <div class="client-stats">
+              <div class="stat-item">
+                <span class="stat-label">Bookings</span>
+                <span class="stat-value">{{ client.total_bookings }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Total Spent</span>
+                <span class="stat-value">${{ client.total_spent.toFixed(2) }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Last Booking</span>
+                <span class="stat-value-small">
+                  {{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}
+                </span>
+              </div>
             </div>
           </div>
+          <!-- View Details Button (Always visible) -->
           <div class="client-card-footer">
-            <button class="btn-view">View Details</button>
+            <button
+              class="btn-view-details"
+              (click)="viewClientDetail(client.id)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              View Details
+            </button>
           </div>
         </div>
       }
     </div>
-
-    @if (clients.length === 0) {
-      <div class="empty-state">
-        <p>No clients found</p>
-      </div>
-    }
   }
 </div>

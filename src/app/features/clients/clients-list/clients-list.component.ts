@@ -1,24 +1,26 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { ClientService, ClientWithStats } from '../../../core/services/client.service';
+import {
+  ClientService,
+  ClientWithStats,
+} from '../../../core/services/client.service';
 
 @Component({
   selector: 'app-clients-list',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './clients-list.component.html',
-  styleUrl: './clients-list.component.scss'
+  styleUrls: ['./clients-list.component.scss'],
 })
 export class ClientsListComponent implements OnInit {
   clients: ClientWithStats[] = [];
   isLoading = true;
   searchTerm = '';
+  failedAvatars = new Set<string>();
+  expandedCards: Set<string> = new Set();
 
-  constructor(
-    private clientService: ClientService,
-    private router: Router
-  ) {}
+  constructor(private clientService: ClientService, private router: Router) {}
 
   ngOnInit() {
     this.loadClients();
@@ -29,12 +31,22 @@ export class ClientsListComponent implements OnInit {
       next: (clients) => {
         this.clients = clients;
         this.isLoading = false;
+        // Reset failed avatars when loading new clients
+        this.failedAvatars.clear();
       },
       error: (err) => {
         console.error(err);
         this.isLoading = false;
-      }
+      },
     });
+  }
+
+  onAvatarError(clientId: string) {
+    this.failedAvatars.add(clientId);
+  }
+
+  hasAvatarFailed(clientId: string): boolean {
+    return this.failedAvatars.has(clientId);
   }
 
   onSearch(event: Event) {
@@ -44,9 +56,28 @@ export class ClientsListComponent implements OnInit {
   }
 
   formatDate(date: string): string {
-    // Parse ISO date string as UTC to avoid timezone conversion issues
-    const d = new Date(date + 'T00:00:00Z');
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+
+  getInitials(firstName: string, lastName: string): string {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  }
+
+  toggleCard(clientId: string, event: Event): void {
+    event.stopPropagation();
+    if (this.expandedCards.has(clientId)) {
+      this.expandedCards.delete(clientId);
+    } else {
+      this.expandedCards.add(clientId);
+    }
+  }
+
+  isCardExpanded(clientId: string): boolean {
+    return this.expandedCards.has(clientId);
   }
 
   viewClientDetail(clientId: string): void {
