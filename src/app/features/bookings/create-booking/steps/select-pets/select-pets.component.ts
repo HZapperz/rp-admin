@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChange
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ClientService, Pet } from '../../../../../core/services/client.service';
+import { SupabaseService } from '../../../../../core/services/supabase.service';
 
 @Component({
   selector: 'app-select-pets',
@@ -19,7 +20,10 @@ export class SelectPetsComponent implements OnInit, OnChanges {
   isLoading = false;
   error: string | null = null;
 
-  constructor(private clientService: ClientService) {}
+  constructor(
+    private clientService: ClientService,
+    private supabaseService: SupabaseService
+  ) {}
 
   ngOnInit(): void {
     if (this.selectedClient) {
@@ -96,5 +100,26 @@ export class SelectPetsComponent implements OnInit, OnChanges {
 
   getInitials(name: string): string {
     return name.charAt(0).toUpperCase();
+  }
+
+  getPetPhotoUrl(photoUrl: string | undefined): string | null {
+    if (!photoUrl) return null;
+    
+    // If it's already a full URL, return it
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
+    
+    // The photo_url from database format: "pet-photos/user_id/filename.jpg"
+    // Extract bucket and path
+    const parts = photoUrl.split('/');
+    if (parts.length >= 2) {
+      const bucket = parts[0];
+      const path = parts.slice(1).join('/');
+      return this.supabaseService.getPublicUrl(bucket, path);
+    }
+    
+    // Fallback: assume pet-photos bucket and use the whole string as path
+    return this.supabaseService.getPublicUrl('pet-photos', photoUrl);
   }
 }

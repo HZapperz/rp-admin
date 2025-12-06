@@ -38,6 +38,7 @@ export class SelectAddressComponent implements OnInit, OnChanges {
 
   async loadAddresses(): Promise<void> {
     if (!this.selectedClient?.id) {
+      console.warn('No client selected or client ID missing');
       return;
     }
 
@@ -45,7 +46,13 @@ export class SelectAddressComponent implements OnInit, OnChanges {
       this.isLoading = true;
       this.error = null;
 
+      console.log('Loading addresses for client:', this.selectedClient);
+      console.log('Client ID:', this.selectedClient.id);
+
       this.addresses = await this.clientService.getClientAddresses(this.selectedClient.id);
+
+      console.log('Loaded addresses:', this.addresses);
+      console.log('Address count:', this.addresses.length);
 
       // Auto-select default address if exists
       const defaultAddress = this.addresses.find(a => a.is_default);
@@ -56,7 +63,7 @@ export class SelectAddressComponent implements OnInit, OnChanges {
       this.isLoading = false;
     } catch (err) {
       console.error('Error loading addresses:', err);
-      this.error = 'Failed to load addresses';
+      this.error = 'Failed to load addresses. Please check the console for details.';
       this.isLoading = false;
     }
   }

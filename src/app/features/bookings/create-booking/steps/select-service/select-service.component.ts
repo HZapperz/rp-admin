@@ -137,14 +137,18 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   }
 
   initializePetServices(): void {
-    this.petServices = this.selectedPets.map(pet => ({
-      pet_id: pet.id,
-      pet_name: pet.name,
-      pet_size: pet.size,
-      package_type: null,
-      add_ons: [],
-      price: 0
-    }));
+    this.petServices = this.selectedPets.map(pet => {
+      // Convert size_category to uppercase format expected by priceBySize
+      const sizeCategory = pet.size_category?.toUpperCase() || 'SMALL';
+      return {
+        pet_id: pet.id,
+        pet_name: pet.name,
+        pet_size: sizeCategory,
+        package_type: null,
+        add_ons: [],
+        price: 0
+      };
+    });
     this.emitServices();
   }
 
@@ -176,7 +180,12 @@ export class SelectServiceComponent implements OnInit, OnChanges {
     if (petService.package_type) {
       const packageOption = this.packages.find(p => p.type === petService.package_type);
       if (packageOption) {
-        total += packageOption.priceBySize[petService.pet_size as keyof typeof packageOption.priceBySize];
+        // Ensure size is uppercase to match priceBySize keys
+        const sizeKey = petService.pet_size.toUpperCase() as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+        const price = packageOption.priceBySize[sizeKey];
+        if (price !== undefined) {
+          total += price;
+        }
       }
     }
 
@@ -184,7 +193,7 @@ export class SelectServiceComponent implements OnInit, OnChanges {
     petService.add_ons.forEach(addOnId => {
       const addOn = this.addOns.find(a => a.id === addOnId);
       if (addOn) {
-        const sizeKey = petService.pet_size as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+        const sizeKey = petService.pet_size.toUpperCase() as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
         const price = addOn.priceBySize[sizeKey];
         if (price !== undefined) {
           total += price;
@@ -197,16 +206,28 @@ export class SelectServiceComponent implements OnInit, OnChanges {
 
   getPackagePrice(packageType: 'BASIC' | 'PREMIUM' | 'DELUXE', size: string): number {
     const packageOption = this.packages.find(p => p.type === packageType);
-    return packageOption?.priceBySize[size as keyof typeof packageOption.priceBySize] || 0;
+    if (!packageOption) return 0;
+    
+    // Ensure size is uppercase to match priceBySize keys
+    const sizeKey = size.toUpperCase() as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+    return packageOption.priceBySize[sizeKey] || 0;
   }
 
   getAddOnPrice(addOnId: string, size: string): number {
     const addOn = this.addOns.find(a => a.id === addOnId);
-    return addOn?.priceBySize[size as keyof typeof addOn.priceBySize] || 0;
+    if (!addOn) return 0;
+    
+    // Ensure size is uppercase to match priceBySize keys
+    const sizeKey = size.toUpperCase() as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+    return addOn.priceBySize[sizeKey] || 0;
   }
 
   getTotalPrice(): number {
-    return this.petServices.reduce((sum, ps) => sum + ps.price, 0);
+    const total = this.petServices.reduce((sum, ps) => {
+      const price = ps.price || 0;
+      return sum + price;
+    }, 0);
+    return isNaN(total) ? 0 : total;
   }
 
   isAllPetsConfigured(): boolean {

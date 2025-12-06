@@ -53,10 +53,10 @@
 
         <!-- Pet Avatar -->
         <div class="pet-avatar">
-          <div *ngIf="!pet.photo_url" class="avatar-initials">
+          <div *ngIf="!getPetPhotoUrl(pet.photo_url)" class="avatar-initials">
             {{ getInitials(pet.name) }}
           </div>
-          <img *ngIf="pet.photo_url" [src]="pet.photo_url" [alt]="pet.name" />
+          <img *ngIf="getPetPhotoUrl(pet.photo_url)" [src]="getPetPhotoUrl(pet.photo_url)!" [alt]="pet.name" />
         </div>
 
         <!-- Pet Info -->

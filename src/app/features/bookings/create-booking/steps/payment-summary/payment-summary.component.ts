@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChange
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { AdminBookingService } from '../../../../../core/services/admin-booking.service';
+import { ClientService } from '../../../../../core/services/client.service';
 
 export interface PaymentConfig {
   payment_type: 'pay_on_completion' | 'use_saved_card' | 'cash_on_service';
@@ -48,10 +48,13 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
 
   isLoadingPaymentMethods = false;
 
-  constructor(private adminBookingService: AdminBookingService) {}
+  constructor(private clientService: ClientService) {}
 
   ngOnInit(): void {
     this.calculateTotals();
+    if (this.selectedClient) {
+      this.loadPaymentMethods();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -77,24 +80,21 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
 
     try {
       this.isLoadingPaymentMethods = true;
+      console.log('Loading payment methods for client:', this.selectedClient.id);
 
-      this.adminBookingService.getClientPaymentMethods(this.selectedClient.id).subscribe({
-        next: (methods) => {
-          this.paymentMethods = methods;
+      const methods = await this.clientService.getClientPaymentMethods(this.selectedClient.id);
+      console.log('Loaded payment methods:', methods);
 
-          // Auto-select default payment method
-          const defaultMethod = methods.find(m => m.is_default);
-          if (defaultMethod) {
-            this.selectedPaymentMethod = defaultMethod;
-          }
+      this.paymentMethods = methods;
 
-          this.isLoadingPaymentMethods = false;
-        },
-        error: (err) => {
-          console.error('Error loading payment methods:', err);
-          this.isLoadingPaymentMethods = false;
-        }
-      });
+      // Auto-select default payment method
+      const defaultMethod = methods.find(m => m.is_default);
+      if (defaultMethod) {
+        this.selectedPaymentMethod = defaultMethod;
+        this.emitPaymentConfig();
+      }
+
+      this.isLoadingPaymentMethods = false;
     } catch (err) {
       console.error('Error loading payment methods:', err);
       this.isLoadingPaymentMethods = false;

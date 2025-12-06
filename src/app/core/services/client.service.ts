@@ -309,6 +309,8 @@ export class ClientService {
   }
 
   async getClientAddresses(clientId: string): Promise<Address[]> {
+    console.log('Fetching addresses for client ID:', clientId);
+    
     const { data, error } = await this.supabase
       .from('addresses')
       .select('*')
@@ -317,9 +319,11 @@ export class ClientService {
 
     if (error) {
       console.error('Error fetching client addresses:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return [];
     }
 
+    console.log('Fetched addresses:', data);
     return data || [];
   }
 
