@@ -1,13 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthUser } from '../../../core/models/types';
+import { ChangeRequestService } from '../../../core/services/change-request.service';
+import { Subscription } from 'rxjs';
 
 interface NavItem {
   label: string;
   route: string;
   icon: string;
+  badge?: number;
 }
 
 @Component({
@@ -17,13 +20,18 @@ interface NavItem {
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss',
 })
-export class LayoutComponent implements OnInit {
+export class LayoutComponent implements OnInit, OnDestroy {
+  private changeRequestService = inject(ChangeRequestService);
+  private pendingCountSub?: Subscription;
+
   currentUser: AuthUser | null = null;
   isSidebarOpen = false; // Start closed on mobile, will be set based on screen size
+  pendingChangeRequests = 0;
 
   navItems: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
     { label: 'Bookings', route: '/bookings', icon: 'event' },
+    { label: 'Change Requests', route: '/change-requests', icon: 'schedule' },
     { label: 'Clients', route: '/clients', icon: 'people' },
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },
     { label: 'Services', route: '/services', icon: 'spa' },
@@ -41,11 +49,20 @@ export class LayoutComponent implements OnInit {
       this.currentUser = user;
     });
 
+    // Subscribe to pending change requests count
+    this.pendingCountSub = this.changeRequestService.pendingCount$.subscribe(count => {
+      this.pendingChangeRequests = count;
+    });
+
     // Set initial sidebar state based on screen size
     this.updateSidebarState();
 
     // Listen for window resize to update sidebar state
     window.addEventListener('resize', () => this.updateSidebarState());
+  }
+
+  ngOnDestroy(): void {
+    this.pendingCountSub?.unsubscribe();
   }
 
   private updateSidebarState(): void {

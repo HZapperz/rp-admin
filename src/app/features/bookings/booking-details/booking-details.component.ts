@@ -6,8 +6,11 @@ import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { EmailService } from '../../../core/services/email.service';
+import { ChangeRequestService, ChangeRequest } from '../../../core/services/change-request.service';
 import { BookingWithDetails } from '../../../core/models/types';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface TimelineEvent {
   timestamp: string;
@@ -45,10 +48,18 @@ export class BookingDetailsComponent implements OnInit {
   private supabase = inject(SupabaseService);
   private groomerService = inject(GroomerService);
   private emailService = inject(EmailService);
+  private changeRequestService = inject(ChangeRequestService);
+  private http = inject(HttpClient);
 
   booking: BookingWithDetails | null = null;
   loading = true;
   error: string | null = null;
+
+  // Pending change request
+  pendingChangeRequest: ChangeRequest | null = null;
+  processingChangeRequest = false;
+  changeRequestRejectReason = '';
+  showChangeRequestRejectModal = false;
 
   // Admin notes
   adminNotes: AdminNote[] = [];
@@ -116,11 +127,12 @@ export class BookingDetailsComponent implements OnInit {
     try {
       this.loading = true;
 
-      // Load booking, admin notes, and modifications in parallel
-      const [booking, notes, mods] = await Promise.all([
+      // Load booking, admin notes, modifications, and pending change request in parallel
+      const [booking, notes, mods, pendingRequest] = await Promise.all([
         this.bookingService.getBookingById(id),
         this.adminNotesService.getNotesForEntity('booking', id),
-        this.loadBookingModifications(id)
+        this.loadBookingModifications(id),
+        this.changeRequestService.getPendingRequestForBooking(id)
       ]);
 
       if (!booking) {
@@ -132,6 +144,7 @@ export class BookingDetailsComponent implements OnInit {
       this.booking = booking;
       this.adminNotes = notes;
       this.modifications = mods;
+      this.pendingChangeRequest = pendingRequest;
       this.buildTimeline();
 
       this.loading = false;
@@ -752,5 +765,149 @@ export class BookingDetailsComponent implements OnInit {
       alert('An unexpected error occurred. Please try again.');
       this.savingTimeChange = false;
     }
+  }
+
+  // Change Request Methods
+  async approveChangeRequest() {
+    if (!this.pendingChangeRequest || !this.booking) return;
+
+    if (!confirm('Are you sure you want to approve this change request? The booking will be updated to the new date/time.')) {
+      return;
+    }
+
+    try {
+      this.processingChangeRequest = true;
+      const currentUser = this.supabase.session?.user;
+
+      if (!currentUser) {
+        alert('You must be logged in to approve requests');
+        return;
+      }
+
+      const success = await this.changeRequestService.approveRequest(
+        this.pendingChangeRequest.id,
+        currentUser.id
+      );
+
+      if (success) {
+        // Send email notification
+        await this.sendChangeRequestStatusEmail('approved');
+        alert('Change request approved! The booking has been updated and notifications sent.');
+        await this.loadBookingDetails(this.booking.id);
+      } else {
+        alert('Failed to approve change request. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error approving change request:', err);
+      alert('An error occurred while approving the request.');
+    } finally {
+      this.processingChangeRequest = false;
+    }
+  }
+
+  openChangeRequestRejectModal() {
+    this.changeRequestRejectReason = '';
+    this.showChangeRequestRejectModal = true;
+  }
+
+  closeChangeRequestRejectModal() {
+    this.showChangeRequestRejectModal = false;
+    this.changeRequestRejectReason = '';
+  }
+
+  async confirmRejectChangeRequest() {
+    if (!this.pendingChangeRequest || !this.booking) return;
+
+    try {
+      this.processingChangeRequest = true;
+      const currentUser = this.supabase.session?.user;
+
+      if (!currentUser) {
+        alert('You must be logged in to reject requests');
+        return;
+      }
+
+      const success = await this.changeRequestService.rejectRequest(
+        this.pendingChangeRequest.id,
+        currentUser.id,
+        this.changeRequestRejectReason || undefined
+      );
+
+      if (success) {
+        // Send email notification
+        await this.sendChangeRequestStatusEmail('rejected', this.changeRequestRejectReason);
+        alert('Change request rejected. The customer has been notified.');
+        this.closeChangeRequestRejectModal();
+        await this.loadBookingDetails(this.booking.id);
+      } else {
+        alert('Failed to reject change request. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error rejecting change request:', err);
+      alert('An error occurred while rejecting the request.');
+    } finally {
+      this.processingChangeRequest = false;
+    }
+  }
+
+  private async sendChangeRequestStatusEmail(type: 'approved' | 'rejected', adminResponse?: string) {
+    if (!this.pendingChangeRequest || !this.booking) return;
+
+    try {
+      // Fetch client info
+      const { data: client } = await this.supabase.client
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', this.pendingChangeRequest.client_id)
+        .single();
+
+      // Fetch pets
+      const { data: bookingPets } = await this.supabase.client
+        .from('booking_pets')
+        .select('pets(name)')
+        .eq('booking_id', this.booking.id);
+
+      const emailData = {
+        type,
+        booking: {
+          id: this.booking.id,
+          original_date: this.pendingChangeRequest.original_date,
+          original_time_start: this.pendingChangeRequest.original_time_start,
+          original_time_end: this.pendingChangeRequest.original_time_end,
+          new_date: this.pendingChangeRequest.requested_date,
+          new_time_start: this.pendingChangeRequest.requested_time_start,
+          new_time_end: this.pendingChangeRequest.requested_time_end,
+          address: this.booking.address || '',
+          city: this.booking.city || '',
+          state: this.booking.state || '',
+          service_name: 'Grooming Service',
+        },
+        client: {
+          first_name: client?.first_name || '',
+          last_name: client?.last_name || '',
+          email: client?.email || '',
+        },
+        groomer: {
+          first_name: this.booking.groomer?.first_name || '',
+          last_name: this.booking.groomer?.last_name || '',
+          email: this.booking.groomer?.email || '',
+        },
+        pets: bookingPets?.map((bp: any) => ({ name: bp.pets?.name })) || [],
+        admin_response: adminResponse,
+      };
+
+      await this.http.post(`${environment.apiUrl}/send-change-request-emails`, emailData).toPromise();
+    } catch (err) {
+      console.error('Error sending change request status email:', err);
+    }
+  }
+
+  formatTimeShort(timeStr: string): string {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   }
 }

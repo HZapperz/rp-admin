@@ -44,6 +44,9 @@
       >
         <span class="nav-icon material-icons">{{ item.icon }}</span>
         <span class="nav-label">{{ item.label }}</span>
+        @if (item.route === '/change-requests' && pendingChangeRequests > 0) {
+        <span class="nav-badge">{{ pendingChangeRequests }}</span>
+        }
       </a>
       }
     </nav>

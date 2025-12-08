@@ -297,6 +297,7 @@
     .nav-label {
       font-size: 0.95rem;
       font-weight: 500;
+      flex: 1;
 
       @media (max-width: 768px) {
         font-size: 1.125rem;
@@ -306,6 +307,23 @@
 
       @media (min-width: 769px) {
         font-size: 0.875rem;
+      }
+    }
+
+    .nav-badge {
+      background: #f59e0b;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      min-width: 20px;
+      text-align: center;
+      margin-left: auto;
+
+      @media (max-width: 768px) {
+        font-size: 0.8rem;
+        padding: 3px 10px;
       }
     }
   }

@@ -198,7 +198,8 @@ function generateClientEmailHTML(data: BookingEmailData): string {
         - Your groomer will arrive at the scheduled time<br>
         - The grooming service will be done in our mobile van<br>
         - We'll send you before and after photos<br>
-        - Payment will be processed after service completion
+        - Payment will be processed after service completion<br>
+        - Need to reschedule? Text us at (832) 504-0760 or email support@royalpawzusa.com
       </p>
     </div>
 

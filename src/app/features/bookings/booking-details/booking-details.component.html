@@ -33,6 +33,72 @@
       </button>
     </div>
 
+    <!-- Pending Change Request Alert -->
+    <div *ngIf="pendingChangeRequest" class="change-request-alert">
+      <div class="alert-header">
+        <div class="alert-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="alert-content">
+          <h3>Pending Time Change Request</h3>
+          <p>Customer has requested to reschedule this booking</p>
+        </div>
+      </div>
+
+      <div class="change-request-details">
+        <div class="time-comparison">
+          <div class="time-box current">
+            <span class="time-label">Current</span>
+            <span class="time-date">{{ formatDate(pendingChangeRequest.original_date) }}</span>
+            <span class="time-slot">{{ formatTimeShort(pendingChangeRequest.original_time_start) }} - {{ formatTimeShort(pendingChangeRequest.original_time_end) }}</span>
+          </div>
+          <div class="arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+          <div class="time-box requested">
+            <span class="time-label">Requested</span>
+            <span class="time-date">{{ formatDate(pendingChangeRequest.requested_date) }}</span>
+            <span class="time-slot">{{ formatTimeShort(pendingChangeRequest.requested_time_start) }} - {{ formatTimeShort(pendingChangeRequest.requested_time_end) }}</span>
+          </div>
+        </div>
+
+        <div class="reason-box">
+          <span class="reason-label">Reason:</span>
+          <p class="reason-text">{{ pendingChangeRequest.reason }}</p>
+        </div>
+      </div>
+
+      <div class="change-request-actions">
+        <button
+          class="btn btn-approve"
+          (click)="approveChangeRequest()"
+          [disabled]="processingChangeRequest"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          {{ processingChangeRequest ? 'Processing...' : 'Approve Change' }}
+        </button>
+        <button
+          class="btn btn-reject"
+          (click)="openChangeRequestRejectModal()"
+          [disabled]="processingChangeRequest"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Reject
+        </button>
+      </div>
+    </div>
+
     <div class="content-grid">
       <!-- Main Content Column -->
       <div class="main-column">
@@ -756,6 +822,40 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
       </button>
+    </div>
+  </div>
+
+  <!-- Change Request Reject Modal -->
+  <div *ngIf="showChangeRequestRejectModal" class="reject-dialog-overlay" (click)="closeChangeRequestRejectModal()">
+    <div class="reject-dialog" (click)="$event.stopPropagation()">
+      <div class="reject-dialog-header">
+        <h3>Reject Time Change Request</h3>
+        <button (click)="closeChangeRequestRejectModal()" class="dialog-close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="reject-dialog-body">
+        <p class="reject-warning">Are you sure you want to reject this time change request? The customer will be notified of your decision.</p>
+        <label class="form-label">Reason for Rejection (optional)</label>
+        <textarea
+          [(ngModel)]="changeRequestRejectReason"
+          class="rejection-textarea"
+          rows="4"
+          placeholder="Provide a reason for rejecting this request (e.g., groomer unavailable, time slot conflicts)..."></textarea>
+      </div>
+      <div class="reject-dialog-footer">
+        <button
+          (click)="confirmRejectChangeRequest()"
+          [disabled]="processingChangeRequest"
+          class="btn-confirm-reject">
+          {{ processingChangeRequest ? 'Processing...' : 'Confirm Rejection' }}
+        </button>
+        <button (click)="closeChangeRequestRejectModal()" class="btn-cancel-dialog">
+          Cancel
+        </button>
+      </div>
     </div>
   </div>
 

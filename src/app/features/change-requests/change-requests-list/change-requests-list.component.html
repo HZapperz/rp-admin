@@ -1,0 +1,207 @@
+<div class="change-requests-container">
+  <div class="header">
+    <h1>Change Requests</h1>
+    <p class="subtitle">Review and manage customer time change requests</p>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label for="status-filter">Status:</label>
+      <select id="status-filter" [value]="selectedStatus" (change)="onStatusFilterChange($event)">
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+        <option value="all">All</option>
+      </select>
+    </div>
+
+    <div class="search-group">
+      <input
+        type="text"
+        placeholder="Search by client name, email, or pet..."
+        [value]="searchTerm"
+        (input)="onSearchChange($event)"
+      />
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading change requests...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && !error && filteredRequests.length === 0" class="empty-state">
+    <div class="empty-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+        <path d="M8 14h.01"></path>
+        <path d="M12 14h.01"></path>
+        <path d="M16 14h.01"></path>
+      </svg>
+    </div>
+    <h3>No change requests found</h3>
+    <p *ngIf="selectedStatus === 'pending'">There are no pending requests to review.</p>
+    <p *ngIf="selectedStatus !== 'pending'">No requests match your current filters.</p>
+  </div>
+
+  <!-- Requests List -->
+  <div *ngIf="!isLoading && !error && filteredRequests.length > 0" class="requests-list">
+    <div *ngFor="let request of filteredRequests" class="request-card" [class]="getStatusClass(request.status)">
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="client-info">
+          <h3>{{ request.client?.first_name }} {{ request.client?.last_name }}</h3>
+          <span class="email">{{ request.client?.email }}</span>
+        </div>
+        <div class="status-badge" [class]="getStatusClass(request.status)">
+          {{ getStatusLabel(request.status) }}
+        </div>
+      </div>
+
+      <!-- Pet Info -->
+      <div class="pet-info" *ngIf="request.pets && request.pets.length > 0">
+        <span class="label">Pet(s):</span>
+        <span class="pets">
+          <span *ngFor="let pet of request.pets" class="pet-tag">{{ pet.name }}</span>
+        </span>
+      </div>
+
+      <!-- Time Change Details -->
+      <div class="time-change-details">
+        <div class="time-column original">
+          <span class="time-label">Current Time</span>
+          <span class="date">{{ formatDate(request.original_date) }}</span>
+          <span class="time">{{ formatTime(request.original_time_start) }} - {{ formatTime(request.original_time_end) }}</span>
+        </div>
+        <div class="arrow">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
+        <div class="time-column requested">
+          <span class="time-label">Requested Time</span>
+          <span class="date">{{ formatDate(request.requested_date) }}</span>
+          <span class="time">{{ formatTime(request.requested_time_start) }} - {{ formatTime(request.requested_time_end) }}</span>
+        </div>
+      </div>
+
+      <!-- Reason -->
+      <div class="reason-section">
+        <span class="label">Reason for Change:</span>
+        <p class="reason-text">{{ request.reason }}</p>
+      </div>
+
+      <!-- Admin Response (for rejected) -->
+      <div *ngIf="request.status === 'rejected' && request.admin_response" class="admin-response">
+        <span class="label">Admin Response:</span>
+        <p class="response-text">{{ request.admin_response }}</p>
+      </div>
+
+      <!-- Timestamps -->
+      <div class="timestamps">
+        <span class="submitted">Submitted: {{ formatDateTime(request.created_at) }}</span>
+        <span *ngIf="request.reviewed_at" class="reviewed">Reviewed: {{ formatDateTime(request.reviewed_at) }}</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="card-actions" *ngIf="request.status === 'pending'">
+        <button
+          class="btn btn-approve"
+          (click)="approveRequest(request)"
+          [disabled]="isProcessing"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Approve
+        </button>
+        <button
+          class="btn btn-reject"
+          (click)="openRejectModal(request)"
+          [disabled]="isProcessing"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Reject
+        </button>
+        <button
+          class="btn btn-view"
+          (click)="viewBooking(request.booking_id)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          View Booking
+        </button>
+      </div>
+
+      <div class="card-actions" *ngIf="request.status !== 'pending'">
+        <button
+          class="btn btn-view"
+          (click)="viewBooking(request.booking_id)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          View Booking
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div *ngIf="showRejectModal" class="modal-overlay" (click)="closeRejectModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Reject Change Request</h2>
+      <button class="close-btn" (click)="closeRejectModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p>Please provide a reason for rejecting this request. This will be shared with the customer.</p>
+
+      <div class="form-group">
+        <label for="reject-reason">Reason (optional):</label>
+        <textarea
+          id="reject-reason"
+          [(ngModel)]="rejectReason"
+          placeholder="e.g., The requested time slot is not available, groomer is already booked..."
+          rows="4"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-cancel" (click)="closeRejectModal()">Cancel</button>
+      <button
+        class="btn btn-confirm-reject"
+        (click)="confirmReject()"
+        [disabled]="isProcessing"
+      >
+        {{ isProcessing ? 'Processing...' : 'Confirm Rejection' }}
+      </button>
+    </div>
+  </div>
+</div>
