@@ -50,6 +50,10 @@
               <span class="label">Member Since:</span>
               <span class="value">{{ formatDate(clientData.client.created_at) }}</span>
             </div>
+            <div class="detail-item">
+              <span class="label">Last Logged In:</span>
+              <span class="value">{{ formatDateTime(clientData.client.last_sign_in_at) }}</span>
+            </div>
             <div class="detail-item" *ngIf="clientData.client.blocked_at">
               <span class="label">Status:</span>
               <span class="value status-blocked">Blocked</span>
@@ -77,7 +81,15 @@
 
     <!-- Pets Section -->
     <div class="section">
-      <h3 class="section-title">Pets ({{ clientData.pets.length }})</h3>
+      <div class="section-header">
+        <h3 class="section-title">Pets ({{ clientData.pets.length }})</h3>
+        <button class="btn btn-primary btn-sm" (click)="openAddPetModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Add Pet
+        </button>
+      </div>
       <div *ngIf="clientData.pets.length === 0" class="empty-state">
         No pets registered
       </div>
@@ -320,6 +332,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Add Pet Modal -->
+    <app-add-pet-modal
+      *ngIf="showAddPetModal"
+      [clientId]="clientData.client.id"
+      (close)="closeAddPetModal()"
+      (petAdded)="onPetAdded()"
+    ></app-add-pet-modal>
   </div>
 </div>
 

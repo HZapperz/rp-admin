@@ -13,11 +13,12 @@ import {
 } from '../../../core/services/client.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { AddPetModalComponent } from '../../../shared/components/add-pet-modal/add-pet-modal.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, AddPetModalComponent],
   templateUrl: './client-detail.component.html',
   styleUrls: ['./client-detail.component.scss']
 })
@@ -29,6 +30,9 @@ export class ClientDetailComponent implements OnInit {
   newNoteText = '';
   newNotePriority: 'low' | 'medium' | 'high' | 'urgent' = 'medium';
   addingNote = false;
+
+  // Add Pet Modal
+  showAddPetModal = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -105,14 +109,55 @@ export class ClientDetailComponent implements OnInit {
     this.router.navigate(['/clients']);
   }
 
-  formatDate(dateString: string): string {
-    // Parse ISO date string as UTC to avoid timezone conversion issues
-    const date = new Date(dateString + 'T00:00:00Z');
+  // Add Pet Modal methods
+  openAddPetModal(): void {
+    this.showAddPetModal = true;
+  }
+
+  closeAddPetModal(): void {
+    this.showAddPetModal = false;
+  }
+
+  async onPetAdded(): Promise<void> {
+    // Refresh pets list after adding a new pet
+    if (this.clientData) {
+      this.clientData.pets = await this.clientService.getClientPets(this.clientData.client.id);
+    }
+    this.showAddPetModal = false;
+  }
+
+  formatDate(dateString: string | null | undefined): string {
+    if (!dateString) return 'N/A';
+
+    // If it's already a full timestamp, use it directly
+    // Otherwise append time component for date-only strings
+    const date = dateString.includes('T') || dateString.includes(' ')
+      ? new Date(dateString)
+      : new Date(dateString + 'T00:00:00Z');
+
+    if (isNaN(date.getTime())) return 'N/A';
+
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       timeZone: 'UTC'
+    });
+  }
+
+  formatDateTime(dateString: string | null | undefined): string {
+    if (!dateString) return 'Never';
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Never';
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     });
   }
 

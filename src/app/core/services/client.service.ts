@@ -14,6 +14,7 @@ export interface ClientWithStats {
   total_spent: number;
   last_booking_date?: string;
   blocked_at?: string;
+  last_sign_in_at?: string;
 }
 
 export interface Pet {
@@ -203,15 +204,21 @@ export class ClientService {
 
     if (!client) return null;
 
-    // Get booking stats
-    const { data: bookings } = await this.supabase
-      .from('bookings')
-      .select('total_amount, scheduled_date')
-      .eq('client_id', id)
-      .eq('status', 'completed');
+    // Get booking stats and auth info in parallel
+    const [bookingsResult, authInfoResult] = await Promise.all([
+      this.supabase
+        .from('bookings')
+        .select('total_amount, scheduled_date')
+        .eq('client_id', id)
+        .eq('status', 'completed'),
+      this.supabase.client.rpc('get_user_auth_info', { user_id: id })
+    ]);
+
+    const bookings = bookingsResult.data as { total_amount: number; scheduled_date: string }[] | null;
+    const authInfo = authInfoResult.data as { last_sign_in_at: string | null }[] | null;
 
     const totalBookings = bookings?.length || 0;
-    const totalSpent = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+    const totalSpent = bookings?.reduce((sum: number, b) => sum + (b.total_amount || 0), 0) || 0;
     const lastBookingDate = bookings && bookings.length > 0
       ? bookings.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())[0].scheduled_date
       : undefined;
@@ -220,7 +227,8 @@ export class ClientService {
       ...client,
       total_bookings: totalBookings,
       total_spent: totalSpent,
-      last_booking_date: lastBookingDate
+      last_booking_date: lastBookingDate,
+      last_sign_in_at: authInfo?.[0]?.last_sign_in_at || null
     };
   }
 
@@ -448,5 +456,82 @@ export class ClientService {
       console.error('Error fetching client detail data:', error);
       return null;
     }
+  }
+
+  // Upload file to Supabase Storage
+  async uploadFile(
+    file: File,
+    bucket: string,
+    userId: string
+  ): Promise<string | null> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+
+    const { error: uploadError } = await this.supabase.client.storage
+      .from(bucket)
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return null;
+    }
+
+    // Return storage path format: bucket/path
+    return `${bucket}/${filePath}`;
+  }
+
+  // Create a new pet for a client
+  async createPet(clientId: string, petData: {
+    name: string;
+    breed?: string;
+    date_of_birth?: string;
+    size_category?: 'small' | 'medium' | 'large' | 'xl';
+    photo_url?: string | null;
+    rabies_certificate_url?: string | null;
+    rabies_pending?: boolean;
+    has_allergies?: boolean;
+    allergy_details?: string;
+    has_skin_conditions?: boolean;
+    skin_condition_details?: string;
+    is_friendly?: boolean;
+    blow_dryer_reaction?: string;
+    water_reaction?: string;
+    has_behavioral_issues?: boolean;
+    behavioral_issue_details?: string;
+    additional_notes?: string;
+  }): Promise<Pet | null> {
+    const { data, error } = await this.supabase
+      .from('pets')
+      .insert({
+        user_id: clientId,
+        name: petData.name.trim(),
+        breed: petData.breed?.trim() || null,
+        date_of_birth: petData.date_of_birth || null,
+        size_category: petData.size_category || 'medium',
+        photo_url: petData.photo_url || null,
+        rabies_certificate_url: petData.rabies_certificate_url || null,
+        rabies_pending: petData.rabies_pending || false,
+        rabies_pending_acknowledged_at: petData.rabies_pending ? new Date().toISOString() : null,
+        has_allergies: petData.has_allergies || false,
+        allergy_details: petData.has_allergies ? petData.allergy_details?.trim() : null,
+        has_skin_conditions: petData.has_skin_conditions || false,
+        skin_condition_details: petData.has_skin_conditions ? petData.skin_condition_details?.trim() : null,
+        is_friendly: petData.is_friendly ?? true,
+        blow_dryer_reaction: petData.blow_dryer_reaction || null,
+        water_reaction: petData.water_reaction || null,
+        has_behavioral_issues: petData.has_behavioral_issues || false,
+        behavioral_issue_details: petData.has_behavioral_issues ? petData.behavioral_issue_details?.trim() : null,
+        additional_notes: petData.additional_notes?.trim() || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating pet:', error);
+      throw error;
+    }
+
+    return data;
   }
 }

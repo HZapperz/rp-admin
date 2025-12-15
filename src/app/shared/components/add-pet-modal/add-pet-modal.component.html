@@ -1,0 +1,382 @@
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="stopPropagation($event)">
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>Add Pet</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar">
+      <div class="progress-steps">
+        <div
+          *ngFor="let step of [1,2,3,4,5]; let i = index"
+          class="progress-step"
+          [class.active]="currentStep === step"
+          [class.completed]="currentStep > step"
+          (click)="goToStep(step)"
+        >
+          <div class="step-number">{{ step }}</div>
+          <div class="step-label">
+            {{ ['Basic', 'Breed', 'Health', 'Behavior', 'Docs'][i] }}
+          </div>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" [style.width.%]="((currentStep - 1) / (totalSteps - 1)) * 100"></div>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="modal-body">
+      <!-- Step 1: Basic Info -->
+      <div *ngIf="currentStep === 1" class="step-content">
+        <div class="step-header">
+          <span class="step-icon">🐕</span>
+          <h3>Basic Information</h3>
+          <p>Let's start with the basics</p>
+        </div>
+
+        <div class="form-group">
+          <label for="petName">Pet Name *</label>
+          <input
+            type="text"
+            id="petName"
+            [(ngModel)]="formData.name"
+            class="form-control"
+            placeholder="Enter pet's name"
+            [class.error]="stepErrors[1]"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Pet Photo (Optional)</label>
+          <div class="photo-upload">
+            <div *ngIf="photoPreview" class="photo-preview">
+              <img [src]="photoPreview" alt="Pet photo preview" />
+              <button class="remove-photo" (click)="removePhoto()">Remove</button>
+            </div>
+            <div *ngIf="!photoPreview" class="upload-placeholder">
+              <input type="file" accept="image/*" (change)="onPhotoSelected($event)" id="photoInput" />
+              <label for="photoInput" class="upload-label">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                </svg>
+                <span>Click to upload photo</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="stepErrors[1]" class="error-message">{{ stepErrors[1] }}</div>
+      </div>
+
+      <!-- Step 2: Breed & Size -->
+      <div *ngIf="currentStep === 2" class="step-content">
+        <div class="step-header">
+          <span class="step-icon">📏</span>
+          <h3>Breed & Size</h3>
+          <p>Tell us about your pet's breed and size</p>
+        </div>
+
+        <div class="form-group">
+          <label for="breed">Breed *</label>
+          <div class="breed-search">
+            <input
+              type="text"
+              id="breed"
+              [(ngModel)]="breedSearchQuery"
+              (input)="onBreedSearch()"
+              (focus)="onBreedInputFocus()"
+              (blur)="onBreedInputBlur()"
+              class="form-control"
+              placeholder="Search for breed..."
+              autocomplete="off"
+            />
+            <div *ngIf="showBreedDropdown && breedSearchResults.length > 0" class="breed-dropdown">
+              <div
+                *ngFor="let breed of breedSearchResults"
+                class="breed-option"
+                (mousedown)="selectBreed(breed)"
+              >
+                {{ breed }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="dob">Date of Birth (Optional)</label>
+          <input
+            type="date"
+            id="dob"
+            [(ngModel)]="formData.dateOfBirth"
+            class="form-control"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Size Category *</label>
+          <div class="size-options">
+            <button
+              type="button"
+              class="size-btn"
+              [class.selected]="formData.sizeCategory === 'small'"
+              (click)="formData.sizeCategory = 'small'"
+            >SMALL</button>
+            <button
+              type="button"
+              class="size-btn"
+              [class.selected]="formData.sizeCategory === 'medium'"
+              (click)="formData.sizeCategory = 'medium'"
+            >MEDIUM</button>
+            <button
+              type="button"
+              class="size-btn"
+              [class.selected]="formData.sizeCategory === 'large'"
+              (click)="formData.sizeCategory = 'large'"
+            >LARGE</button>
+            <button
+              type="button"
+              class="size-btn"
+              [class.selected]="formData.sizeCategory === 'xl'"
+              (click)="formData.sizeCategory = 'xl'"
+            >XL</button>
+          </div>
+        </div>
+
+        <div *ngIf="stepErrors[2]" class="error-message">{{ stepErrors[2] }}</div>
+      </div>
+
+      <!-- Step 3: Health -->
+      <div *ngIf="currentStep === 3" class="step-content">
+        <div class="step-header">
+          <span class="step-icon">🏥</span>
+          <h3>Health Information</h3>
+          <p>Important health details for safe grooming</p>
+        </div>
+
+        <div class="form-group">
+          <label>Does your pet have any allergies? *</label>
+          <div class="yes-no-buttons">
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.hasAllergies === true"
+              (click)="formData.hasAllergies = true"
+            >Yes</button>
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.hasAllergies === false"
+              (click)="formData.hasAllergies = false"
+            >No</button>
+          </div>
+          <textarea
+            *ngIf="formData.hasAllergies"
+            [(ngModel)]="formData.allergyDetails"
+            class="form-control detail-textarea"
+            placeholder="Please describe the allergies..."
+            maxlength="500"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Does your pet have any skin conditions? *</label>
+          <div class="yes-no-buttons">
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.hasSkinConditions === true"
+              (click)="formData.hasSkinConditions = true"
+            >Yes</button>
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.hasSkinConditions === false"
+              (click)="formData.hasSkinConditions = false"
+            >No</button>
+          </div>
+          <textarea
+            *ngIf="formData.hasSkinConditions"
+            [(ngModel)]="formData.skinConditionDetails"
+            class="form-control detail-textarea"
+            placeholder="Please describe the skin conditions..."
+            maxlength="500"
+          ></textarea>
+        </div>
+
+        <div *ngIf="stepErrors[3]" class="error-message">{{ stepErrors[3] }}</div>
+      </div>
+
+      <!-- Step 4: Behavior -->
+      <div *ngIf="currentStep === 4" class="step-content">
+        <div class="step-header">
+          <span class="step-icon">🐾</span>
+          <h3>Behavior & Temperament</h3>
+          <p>Help us understand your pet's personality</p>
+        </div>
+
+        <div class="form-group">
+          <label>Is your pet friendly with people and other dogs? *</label>
+          <div class="yes-no-buttons">
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.isFriendly === true"
+              (click)="formData.isFriendly = true"
+            >Yes</button>
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.isFriendly === false"
+              (click)="formData.isFriendly = false"
+            >No</button>
+          </div>
+          <div *ngIf="formData.isFriendly === false" class="warning-notice">
+            We only accept friendly dogs at this time for the safety of our groomers.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>How does your pet react to blow dryers?</label>
+          <select [(ngModel)]="formData.blowDryerReaction" class="form-control">
+            <option value="">Select reaction...</option>
+            <option value="calm">Calm</option>
+            <option value="nervous">Nervous</option>
+            <option value="fearful">Fearful</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>How does your pet react to water/baths?</label>
+          <select [(ngModel)]="formData.waterReaction" class="form-control">
+            <option value="">Select reaction...</option>
+            <option value="calm">Loves it</option>
+            <option value="nervous">Tolerates</option>
+            <option value="fearful">Dislikes</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Does your pet have any behavioral issues? *</label>
+          <div class="yes-no-buttons">
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.hasBehavioralIssues === true"
+              (click)="formData.hasBehavioralIssues = true"
+            >Yes</button>
+            <button
+              type="button"
+              class="yn-btn"
+              [class.selected]="formData.hasBehavioralIssues === false"
+              (click)="formData.hasBehavioralIssues = false"
+            >No</button>
+          </div>
+          <textarea
+            *ngIf="formData.hasBehavioralIssues"
+            [(ngModel)]="formData.behavioralIssueDetails"
+            class="form-control detail-textarea"
+            placeholder="Please describe the behavioral issues..."
+            maxlength="500"
+          ></textarea>
+        </div>
+
+        <div *ngIf="stepErrors[4]" class="error-message">{{ stepErrors[4] }}</div>
+      </div>
+
+      <!-- Step 5: Documentation -->
+      <div *ngIf="currentStep === 5" class="step-content">
+        <div class="step-header">
+          <span class="step-icon">📄</span>
+          <h3>Documentation</h3>
+          <p>Upload required documents</p>
+        </div>
+
+        <div class="form-group">
+          <label>Rabies Vaccination Certificate *</label>
+          <div class="rabies-upload">
+            <div *ngIf="rabiesPreview" class="file-preview">
+              <span class="file-name">{{ rabiesPreview }}</span>
+              <button class="remove-file" (click)="removeRabiesCert()">Remove</button>
+            </div>
+            <div *ngIf="!rabiesPreview && !formData.rabiesPending" class="upload-placeholder small">
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onRabiesCertSelected($event)" id="rabiesInput" />
+              <label for="rabiesInput" class="upload-label">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                </svg>
+                <span>Upload certificate</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="pending-option">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                [(ngModel)]="formData.rabiesPending"
+                (change)="onRabiesPendingChange()"
+              />
+              <span>I don't have it yet - will upload before first appointment</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Additional Notes (Optional)</label>
+          <textarea
+            id="notes"
+            [(ngModel)]="formData.additionalNotes"
+            class="form-control"
+            placeholder="Any additional information about your pet..."
+            rows="4"
+            maxlength="1000"
+          ></textarea>
+        </div>
+
+        <div *ngIf="stepErrors[5]" class="error-message">{{ stepErrors[5] }}</div>
+      </div>
+
+      <!-- Error message -->
+      <div *ngIf="error" class="error-banner">
+        {{ error }}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button
+        *ngIf="currentStep > 1"
+        class="btn btn-secondary"
+        (click)="prevStep()"
+        [disabled]="saving"
+      >
+        Back
+      </button>
+      <div class="spacer"></div>
+      <button
+        *ngIf="currentStep < totalSteps"
+        class="btn btn-primary"
+        (click)="nextStep()"
+      >
+        Continue
+      </button>
+      <button
+        *ngIf="currentStep === totalSteps"
+        class="btn btn-primary"
+        (click)="submitPet()"
+        [disabled]="saving"
+      >
+        {{ saving ? 'Adding Pet...' : 'Add Pet' }}
+      </button>
+    </div>
+  </div>
+</div>
