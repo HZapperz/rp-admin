@@ -480,6 +480,160 @@
                 <span class="value code">{{ booking.tip_payment_intent_id }}</span>
               </div>
             </div>
+
+            <!-- Payment Actions -->
+            <div class="payment-actions" *ngIf="booking.payment_intent_id">
+              <h4 class="section-subtitle">Payment Actions</h4>
+
+              <!-- Success/Error Messages -->
+              <div *ngIf="paymentSuccess" class="alert alert-success">
+                {{ paymentSuccess }}
+              </div>
+              <div *ngIf="paymentError" class="alert alert-error">
+                {{ paymentError }}
+              </div>
+
+              <div class="action-buttons">
+                <!-- Capture Payment Button -->
+                <button
+                  *ngIf="booking.payment_status === 'authorized' && !booking.payment_captured_at"
+                  (click)="openCaptureModal()"
+                  class="btn btn-capture">
+                  Capture Payment (${{ booking.total_amount }})
+                </button>
+
+                <!-- Add Tip Button -->
+                <button
+                  *ngIf="booking.payment_captured_at && !booking.tip_amount && booking.payment_method_id"
+                  (click)="openTipModal()"
+                  class="btn btn-secondary">
+                  Add Tip
+                </button>
+
+                <!-- Payment Already Captured Notice -->
+                <span *ngIf="booking.payment_captured_at" class="captured-notice">
+                  Payment captured on {{ booking.payment_captured_at | date:'short' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Groomer Earnings Breakdown -->
+            <div class="earnings-breakdown" *ngIf="earningsBreakdown">
+              <h4 class="section-subtitle">Groomer Earnings Breakdown</h4>
+
+              <div class="earnings-grid">
+                <div class="earnings-row">
+                  <span class="label">Service Gross:</span>
+                  <span class="value">${{ earningsBreakdown.service_amount_gross?.toFixed(2) }}</span>
+                </div>
+                <div class="earnings-row">
+                  <span class="label">Stripe Fee:</span>
+                  <span class="value text-red">-${{ earningsBreakdown.service_stripe_fee?.toFixed(2) }}</span>
+                </div>
+                <div class="earnings-row">
+                  <span class="label">Commission ({{ (earningsBreakdown.commission_rate * 100).toFixed(0) }}%):</span>
+                  <span class="value">${{ earningsBreakdown.service_commission?.toFixed(2) }}</span>
+                </div>
+                <div class="earnings-row" *ngIf="earningsBreakdown.tip_amount > 0">
+                  <span class="label">Tip (Net of fees):</span>
+                  <span class="value text-green">${{ earningsBreakdown.tip_amount_net?.toFixed(2) }}</span>
+                </div>
+                <div class="earnings-row total">
+                  <span class="label">Total Groomer Payout:</span>
+                  <span class="value">${{ earningsBreakdown.groomer_amount?.toFixed(2) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Capture Payment Modal -->
+        <div class="modal-overlay" *ngIf="showCaptureModal" (click)="closeCaptureModal()">
+          <div class="capture-modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3>Capture Payment</h3>
+              <button class="modal-close" (click)="closeCaptureModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div class="modal-body">
+              <p class="modal-description">Capture the payment for this completed service. You can optionally add a tip amount.</p>
+
+              <div class="payment-summary">
+                <div class="summary-row">
+                  <span class="summary-label">Service Amount:</span>
+                  <span class="summary-value">${{ captureAmount.toFixed(2) }}</span>
+                </div>
+                <div class="summary-row tip-row">
+                  <span class="summary-label">Tip Amount:</span>
+                  <div class="tip-input-wrapper">
+                    <span class="currency-prefix">$</span>
+                    <input
+                      type="number"
+                      [(ngModel)]="captureTipAmount"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      class="tip-input">
+                  </div>
+                </div>
+                <div class="summary-row total-row">
+                  <span class="summary-label">Total to Capture:</span>
+                  <span class="summary-value total">${{ (captureAmount + (captureTipAmount || 0)).toFixed(2) }}</span>
+                </div>
+              </div>
+
+              <div *ngIf="paymentError" class="alert alert-error">
+                {{ paymentError }}
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button (click)="closeCaptureModal()" class="btn btn-secondary">Cancel</button>
+              <button
+                (click)="capturePayment()"
+                [disabled]="isCapturingPayment"
+                class="btn btn-capture-confirm">
+                {{ isCapturingPayment ? 'Processing...' : 'Capture $' + (captureAmount + (captureTipAmount || 0)).toFixed(2) }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tip Modal -->
+        <div class="modal-overlay" *ngIf="showTipModal" (click)="closeTipModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <h3>Add Tip</h3>
+            <p>Enter the tip amount to charge to the client's card.</p>
+
+            <div class="form-group">
+              <label>Tip Amount ($)</label>
+              <input
+                type="number"
+                [(ngModel)]="tipAmount"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                class="form-input">
+            </div>
+
+            <div *ngIf="paymentError" class="alert alert-error">
+              {{ paymentError }}
+            </div>
+
+            <div class="modal-actions">
+              <button (click)="closeTipModal()" class="btn btn-secondary">Cancel</button>
+              <button
+                (click)="processTip()"
+                [disabled]="isProcessingTip || tipAmount <= 0"
+                class="btn btn-primary">
+                {{ isProcessingTip ? 'Processing...' : 'Charge Tip' }}
+              </button>
+            </div>
           </div>
         </div>
 

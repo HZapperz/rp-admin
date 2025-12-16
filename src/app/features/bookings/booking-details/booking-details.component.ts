@@ -113,6 +113,18 @@ export class BookingDetailsComponent implements OnInit {
     { label: '3:30 PM - 4:45 PM', start: '15:30:00', end: '16:45:00' },
   ];
 
+  // Payment management
+  isCapturingPayment = false;
+  isProcessingTip = false;
+  showCaptureModal = false;
+  showTipModal = false;
+  tipAmount: number = 0;
+  captureAmount: number = 0;
+  captureTipAmount: number = 0;
+  paymentError: string | null = null;
+  paymentSuccess: string | null = null;
+  earningsBreakdown: any = null;
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -146,6 +158,11 @@ export class BookingDetailsComponent implements OnInit {
       this.modifications = mods;
       this.pendingChangeRequest = pendingRequest;
       this.buildTimeline();
+
+      // Load earnings breakdown if payment was captured
+      if (booking.payment_captured_at) {
+        this.loadEarningsBreakdown();
+      }
 
       this.loading = false;
     } catch (err: any) {
@@ -909,5 +926,127 @@ export class BookingDetailsComponent implements OnInit {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  // Payment Management Methods
+  openCaptureModal() {
+    if (!this.booking) return;
+    this.captureAmount = this.booking.total_amount || 0;
+    this.captureTipAmount = 0;
+    this.showCaptureModal = true;
+    this.paymentError = null;
+    this.paymentSuccess = null;
+  }
+
+  closeCaptureModal() {
+    this.showCaptureModal = false;
+    this.captureTipAmount = 0;
+  }
+
+  async capturePayment() {
+    if (!this.booking) return;
+
+    this.isCapturingPayment = true;
+    this.paymentError = null;
+    this.paymentSuccess = null;
+
+    try {
+      const response: any = await this.http.post(
+        `${environment.apiUrl}/api/groomer/bookings/${this.booking.id}/capture-payment`,
+        {
+          finalAmount: this.captureAmount,
+          tipAmount: this.captureTipAmount || 0
+        }
+      ).toPromise();
+
+      const totalCaptured = response.amount_captured || (this.captureAmount + (this.captureTipAmount || 0));
+      this.paymentSuccess = `Payment captured successfully! Total: $${totalCaptured.toFixed(2)}${this.captureTipAmount > 0 ? ' (includes $' + this.captureTipAmount.toFixed(2) + ' tip)' : ''}`;
+
+      this.showCaptureModal = false;
+      this.captureTipAmount = 0;
+
+      // Reload booking to get updated status
+      await this.loadBookingDetails(this.booking.id);
+
+      // Load earnings breakdown
+      await this.loadEarningsBreakdown();
+    } catch (err: any) {
+      console.error('Error capturing payment:', err);
+      this.paymentError = err.error?.error || 'Failed to capture payment';
+    } finally {
+      this.isCapturingPayment = false;
+    }
+  }
+
+  openTipModal() {
+    this.tipAmount = 0;
+    this.showTipModal = true;
+    this.paymentError = null;
+    this.paymentSuccess = null;
+  }
+
+  closeTipModal() {
+    this.showTipModal = false;
+    this.tipAmount = 0;
+  }
+
+  async processTip() {
+    if (!this.booking || this.tipAmount <= 0) {
+      this.paymentError = 'Please enter a valid tip amount';
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to charge a $${this.tipAmount.toFixed(2)} tip to the client's card?`)) {
+      return;
+    }
+
+    this.isProcessingTip = true;
+    this.paymentError = null;
+    this.paymentSuccess = null;
+
+    try {
+      const response: any = await this.http.post(
+        `${environment.apiUrl}/api/groomer/bookings/${this.booking.id}/charge-tip`,
+        { tipAmount: this.tipAmount }
+      ).toPromise();
+
+      this.paymentSuccess = `Tip of $${this.tipAmount.toFixed(2)} charged successfully!`;
+      this.showTipModal = false;
+      this.tipAmount = 0;
+
+      // Reload booking to get updated tip info
+      await this.loadBookingDetails(this.booking.id);
+
+      // Reload earnings breakdown
+      await this.loadEarningsBreakdown();
+    } catch (err: any) {
+      console.error('Error processing tip:', err);
+      this.paymentError = err.error?.error || 'Failed to process tip';
+    } finally {
+      this.isProcessingTip = false;
+    }
+  }
+
+  async loadEarningsBreakdown() {
+    if (!this.booking?.id) return;
+
+    try {
+      const { data, error } = await this.supabase
+        .from('groomer_earnings')
+        .select('*')
+        .eq('booking_id', this.booking.id)
+        .single();
+
+      if (error) {
+        console.log('No earnings record found (may not be captured yet)');
+        this.earningsBreakdown = null;
+        return;
+      }
+
+      this.earningsBreakdown = data;
+    } catch (err) {
+      console.error('Error loading earnings breakdown:', err);
+      this.earningsBreakdown = null;
+    }
   }
 }
