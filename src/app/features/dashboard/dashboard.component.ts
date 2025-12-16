@@ -181,7 +181,8 @@ export class DashboardComponent implements OnInit {
   }
 
   private createDaySlot(date: Date, today: Date, isCurrentMonth: boolean = true): DaySlot {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date methods to avoid UTC timezone shift
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const bookings = this.allBookings.filter(b => {
       // Direct string comparison - both are already in YYYY-MM-DD format
       const bookingDateStr = b.scheduled_date.split('T')[0];
