@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.FROM_EMAIL || 'confirmations@royalpawzusa.com';
+const resend = new Resend(process.env['RESEND_API_KEY']);
+const FROM_EMAIL = process.env['FROM_EMAIL'] || 'confirmations@royalpawzusa.com';
 
 interface BookingEmailData {
   booking: {

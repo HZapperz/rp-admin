@@ -2,9 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
 
 // Initialize Resend only if API key exists
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_API_KEY = process.env['RESEND_API_KEY'];
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'confirmations@royalpawzusa.com';
+const FROM_EMAIL = process.env['FROM_EMAIL'] || 'confirmations@royalpawzusa.com';
 
 interface ChangeRequestEmailData {
   type: 'approved' | 'rejected';
