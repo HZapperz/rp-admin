@@ -14,11 +14,22 @@ import {
 import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AddPetModalComponent } from '../../../shared/components/add-pet-modal/add-pet-modal.component';
+import { EditClientModalComponent } from '../../../shared/components/edit-client-modal/edit-client-modal.component';
+import { AddressModalComponent } from '../../../shared/components/address-modal/address-modal.component';
+import { PaymentMethodModalComponent } from '../../../shared/components/payment-method-modal/payment-method-modal.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, AddPetModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    AddPetModalComponent,
+    EditClientModalComponent,
+    AddressModalComponent,
+    PaymentMethodModalComponent
+  ],
   templateUrl: './client-detail.component.html',
   styleUrls: ['./client-detail.component.scss']
 })
@@ -33,6 +44,17 @@ export class ClientDetailComponent implements OnInit {
 
   // Add Pet Modal
   showAddPetModal = false;
+
+  // Edit Client Modal
+  showEditClientModal = false;
+
+  // Address Modal
+  showAddAddressModal = false;
+  showEditAddressModal = false;
+  selectedAddress: Address | null = null;
+
+  // Payment Method Modal
+  showPaymentMethodModal = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -223,5 +245,83 @@ export class ClientDetailComponent implements OnInit {
     
     // Fallback: assume pet-photos bucket and use the whole string as path
     return this.supabaseService.getPublicUrl('pet-photos', photoUrl);
+  }
+
+  // ============================================
+  // Edit Client Modal methods
+  // ============================================
+  openEditClientModal(): void {
+    this.showEditClientModal = true;
+  }
+
+  closeEditClientModal(): void {
+    this.showEditClientModal = false;
+  }
+
+  async onClientUpdated(): Promise<void> {
+    if (this.clientData) {
+      await this.loadClientData(this.clientData.client.id);
+    }
+    this.showEditClientModal = false;
+  }
+
+  // ============================================
+  // Address Modal methods
+  // ============================================
+  openAddAddressModal(): void {
+    this.selectedAddress = null;
+    this.showAddAddressModal = true;
+  }
+
+  openEditAddressModal(address: Address): void {
+    this.selectedAddress = address;
+    this.showEditAddressModal = true;
+  }
+
+  closeAddressModal(): void {
+    this.showAddAddressModal = false;
+    this.showEditAddressModal = false;
+    this.selectedAddress = null;
+  }
+
+  async onAddressSaved(): Promise<void> {
+    if (this.clientData) {
+      this.clientData.addresses = await this.clientService.getClientAddresses(this.clientData.client.id);
+    }
+    this.closeAddressModal();
+  }
+
+  async deleteAddress(address: Address): Promise<void> {
+    if (!confirm(`Delete address "${address.name}"?`)) {
+      return;
+    }
+
+    try {
+      await this.clientService.deleteClientAddress(address.id);
+      if (this.clientData) {
+        this.clientData.addresses = await this.clientService.getClientAddresses(this.clientData.client.id);
+      }
+    } catch (err) {
+      console.error('Error deleting address:', err);
+      alert('Failed to delete address. Please try again.');
+    }
+  }
+
+  // ============================================
+  // Payment Method Modal methods
+  // ============================================
+  openPaymentMethodModal(): void {
+    this.showPaymentMethodModal = true;
+  }
+
+  closePaymentMethodModal(): void {
+    this.showPaymentMethodModal = false;
+  }
+
+  async onPaymentMethodAdded(): Promise<void> {
+    if (this.clientData) {
+      this.clientData.paymentMethods = await this.clientService.getClientPaymentMethods(this.clientData.client.id);
+    }
+    this.showPaymentMethodModal = false;
   }
 }

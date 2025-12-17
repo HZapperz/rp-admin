@@ -1,0 +1,64 @@
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="stopPropagation($event)">
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>Add Payment Method</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <div class="moto-notice">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+        </svg>
+        <div>
+          <strong>Phone Order (MOTO)</strong>
+          <p>Enter the client's card details as provided over the phone. This is a secure transaction.</p>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading payment form...</p>
+      </div>
+
+      <!-- Payment Element Container -->
+      <div [hidden]="loading" class="payment-form">
+        <div id="payment-element-container"></div>
+      </div>
+
+      <!-- Error message -->
+      <div *ngIf="error" class="error-banner">
+        {{ error }}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button
+        class="btn btn-secondary"
+        (click)="closeModal()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        (click)="submitPayment()"
+        [disabled]="loading || saving"
+      >
+        <svg *ngIf="!saving" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+          <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+        {{ saving ? 'Saving Card...' : 'Save Card' }}
+      </button>
+    </div>
+  </div>
+</div>

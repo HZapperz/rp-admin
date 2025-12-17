@@ -113,6 +113,9 @@ export class BookingDetailsComponent implements OnInit {
     { label: '3:30 PM - 4:45 PM', start: '15:30:00', end: '16:45:00' },
   ];
 
+  // Status management
+  isUpdatingStatus = false;
+
   // Payment management
   isCapturingPayment = false;
   isProcessingTip = false;
@@ -132,6 +135,59 @@ export class BookingDetailsComponent implements OnInit {
     } else {
       this.error = 'Invalid booking ID';
       this.loading = false;
+    }
+  }
+
+  canCancelBooking(): boolean {
+    if (!this.booking) return false;
+    const status = this.booking.status as string;
+    return status !== 'completed' && status !== 'cancelled';
+  }
+
+  async updateBookingStatus(newStatus: string) {
+    if (!this.booking) return;
+
+    // Confirm cancel action
+    if (newStatus === 'cancelled') {
+      if (!confirm('Are you sure you want to cancel this booking?')) {
+        return;
+      }
+    }
+
+    this.isUpdatingStatus = true;
+
+    try {
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add timestamps based on status
+      if (newStatus === 'confirmed') {
+        updateData.confirmed_at = new Date().toISOString();
+      } else if (newStatus === 'in_progress') {
+        updateData.actual_start_time = new Date().toISOString();
+      } else if (newStatus === 'completed') {
+        updateData.actual_end_time = new Date().toISOString();
+        updateData.completed_at = new Date().toISOString();
+      } else if (newStatus === 'cancelled') {
+        updateData.cancelled_at = new Date().toISOString();
+      }
+
+      const { error } = await this.supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', this.booking.id);
+
+      if (error) throw error;
+
+      // Reload booking to get updated data
+      await this.loadBookingDetails(this.booking.id);
+    } catch (err: any) {
+      console.error('Error updating booking status:', err);
+      alert('Failed to update booking status: ' + (err.message || 'Unknown error'));
+    } finally {
+      this.isUpdatingStatus = false;
     }
   }
 
@@ -951,12 +1007,19 @@ export class BookingDetailsComponent implements OnInit {
     this.paymentSuccess = null;
 
     try {
+      const token = this.supabase.session?.access_token;
+      const headers: any = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response: any = await this.http.post(
         `${environment.apiUrl}/api/groomer/bookings/${this.booking.id}/capture-payment`,
         {
           finalAmount: this.captureAmount,
           tipAmount: this.captureTipAmount || 0
-        }
+        },
+        { headers }
       ).toPromise();
 
       const totalCaptured = response.amount_captured || (this.captureAmount + (this.captureTipAmount || 0));
@@ -1005,9 +1068,16 @@ export class BookingDetailsComponent implements OnInit {
     this.paymentSuccess = null;
 
     try {
+      const token = this.supabase.session?.access_token;
+      const headers: any = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response: any = await this.http.post(
         `${environment.apiUrl}/api/groomer/bookings/${this.booking.id}/charge-tip`,
-        { tipAmount: this.tipAmount }
+        { tipAmount: this.tipAmount },
+        { headers }
       ).toPromise();
 
       this.paymentSuccess = `Tip of $${this.tipAmount.toFixed(2)} charged successfully!`;

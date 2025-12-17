@@ -1,6 +1,36 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Observable, from } from 'rxjs';
+import { environment } from '../../../environments/environment';
+
+// Types for create/update operations
+export interface CreateClientData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+
+export interface UpdateClientData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+
+export interface AddressFormData {
+  name: string;
+  building: string;
+  apartment?: string;
+  floor?: string;
+  street: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  additional_info?: string;
+  address_type: 'home' | 'work' | 'other';
+  is_default?: boolean;
+}
 
 export interface ClientWithStats {
   id: string;
@@ -533,5 +563,220 @@ export class ClientService {
     }
 
     return data;
+  }
+
+  // ============================================
+  // NEW: Admin Client Management Methods
+  // ============================================
+
+  /**
+   * Create a new client account with invite email
+   */
+  async createClient(data: CreateClientData): Promise<{ id: string; email: string } | null> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create client');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating client:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing client's profile
+   */
+  async updateClient(clientId: string, data: UpdateClientData): Promise<boolean> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update client');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating client:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new address for a client
+   */
+  async createClientAddress(clientId: string, addressData: AddressFormData): Promise<Address | null> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/addresses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(addressData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create address');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating client address:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing address
+   */
+  async updateClientAddress(addressId: string, addressData: Partial<AddressFormData>): Promise<Address | null> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/addresses/${addressId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(addressData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update address');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating address:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an address
+   */
+  async deleteClientAddress(addressId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/addresses/${addressId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete address');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting address:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a MOTO SetupIntent for adding a payment method on behalf of a client
+   */
+  async createSetupIntentForClient(clientId: string): Promise<{ clientSecret: string; stripeCustomerId: string }> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/setup-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create setup intent');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating setup intent:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save a payment method for a client after SetupIntent confirmation
+   */
+  async saveClientPaymentMethod(
+    clientId: string,
+    paymentMethodId: string,
+    customerId: string,
+    setAsDefault: boolean = true
+  ): Promise<PaymentMethod | null> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/payment-methods`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          payment_method_id: paymentMethodId,
+          customer_id: customerId,
+          set_as_default: setAsDefault,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save payment method');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error saving payment method:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a payment method (mark as inactive)
+   */
+  async deleteClientPaymentMethod(clientId: string, paymentMethodId: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${environment.apiUrl}/api/admin/clients/${clientId}/payment-methods?paymentMethodId=${paymentMethodId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete payment method');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting payment method:', error);
+      throw error;
+    }
   }
 }

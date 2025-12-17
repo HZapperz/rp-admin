@@ -36,7 +36,16 @@
           />
         </div>
         <div class="profile-info">
-          <h2>{{ clientData.client.first_name }} {{ clientData.client.last_name }}</h2>
+          <div class="profile-name-row">
+            <h2>{{ clientData.client.first_name }} {{ clientData.client.last_name }}</h2>
+            <button class="btn btn-secondary btn-sm" (click)="openEditClientModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit
+            </button>
+          </div>
           <div class="profile-details">
             <div class="detail-item">
               <span class="label">Email:</span>
@@ -136,7 +145,15 @@
 
     <!-- Addresses Section -->
     <div class="section">
-      <h3 class="section-title">Addresses ({{ clientData.addresses.length }})</h3>
+      <div class="section-header">
+        <h3 class="section-title">Addresses ({{ clientData.addresses.length }})</h3>
+        <button class="btn btn-primary btn-sm" (click)="openAddAddressModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Add Address
+        </button>
+      </div>
       <div *ngIf="clientData.addresses.length === 0" class="empty-state">
         No addresses saved
       </div>
@@ -144,9 +161,23 @@
         <div class="address-card" *ngFor="let address of clientData.addresses">
           <div class="address-header">
             <span class="address-name">{{ address.name }}</span>
-            <div class="address-badges">
-              <span class="badge badge-default" *ngIf="address.is_default">Default</span>
-              <span class="badge badge-type">{{ address.address_type }}</span>
+            <div class="address-actions">
+              <div class="address-badges">
+                <span class="badge badge-default" *ngIf="address.is_default">Default</span>
+                <span class="badge badge-type">{{ address.address_type }}</span>
+              </div>
+              <button class="btn-icon" (click)="openEditAddressModal(address)" title="Edit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="btn-icon btn-icon-danger" (click)="deleteAddress(address)" title="Delete">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+              </button>
             </div>
           </div>
           <div class="address-details">
@@ -163,7 +194,15 @@
 
     <!-- Payment Methods Section -->
     <div class="section">
-      <h3 class="section-title">Payment Methods ({{ clientData.paymentMethods.length }})</h3>
+      <div class="section-header">
+        <h3 class="section-title">Payment Methods ({{ clientData.paymentMethods.length }})</h3>
+        <button class="btn btn-primary btn-sm" (click)="openPaymentMethodModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Add Card
+        </button>
+      </div>
       <div *ngIf="clientData.paymentMethods.length === 0" class="empty-state">
         No payment methods saved
       </div>
@@ -340,6 +379,39 @@
       (close)="closeAddPetModal()"
       (petAdded)="onPetAdded()"
     ></app-add-pet-modal>
+
+    <!-- Edit Client Modal -->
+    <app-edit-client-modal
+      *ngIf="showEditClientModal"
+      [client]="clientData.client"
+      (close)="closeEditClientModal()"
+      (clientUpdated)="onClientUpdated()"
+    ></app-edit-client-modal>
+
+    <!-- Add Address Modal -->
+    <app-address-modal
+      *ngIf="showAddAddressModal"
+      [clientId]="clientData.client.id"
+      (close)="closeAddressModal()"
+      (addressSaved)="onAddressSaved()"
+    ></app-address-modal>
+
+    <!-- Edit Address Modal -->
+    <app-address-modal
+      *ngIf="showEditAddressModal && selectedAddress"
+      [clientId]="clientData.client.id"
+      [address]="selectedAddress"
+      (close)="closeAddressModal()"
+      (addressSaved)="onAddressSaved()"
+    ></app-address-modal>
+
+    <!-- Payment Method Modal -->
+    <app-payment-method-modal
+      *ngIf="showPaymentMethodModal"
+      [clientId]="clientData.client.id"
+      (close)="closePaymentMethodModal()"
+      (paymentMethodAdded)="onPaymentMethodAdded()"
+    ></app-payment-method-modal>
   </div>
 </div>
 

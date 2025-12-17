@@ -352,6 +352,67 @@
   font-weight: 500;
 }
 
+// Status Actions
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+
+  .btn-status {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-confirm {
+    background: #dbeafe;
+    color: #1d4ed8;
+
+    &:hover:not(:disabled) {
+      background: #bfdbfe;
+    }
+  }
+
+  .btn-start {
+    background: #fef3c7;
+    color: #b45309;
+
+    &:hover:not(:disabled) {
+      background: #fde68a;
+    }
+  }
+
+  .btn-complete {
+    background: #10b981;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: #059669;
+    }
+  }
+
+  .btn-cancel {
+    background: #fee2e2;
+    color: #dc2626;
+
+    &:hover:not(:disabled) {
+      background: #fecaca;
+    }
+  }
+}
+
 // Timeline
 .timeline {
   padding: 1.5rem;

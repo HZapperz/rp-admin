@@ -31,7 +31,7 @@ export interface PackagesResponse {
 })
 export class PackageService {
   private packagesCache$ = new BehaviorSubject<ServicePackage[] | null>(null);
-  private readonly API_URL = environment.apiUrl || 'http://localhost:3000';
+  private readonly API_URL = environment.apiUrl;
 
   constructor(private http: HttpClient) {
     // Pre-load packages on service initialization

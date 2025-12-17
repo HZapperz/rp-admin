@@ -5,11 +5,12 @@ import {
   ClientService,
   ClientWithStats,
 } from '../../../core/services/client.service';
+import { CreateClientModalComponent } from '../../../shared/components/create-client-modal/create-client-modal.component';
 
 @Component({
   selector: 'app-clients-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CreateClientModalComponent],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
 })
@@ -19,6 +20,7 @@ export class ClientsListComponent implements OnInit {
   searchTerm = '';
   failedAvatars = new Set<string>();
   expandedCards: Set<string> = new Set();
+  showCreateClientModal = false;
 
   constructor(private clientService: ClientService, private router: Router) {}
 
@@ -81,6 +83,21 @@ export class ClientsListComponent implements OnInit {
   }
 
   viewClientDetail(clientId: string): void {
+    this.router.navigate(['/clients', clientId]);
+  }
+
+  // Create Client Modal methods
+  openCreateClientModal(): void {
+    this.showCreateClientModal = true;
+  }
+
+  closeCreateClientModal(): void {
+    this.showCreateClientModal = false;
+  }
+
+  onClientCreated(clientId: string): void {
+    this.showCreateClientModal = false;
+    // Navigate to the new client's detail page
     this.router.navigate(['/clients', clientId]);
   }
 }

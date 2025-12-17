@@ -110,6 +110,39 @@
               {{ booking.status | titlecase }}
             </span>
           </div>
+
+          <!-- Status Actions -->
+          <div class="status-actions" *ngIf="booking.status !== 'cancelled'">
+            <button
+              *ngIf="booking.status === 'pending'"
+              (click)="updateBookingStatus('confirmed')"
+              class="btn btn-status btn-confirm"
+              [disabled]="isUpdatingStatus">
+              {{ isUpdatingStatus ? 'Updating...' : 'Confirm Booking' }}
+            </button>
+            <button
+              *ngIf="booking.status === 'confirmed'"
+              (click)="updateBookingStatus('in_progress')"
+              class="btn btn-status btn-start"
+              [disabled]="isUpdatingStatus">
+              {{ isUpdatingStatus ? 'Updating...' : 'Start Service' }}
+            </button>
+            <button
+              *ngIf="booking.status === 'in_progress'"
+              (click)="updateBookingStatus('completed')"
+              class="btn btn-status btn-complete"
+              [disabled]="isUpdatingStatus">
+              {{ isUpdatingStatus ? 'Updating...' : 'Mark as Completed' }}
+            </button>
+            <button
+              *ngIf="canCancelBooking()"
+              (click)="updateBookingStatus('cancelled')"
+              class="btn btn-status btn-cancel"
+              [disabled]="isUpdatingStatus">
+              Cancel Booking
+            </button>
+          </div>
+
           <div class="timeline">
             <div *ngFor="let event of timelineEvents" class="timeline-event">
               <div class="timeline-icon" [ngClass]="'timeline-' + event.type">

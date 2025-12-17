@@ -1,0 +1,96 @@
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="stopPropagation($event)">
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>Create New Client</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <div class="info-notice">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        <p>An invitation email will be sent to the client so they can set their password and access the app.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="firstName">First Name *</label>
+        <input
+          type="text"
+          id="firstName"
+          [(ngModel)]="formData.firstName"
+          class="form-control"
+          placeholder="Enter first name"
+          [disabled]="saving"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="lastName">Last Name *</label>
+        <input
+          type="text"
+          id="lastName"
+          [(ngModel)]="formData.lastName"
+          class="form-control"
+          placeholder="Enter last name"
+          [disabled]="saving"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input
+          type="email"
+          id="email"
+          [(ngModel)]="formData.email"
+          class="form-control"
+          placeholder="Enter email address"
+          [disabled]="saving"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input
+          type="tel"
+          id="phone"
+          [(ngModel)]="formData.phone"
+          (input)="formatPhoneNumber()"
+          class="form-control"
+          placeholder="(555) 555-5555"
+          [disabled]="saving"
+        />
+      </div>
+
+      <!-- Error message -->
+      <div *ngIf="error" class="error-banner">
+        {{ error }}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button
+        class="btn btn-secondary"
+        (click)="closeModal()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        (click)="createClient()"
+        [disabled]="saving"
+      >
+        {{ saving ? 'Creating...' : 'Create Client' }}
+      </button>
+    </div>
+  </div>
+</div>

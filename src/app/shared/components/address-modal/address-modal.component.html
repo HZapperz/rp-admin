@@ -1,0 +1,196 @@
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="stopPropagation($event)">
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>{{ isEditMode ? 'Edit Address' : 'Add Address' }}</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Address Name *</label>
+          <input
+            type="text"
+            id="name"
+            [(ngModel)]="formData.name"
+            class="form-control"
+            placeholder="e.g., Home, Office"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group address-type-group">
+          <label>Type</label>
+          <div class="type-buttons">
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="formData.address_type === 'home'"
+              (click)="formData.address_type = 'home'"
+              [disabled]="saving"
+            >Home</button>
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="formData.address_type === 'work'"
+              (click)="formData.address_type = 'work'"
+              [disabled]="saving"
+            >Work</button>
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="formData.address_type === 'other'"
+              (click)="formData.address_type = 'other'"
+              [disabled]="saving"
+            >Other</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="building">Building Name/Number</label>
+        <input
+          type="text"
+          id="building"
+          [(ngModel)]="formData.building"
+          class="form-control"
+          placeholder="Building name or number"
+          [disabled]="saving"
+        />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="apartment">Apartment/Unit</label>
+          <input
+            type="text"
+            id="apartment"
+            [(ngModel)]="formData.apartment"
+            class="form-control"
+            placeholder="Apt, Suite, Unit"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="floor">Floor</label>
+          <input
+            type="text"
+            id="floor"
+            [(ngModel)]="formData.floor"
+            class="form-control"
+            placeholder="Floor number"
+            [disabled]="saving"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="street">Street Address *</label>
+        <input
+          type="text"
+          id="street"
+          [(ngModel)]="formData.street"
+          class="form-control"
+          placeholder="123 Main Street"
+          [disabled]="saving"
+        />
+      </div>
+
+      <div class="form-row three-col">
+        <div class="form-group">
+          <label for="city">City *</label>
+          <input
+            type="text"
+            id="city"
+            [(ngModel)]="formData.city"
+            class="form-control"
+            placeholder="City"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="state">State *</label>
+          <select
+            id="state"
+            [(ngModel)]="formData.state"
+            class="form-control"
+            [disabled]="saving"
+          >
+            <option value="TX">Texas</option>
+            <option value="OK">Oklahoma</option>
+            <option value="LA">Louisiana</option>
+            <option value="AR">Arkansas</option>
+            <option value="NM">New Mexico</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="zip_code">ZIP Code *</label>
+          <input
+            type="text"
+            id="zip_code"
+            [(ngModel)]="formData.zip_code"
+            class="form-control"
+            placeholder="75001"
+            maxlength="10"
+            [disabled]="saving"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="additional_info">Additional Info</label>
+        <textarea
+          id="additional_info"
+          [(ngModel)]="formData.additional_info"
+          class="form-control"
+          placeholder="Gate code, parking instructions, etc."
+          rows="2"
+          [disabled]="saving"
+        ></textarea>
+      </div>
+
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            [(ngModel)]="formData.is_default"
+            [disabled]="saving"
+          />
+          <span>Set as default address</span>
+        </label>
+      </div>
+
+      <!-- Error message -->
+      <div *ngIf="error" class="error-banner">
+        {{ error }}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button
+        class="btn btn-secondary"
+        (click)="closeModal()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        (click)="saveAddress()"
+        [disabled]="saving"
+      >
+        {{ saving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Add Address') }}
+      </button>
+    </div>
+  </div>
+</div>
