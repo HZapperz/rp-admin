@@ -152,6 +152,20 @@ export interface ClientDetailData {
 export class ClientService {
   constructor(private supabase: SupabaseService) {}
 
+  /**
+   * Get authorization headers for API calls
+   */
+  private getAuthHeaders(): Record<string, string> {
+    const session = this.supabase.session;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    return headers;
+  }
+
   getAllClients(search?: string): Observable<ClientWithStats[]> {
     return from(this.fetchClients(search));
   }
@@ -576,10 +590,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/admin/clients`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
 
@@ -602,10 +613,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
 
@@ -628,10 +636,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/addresses`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(addressData),
       });
 
@@ -654,10 +659,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/addresses/${addressId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(addressData),
       });
 
@@ -680,7 +682,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/addresses/${addressId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -702,10 +704,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/setup-intent`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -732,10 +731,7 @@ export class ClientService {
     try {
       const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/payment-methods`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           payment_method_id: paymentMethodId,
           customer_id: customerId,
@@ -764,7 +760,7 @@ export class ClientService {
         `${environment.apiUrl}/api/admin/clients/${clientId}/payment-methods?paymentMethodId=${paymentMethodId}`,
         {
           method: 'DELETE',
-          credentials: 'include',
+          headers: this.getAuthHeaders(),
         }
       );
 
