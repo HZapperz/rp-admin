@@ -2,7 +2,7 @@
   <div class="modal-content" (click)="stopPropagation($event)">
     <!-- Header -->
     <div class="modal-header">
-      <h2>Add Pet</h2>
+      <h2>{{ isEditMode ? 'Edit Pet' : 'Add Pet' }}</h2>
       <button class="close-btn" (click)="closeModal()" [disabled]="saving">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
@@ -375,7 +375,7 @@
         (click)="submitPet()"
         [disabled]="saving"
       >
-        {{ saving ? 'Adding Pet...' : 'Add Pet' }}
+        {{ saving ? (isEditMode ? 'Saving...' : 'Adding Pet...') : (isEditMode ? 'Save Changes' : 'Add Pet') }}
       </button>
     </div>
   </div>

@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientService, Pet } from '../../../core/services/client.service';
 import { DOG_BREEDS, searchBreeds } from '../../data/dog-breeds';
+import { SupabaseService } from '../../../core/services/supabase.service';
 
 @Component({
   selector: 'app-add-pet-modal',
@@ -11,13 +12,24 @@ import { DOG_BREEDS, searchBreeds } from '../../data/dog-breeds';
   templateUrl: './add-pet-modal.component.html',
   styleUrls: ['./add-pet-modal.component.scss']
 })
-export class AddPetModalComponent {
+export class AddPetModalComponent implements OnInit {
   @Input() clientId!: string;
+  @Input() pet?: Pet; // Optional pet for edit mode
   @Output() close = new EventEmitter<void>();
   @Output() petAdded = new EventEmitter<void>();
+  @Output() petUpdated = new EventEmitter<void>();
 
   currentStep = 1;
   totalSteps = 5;
+
+  // Track if we're in edit mode
+  get isEditMode(): boolean {
+    return !!this.pet;
+  }
+
+  // Existing file URLs (for edit mode)
+  existingPhotoUrl: string | null = null;
+  existingRabiesUrl: string | null = null;
 
   // Form data matching client wizard structure
   formData = {
@@ -63,7 +75,63 @@ export class AddPetModalComponent {
   // Validation errors per step
   stepErrors: { [key: number]: string } = {};
 
-  constructor(private clientService: ClientService) {}
+  constructor(
+    private clientService: ClientService,
+    private supabaseService: SupabaseService
+  ) {}
+
+  ngOnInit(): void {
+    if (this.pet) {
+      // Pre-populate form with existing pet data
+      this.formData = {
+        name: this.pet.name || '',
+        photo: null,
+        breed: this.pet.breed || '',
+        dateOfBirth: this.pet.date_of_birth || '',
+        sizeCategory: this.pet.size_category || 'medium',
+        hasAllergies: this.pet.has_allergies ?? null,
+        allergyDetails: this.pet.allergy_details || '',
+        hasSkinConditions: this.pet.has_skin_conditions ?? null,
+        skinConditionDetails: this.pet.skin_condition_details || '',
+        isFriendly: this.pet.is_friendly ?? null,
+        blowDryerReaction: this.pet.blow_dryer_reaction || '',
+        waterReaction: this.pet.water_reaction || '',
+        hasBehavioralIssues: this.pet.has_behavioral_issues ?? null,
+        behavioralIssueDetails: this.pet.behavioral_issue_details || '',
+        rabiesCertificate: null,
+        rabiesPending: false, // Will be determined by existing URL
+        additionalNotes: this.pet.additional_notes || ''
+      };
+
+      // Set breed search query for display
+      this.breedSearchQuery = this.pet.breed || '';
+
+      // Store existing file URLs
+      if (this.pet.photo_url) {
+        this.existingPhotoUrl = this.pet.photo_url;
+        this.photoPreview = this.getPublicUrl(this.pet.photo_url);
+      }
+
+      if (this.pet.rabies_certificate_url) {
+        this.existingRabiesUrl = this.pet.rabies_certificate_url;
+        this.rabiesPreview = 'Existing certificate';
+      }
+    }
+  }
+
+  // Helper to get public URL for existing files
+  private getPublicUrl(storagePath: string): string {
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    const parts = storagePath.split('/');
+    if (parts.length >= 2) {
+      const bucket = parts[0];
+      const path = parts.slice(1).join('/');
+      return this.supabaseService.getPublicUrl(bucket, path);
+    }
+    return storagePath;
+  }
 
   // Step navigation
   nextStep(): void {
@@ -148,7 +216,9 @@ export class AddPetModalComponent {
         return true;
 
       case 5:
-        if (!this.formData.rabiesCertificate && !this.formData.rabiesPending) {
+        // In edit mode, existing certificate is acceptable
+        const hasExistingCert = this.isEditMode && this.existingRabiesUrl;
+        if (!this.formData.rabiesCertificate && !this.formData.rabiesPending && !hasExistingCert) {
           this.stepErrors[5] = 'Please upload a rabies certificate or mark as pending';
           return false;
         }
@@ -204,17 +274,20 @@ export class AddPetModalComponent {
   removePhoto(): void {
     this.formData.photo = null;
     this.photoPreview = null;
+    this.existingPhotoUrl = null; // Also clear existing URL in edit mode
   }
 
   removeRabiesCert(): void {
     this.formData.rabiesCertificate = null;
     this.rabiesPreview = null;
+    this.existingRabiesUrl = null; // Also clear existing URL in edit mode
   }
 
   onRabiesPendingChange(): void {
     if (this.formData.rabiesPending) {
       this.formData.rabiesCertificate = null;
       this.rabiesPreview = null;
+      this.existingRabiesUrl = null;
     }
   }
 
@@ -226,28 +299,43 @@ export class AddPetModalComponent {
     this.error = '';
 
     try {
-      // Upload files if provided
-      let photoUrl: string | null = null;
-      let rabiesUrl: string | null = null;
+      // Upload new files if provided
+      let photoUrl: string | null | undefined = undefined;
+      let rabiesUrl: string | null | undefined = undefined;
 
+      // Handle photo: new upload, keep existing, or remove
       if (this.formData.photo) {
+        // New photo uploaded
         photoUrl = await this.clientService.uploadFile(
           this.formData.photo,
           'pet-photos',
           this.clientId
         );
+      } else if (this.existingPhotoUrl) {
+        // Keep existing photo
+        photoUrl = this.existingPhotoUrl;
+      } else {
+        // No photo (removed or never had one)
+        photoUrl = null;
       }
 
+      // Handle rabies certificate: new upload, keep existing, or remove
       if (this.formData.rabiesCertificate) {
+        // New certificate uploaded
         rabiesUrl = await this.clientService.uploadFile(
           this.formData.rabiesCertificate,
           'pet-certificates',
           this.clientId
         );
+      } else if (this.existingRabiesUrl && !this.formData.rabiesPending) {
+        // Keep existing certificate
+        rabiesUrl = this.existingRabiesUrl;
+      } else {
+        // No certificate (removed or marked pending)
+        rabiesUrl = null;
       }
 
-      // Create pet
-      await this.clientService.createPet(this.clientId, {
+      const petData = {
         name: this.formData.name,
         breed: this.formData.breed,
         date_of_birth: this.formData.dateOfBirth || undefined,
@@ -265,13 +353,22 @@ export class AddPetModalComponent {
         has_behavioral_issues: this.formData.hasBehavioralIssues || false,
         behavioral_issue_details: this.formData.behavioralIssueDetails,
         additional_notes: this.formData.additionalNotes
-      });
+      };
 
-      this.petAdded.emit();
+      if (this.isEditMode && this.pet) {
+        // Update existing pet
+        await this.clientService.updatePet(this.clientId, this.pet.id, petData);
+        this.petUpdated.emit();
+      } else {
+        // Create new pet
+        await this.clientService.createPet(this.clientId, petData);
+        this.petAdded.emit();
+      }
+
       this.close.emit();
     } catch (err) {
-      console.error('Error creating pet:', err);
-      this.error = err instanceof Error ? err.message : 'Failed to create pet';
+      console.error('Error saving pet:', err);
+      this.error = err instanceof Error ? err.message : 'Failed to save pet';
     } finally {
       this.saving = false;
     }

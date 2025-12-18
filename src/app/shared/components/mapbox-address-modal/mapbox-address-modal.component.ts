@@ -71,10 +71,12 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
 
   ngOnInit(): void {
     if (this.address) {
+      // Client app stores street address in 'building' field
+      // Load from building for display in the street input
       this.formData = {
         name: this.address.name || '',
-        building: this.address.building || '',
-        street: this.address.street || '',
+        building: '', // Will be set on save
+        street: this.address.building || this.address.street || '', // Load from building (client format)
         city: this.address.city || '',
         state: this.address.state || 'TX',
         zip_code: this.address.zip_code || '',
@@ -89,8 +91,8 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
       this.initializeMap();
       this.initializeAutofill();
 
-      // If editing, geocode the existing address
-      if (this.isEditMode && this.formData.street && this.formData.city && this.formData.zip_code) {
+      // If editing, geocode the existing address (street contains building data in edit mode)
+      if (this.isEditMode && this.formData.street && this.formData.zip_code) {
         this.geocodeAndUpdateMap();
       }
     }, 100);
@@ -329,10 +331,18 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
     this.error = '';
 
     try {
+      // Transform data to match client app format:
+      // Client app stores street address in 'building' field, leaves 'street' empty
+      const dataToSave: AddressFormData = {
+        ...this.formData,
+        building: this.formData.street, // Put street address in building field
+        street: '', // Leave street empty
+      };
+
       if (this.isEditMode && this.address) {
-        await this.clientService.updateClientAddress(this.clientId, this.address.id, this.formData);
+        await this.clientService.updateClientAddress(this.clientId, this.address.id, dataToSave);
       } else {
-        await this.clientService.createClientAddress(this.clientId, this.formData);
+        await this.clientService.createClientAddress(this.clientId, dataToSave);
       }
 
       this.addressSaved.emit();

@@ -42,8 +42,10 @@ export class ClientDetailComponent implements OnInit {
   newNotePriority: 'low' | 'medium' | 'high' | 'urgent' = 'medium';
   addingNote = false;
 
-  // Add Pet Modal
+  // Pet Modal (Add/Edit)
   showAddPetModal = false;
+  showEditPetModal = false;
+  selectedPet: Pet | null = null;
 
   // Edit Client Modal
   showEditClientModal = false;
@@ -131,13 +133,21 @@ export class ClientDetailComponent implements OnInit {
     this.router.navigate(['/clients']);
   }
 
-  // Add Pet Modal methods
+  // Pet Modal methods (Add/Edit)
   openAddPetModal(): void {
+    this.selectedPet = null;
     this.showAddPetModal = true;
   }
 
-  closeAddPetModal(): void {
+  openEditPetModal(pet: Pet): void {
+    this.selectedPet = pet;
+    this.showEditPetModal = true;
+  }
+
+  closePetModal(): void {
     this.showAddPetModal = false;
+    this.showEditPetModal = false;
+    this.selectedPet = null;
   }
 
   async onPetAdded(): Promise<void> {
@@ -145,7 +155,15 @@ export class ClientDetailComponent implements OnInit {
     if (this.clientData) {
       this.clientData.pets = await this.clientService.getClientPets(this.clientData.client.id);
     }
-    this.showAddPetModal = false;
+    this.closePetModal();
+  }
+
+  async onPetUpdated(): Promise<void> {
+    // Refresh pets list after updating a pet
+    if (this.clientData) {
+      this.clientData.pets = await this.clientService.getClientPets(this.clientData.client.id);
+    }
+    this.closePetModal();
   }
 
   formatDate(dateString: string | null | undefined): string {

@@ -579,6 +579,73 @@ export class ClientService {
     return data;
   }
 
+  // Update an existing pet
+  async updatePet(clientId: string, petId: string, petData: Partial<{
+    name: string;
+    breed?: string;
+    date_of_birth?: string;
+    size_category?: 'small' | 'medium' | 'large' | 'xl';
+    photo_url?: string | null;
+    rabies_certificate_url?: string | null;
+    rabies_pending?: boolean;
+    has_allergies?: boolean;
+    allergy_details?: string;
+    has_skin_conditions?: boolean;
+    skin_condition_details?: string;
+    is_friendly?: boolean;
+    blow_dryer_reaction?: string;
+    water_reaction?: string;
+    has_behavioral_issues?: boolean;
+    behavioral_issue_details?: string;
+    additional_notes?: string;
+  }>): Promise<Pet | null> {
+    const updateData: any = {};
+
+    if (petData.name !== undefined) updateData.name = petData.name.trim();
+    if (petData.breed !== undefined) updateData.breed = petData.breed?.trim() || null;
+    if (petData.date_of_birth !== undefined) updateData.date_of_birth = petData.date_of_birth || null;
+    if (petData.size_category !== undefined) updateData.size_category = petData.size_category;
+    if (petData.photo_url !== undefined) updateData.photo_url = petData.photo_url || null;
+    if (petData.rabies_certificate_url !== undefined) updateData.rabies_certificate_url = petData.rabies_certificate_url || null;
+    if (petData.rabies_pending !== undefined) {
+      updateData.rabies_pending = petData.rabies_pending;
+      if (petData.rabies_pending) {
+        updateData.rabies_pending_acknowledged_at = new Date().toISOString();
+      }
+    }
+    if (petData.has_allergies !== undefined) {
+      updateData.has_allergies = petData.has_allergies;
+      updateData.allergy_details = petData.has_allergies ? petData.allergy_details?.trim() : null;
+    }
+    if (petData.has_skin_conditions !== undefined) {
+      updateData.has_skin_conditions = petData.has_skin_conditions;
+      updateData.skin_condition_details = petData.has_skin_conditions ? petData.skin_condition_details?.trim() : null;
+    }
+    if (petData.is_friendly !== undefined) updateData.is_friendly = petData.is_friendly;
+    if (petData.blow_dryer_reaction !== undefined) updateData.blow_dryer_reaction = petData.blow_dryer_reaction || null;
+    if (petData.water_reaction !== undefined) updateData.water_reaction = petData.water_reaction || null;
+    if (petData.has_behavioral_issues !== undefined) {
+      updateData.has_behavioral_issues = petData.has_behavioral_issues;
+      updateData.behavioral_issue_details = petData.has_behavioral_issues ? petData.behavioral_issue_details?.trim() : null;
+    }
+    if (petData.additional_notes !== undefined) updateData.additional_notes = petData.additional_notes?.trim() || null;
+
+    const { data, error } = await this.supabase
+      .from('pets')
+      .update(updateData)
+      .eq('id', petId)
+      .eq('user_id', clientId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating pet:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
   // ============================================
   // NEW: Admin Client Management Methods
   // ============================================
