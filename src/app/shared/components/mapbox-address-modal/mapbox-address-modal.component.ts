@@ -32,14 +32,11 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
 
   formData: AddressFormData = {
     name: '',
-    building: '',
-    apartment: '',
-    floor: '',
+    building: '', // Kept for API compatibility
     street: '',
     city: '',
     state: 'TX',
     zip_code: '',
-    additional_info: '',
     address_type: 'home',
     is_default: false
   };
@@ -77,13 +74,10 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
       this.formData = {
         name: this.address.name || '',
         building: this.address.building || '',
-        apartment: this.address.apartment || '',
-        floor: this.address.floor || '',
         street: this.address.street || '',
         city: this.address.city || '',
         state: this.address.state || 'TX',
         zip_code: this.address.zip_code || '',
-        additional_info: this.address.additional_info || '',
         address_type: this.address.address_type || 'home',
         is_default: this.address.is_default || false
       };

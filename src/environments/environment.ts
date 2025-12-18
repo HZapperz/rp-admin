@@ -1,3 +1,5 @@
+// Development environment - values are hardcoded for local development
+// Production values are injected at build time from Vercel env vars via scripts/set-env.js
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000',
