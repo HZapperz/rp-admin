@@ -653,11 +653,11 @@ export class ClientService {
   }
 
   /**
-   * Update an existing address
+   * Update an existing address (admin endpoint with audit trail)
    */
-  async updateClientAddress(addressId: string, addressData: Partial<AddressFormData>): Promise<Address | null> {
+  async updateClientAddress(clientId: string, addressId: string, addressData: Partial<AddressFormData>): Promise<Address | null> {
     try {
-      const response = await fetch(`${environment.apiUrl}/api/addresses/${addressId}`, {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/addresses/${addressId}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(addressData),
@@ -676,11 +676,11 @@ export class ClientService {
   }
 
   /**
-   * Delete an address
+   * Delete an address (admin endpoint with audit trail)
    */
-  async deleteClientAddress(addressId: string): Promise<boolean> {
+  async deleteClientAddress(clientId: string, addressId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${environment.apiUrl}/api/addresses/${addressId}`, {
+      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/addresses/${addressId}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });

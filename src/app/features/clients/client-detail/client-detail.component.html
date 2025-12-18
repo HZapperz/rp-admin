@@ -389,21 +389,21 @@
     ></app-edit-client-modal>
 
     <!-- Add Address Modal -->
-    <app-address-modal
+    <app-mapbox-address-modal
       *ngIf="showAddAddressModal"
       [clientId]="clientData.client.id"
       (close)="closeAddressModal()"
       (addressSaved)="onAddressSaved()"
-    ></app-address-modal>
+    ></app-mapbox-address-modal>
 
     <!-- Edit Address Modal -->
-    <app-address-modal
+    <app-mapbox-address-modal
       *ngIf="showEditAddressModal && selectedAddress"
       [clientId]="clientData.client.id"
       [address]="selectedAddress"
       (close)="closeAddressModal()"
       (addressSaved)="onAddressSaved()"
-    ></app-address-modal>
+    ></app-mapbox-address-modal>
 
     <!-- Payment Method Modal -->
     <app-payment-method-modal

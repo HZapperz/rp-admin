@@ -311,6 +311,9 @@ function generateAdminEmailHTML(data: BookingEmailData): string {
 `;
 }
 
+// Helper to delay between emails to avoid Resend rate limiting (2 req/sec)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -335,33 +338,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const results = await Promise.allSettled([
-      // Send to client
-      resend.emails.send({
+    // Send emails sequentially with 1 second delay to avoid Resend rate limit (2 req/sec)
+    const results: Array<{ status: string; value?: any; reason?: any; recipient: string }> = [];
+
+    // 1. Send to client (most important - send first)
+    try {
+      const clientResult = await resend.emails.send({
         from: FROM_EMAIL,
         to: [emailData.client.email],
         subject: 'Your Royal Pawz Appointment is Confirmed!',
         html: generateClientEmailHTML(emailData),
-      }),
+      });
+      results.push({ status: 'fulfilled', value: clientResult, recipient: 'client' });
+      console.log('Client email sent successfully to:', emailData.client.email);
+    } catch (error) {
+      results.push({ status: 'rejected', reason: error, recipient: 'client' });
+      console.error('Failed to send client email:', error);
+    }
 
-      // Send to groomer
-      resend.emails.send({
+    await delay(1000); // Wait 1 second to avoid rate limit
+
+    // 2. Send to groomer
+    try {
+      const groomerResult = await resend.emails.send({
         from: FROM_EMAIL,
         to: [emailData.groomer.email],
         subject: 'New Booking Assignment - Royal Pawz',
         html: generateGroomerEmailHTML(emailData),
-      }),
+      });
+      results.push({ status: 'fulfilled', value: groomerResult, recipient: 'groomer' });
+      console.log('Groomer email sent successfully to:', emailData.groomer.email);
+    } catch (error) {
+      results.push({ status: 'rejected', reason: error, recipient: 'groomer' });
+      console.error('Failed to send groomer email:', error);
+    }
 
-      // Send to admin (if provided)
-      ...(emailData.adminEmail ? [
-        resend.emails.send({
+    await delay(1000);
+
+    // 3. Send to admin (if provided)
+    if (emailData.adminEmail) {
+      try {
+        const adminResult = await resend.emails.send({
           from: FROM_EMAIL,
           to: [emailData.adminEmail],
           subject: 'Booking Approved - Royal Pawz Admin',
           html: generateAdminEmailHTML(emailData),
-        })
-      ] : [])
-    ]);
+        });
+        results.push({ status: 'fulfilled', value: adminResult, recipient: 'admin' });
+        console.log('Admin email sent successfully to:', emailData.adminEmail);
+      } catch (error) {
+        results.push({ status: 'rejected', reason: error, recipient: 'admin' });
+        console.error('Failed to send admin email:', error);
+      }
+    }
 
     // Check results
     const failures = results.filter(r => r.status === 'rejected');

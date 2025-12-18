@@ -1,0 +1,273 @@
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="stopPropagation($event)">
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>{{ isEditMode ? 'Edit Address' : 'Add Address' }}</h2>
+      <button class="close-btn" (click)="closeModal()" [disabled]="saving">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <!-- Address Type Selection -->
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Address Name *</label>
+          <input
+            type="text"
+            id="name"
+            [(ngModel)]="formData.name"
+            class="form-control"
+            placeholder="e.g., Home, Office"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group address-type-group">
+          <label>Type</label>
+          <div class="type-buttons">
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="formData.address_type === 'home'"
+              (click)="formData.address_type = 'home'"
+              [disabled]="saving"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              Home
+            </button>
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="formData.address_type === 'work'"
+              (click)="formData.address_type = 'work'"
+              [disabled]="saving"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+                <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+                <path d="M10 6h4"/>
+                <path d="M10 10h4"/>
+                <path d="M10 14h4"/>
+                <path d="M10 18h4"/>
+              </svg>
+              Work
+            </button>
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="formData.address_type === 'other'"
+              (click)="formData.address_type = 'other'"
+              [disabled]="saving"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              Other
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Map -->
+      <div class="map-container">
+        <div #mapContainer class="map"></div>
+      </div>
+
+      <!-- Street Address with Autofill -->
+      <div class="form-group">
+        <label for="street">Street Address *</label>
+        <input
+          #streetInput
+          type="text"
+          id="street"
+          [(ngModel)]="formData.street"
+          (ngModelChange)="onAddressFieldChange()"
+          (blur)="geocodeAndUpdateMap()"
+          class="form-control"
+          placeholder="Start typing your address..."
+          autocomplete="address-line1"
+          [disabled]="saving"
+        />
+        <p class="field-hint">Start typing and select from suggestions</p>
+      </div>
+
+      <!-- City, State, ZIP -->
+      <div class="form-row three-col">
+        <div class="form-group">
+          <label for="city">City *</label>
+          <input
+            type="text"
+            id="city"
+            [(ngModel)]="formData.city"
+            (ngModelChange)="onAddressFieldChange()"
+            (blur)="geocodeAndUpdateMap()"
+            class="form-control"
+            placeholder="City"
+            autocomplete="address-level2"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="state">State *</label>
+          <input
+            type="text"
+            id="state"
+            [(ngModel)]="formData.state"
+            (ngModelChange)="onAddressFieldChange()"
+            (blur)="geocodeAndUpdateMap()"
+            class="form-control"
+            placeholder="TX"
+            maxlength="2"
+            autocomplete="address-level1"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="zip_code">ZIP Code *</label>
+          <input
+            type="text"
+            id="zip_code"
+            [(ngModel)]="formData.zip_code"
+            (ngModelChange)="onAddressFieldChange()"
+            (blur)="geocodeAndUpdateMap()"
+            class="form-control"
+            placeholder="77001"
+            maxlength="5"
+            autocomplete="postal-code"
+            [disabled]="saving"
+          />
+        </div>
+      </div>
+
+      <!-- Verification Result -->
+      <div *ngIf="verificationResult" class="verification-result" [class.success]="verificationResult.serviceable" [class.error]="!verificationResult.serviceable">
+        <div class="verification-icon">
+          <svg *ngIf="verificationResult.serviceable" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <svg *ngIf="!verificationResult.serviceable" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <div class="verification-text">
+          <p class="verification-title">{{ verificationResult.serviceable ? 'Address Verified!' : 'Address Not Serviceable' }}</p>
+          <p class="verification-message">{{ verificationResult.message }}</p>
+        </div>
+      </div>
+
+      <!-- Service Area Info -->
+      <div *ngIf="!verificationResult" class="info-banner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <div>
+          <p class="info-title">Service Area Verification</p>
+          <p class="info-text">We'll verify this address is within our service area when you save.</p>
+        </div>
+      </div>
+
+      <!-- Additional Fields -->
+      <div class="form-group">
+        <label for="building">Building Name/Number</label>
+        <input
+          type="text"
+          id="building"
+          [(ngModel)]="formData.building"
+          class="form-control"
+          placeholder="Building name or number"
+          [disabled]="saving"
+        />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="apartment">Apartment/Unit</label>
+          <input
+            type="text"
+            id="apartment"
+            [(ngModel)]="formData.apartment"
+            class="form-control"
+            placeholder="Apt, Suite, Unit"
+            [disabled]="saving"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="floor">Floor</label>
+          <input
+            type="text"
+            id="floor"
+            [(ngModel)]="formData.floor"
+            class="form-control"
+            placeholder="Floor number"
+            [disabled]="saving"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="additional_info">Additional Info</label>
+        <textarea
+          id="additional_info"
+          [(ngModel)]="formData.additional_info"
+          class="form-control"
+          placeholder="Gate code, parking instructions, etc."
+          rows="2"
+          [disabled]="saving"
+        ></textarea>
+      </div>
+
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            [(ngModel)]="formData.is_default"
+            [disabled]="saving"
+          />
+          <span>Set as default address</span>
+        </label>
+      </div>
+
+      <!-- Error message -->
+      <div *ngIf="error" class="error-banner">
+        {{ error }}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button
+        class="btn btn-secondary"
+        (click)="closeModal()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        (click)="saveAddress()"
+        [disabled]="saving || isVerifying"
+      >
+        <span *ngIf="saving" class="spinner"></span>
+        <span *ngIf="isVerifying" class="spinner"></span>
+        {{ saving ? 'Saving...' : (isVerifying ? 'Verifying...' : (isEditMode ? 'Save Changes' : 'Verify & Save')) }}
+      </button>
+    </div>
+  </div>
+</div>

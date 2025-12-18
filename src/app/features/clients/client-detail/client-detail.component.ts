@@ -15,7 +15,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AddPetModalComponent } from '../../../shared/components/add-pet-modal/add-pet-modal.component';
 import { EditClientModalComponent } from '../../../shared/components/edit-client-modal/edit-client-modal.component';
-import { AddressModalComponent } from '../../../shared/components/address-modal/address-modal.component';
+import { MapboxAddressModalComponent } from '../../../shared/components/mapbox-address-modal/mapbox-address-modal.component';
 import { PaymentMethodModalComponent } from '../../../shared/components/payment-method-modal/payment-method-modal.component';
 
 @Component({
@@ -27,7 +27,7 @@ import { PaymentMethodModalComponent } from '../../../shared/components/payment-
     RouterModule,
     AddPetModalComponent,
     EditClientModalComponent,
-    AddressModalComponent,
+    MapboxAddressModalComponent,
     PaymentMethodModalComponent
   ],
   templateUrl: './client-detail.component.html',
@@ -297,10 +297,9 @@ export class ClientDetailComponent implements OnInit {
     }
 
     try {
-      await this.clientService.deleteClientAddress(address.id);
-      if (this.clientData) {
-        this.clientData.addresses = await this.clientService.getClientAddresses(this.clientData.client.id);
-      }
+      if (!this.clientData) return;
+      await this.clientService.deleteClientAddress(this.clientData.client.id, address.id);
+      this.clientData.addresses = await this.clientService.getClientAddresses(this.clientData.client.id);
     } catch (err) {
       console.error('Error deleting address:', err);
       alert('Failed to delete address. Please try again.');
