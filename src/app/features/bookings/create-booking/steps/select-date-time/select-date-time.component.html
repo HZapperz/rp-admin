@@ -60,63 +60,64 @@
         </div>
       </div>
 
-      <!-- Time Slots Section -->
+      <!-- Time Input Section -->
       <div class="timeslots-section">
-        <h4>Choose a Time</h4>
+        <h4>Enter Time</h4>
 
         <div *ngIf="!selectedDate" class="no-date-message">
           <mat-icon class="clock-icon" inline>schedule</mat-icon>
           <p>Please select a date first</p>
         </div>
 
-        <div *ngIf="selectedDate && isLoadingTimeSlots" class="loading-message">
-          <mat-icon class="clock-icon" inline>schedule</mat-icon>
-          <p>Loading time slots...</p>
-        </div>
-
-        <div *ngIf="selectedDate && !isLoadingTimeSlots && timeSlots.length === 0" class="no-slots-message">
-          <mat-icon class="clock-icon" inline>schedule</mat-icon>
-          <p>No time slots available</p>
-        </div>
-
-        <div *ngIf="selectedDate && !isLoadingTimeSlots && timeSlots.length > 0" class="timeslots-grid">
-          <div
-            *ngFor="let slot of timeSlots"
-            class="timeslot-card"
-            [class.selected]="selectedTimeSlot?.id === slot.id"
-            [class.unavailable]="!slot.available"
-            (click)="selectTimeSlot(slot)"
-          >
-            <mat-icon class="slot-icon" inline>schedule</mat-icon>
-            <span class="slot-time">{{ slot.label }}</span>
-            <span class="unavailable-badge" *ngIf="!slot.available">Booked</span>
-            <div class="check-icon" *ngIf="selectedTimeSlot?.id === slot.id">✓</div>
+        <div *ngIf="selectedDate" class="time-inputs">
+          <div class="time-input-group">
+            <label class="time-label">Start Time</label>
+            <input
+              type="text"
+              class="time-input"
+              [(ngModel)]="startTime"
+              placeholder="e.g., 9:30 AM"
+              (ngModelChange)="onTimeChange()"
+            >
+          </div>
+          <div class="time-input-group">
+            <label class="time-label">End Time</label>
+            <input
+              type="text"
+              class="time-input"
+              [(ngModel)]="endTime"
+              placeholder="e.g., 11:00 AM"
+              (ngModelChange)="onTimeChange()"
+            >
+          </div>
+          <div class="time-format-hint">
+            <small>Format: HH:MM AM/PM (e.g., 9:30 AM, 1:00 PM)</small>
           </div>
         </div>
 
         <!-- Selected Time Display -->
-        <div class="selected-time-display" *ngIf="selectedTimeSlot">
+        <div class="selected-time-display" *ngIf="isTimeValid()">
           <mat-icon class="clock-icon" inline>schedule</mat-icon>
-          <span class="time-text">{{ selectedTimeSlot?.label }}</span>
+          <span class="time-text">{{ startTime }} - {{ endTime }}</span>
         </div>
       </div>
     </div>
 
     <!-- Summary -->
-    <div class="datetime-summary" *ngIf="selectedDate && selectedTimeSlot">
+    <div class="datetime-summary" *ngIf="selectedDate && isTimeValid()">
       <mat-icon class="summary-icon">check_circle</mat-icon>
       <div class="summary-text">
         <div class="summary-title">Appointment Scheduled</div>
         <div class="summary-details">
-          {{ formatDateDisplay(selectedDate) }} - {{ selectedTimeSlot?.label }}
+          {{ formatDateDisplay(selectedDate) }} - {{ startTime }} to {{ endTime }}
         </div>
       </div>
     </div>
 
     <!-- Validation Message -->
-    <div class="validation-message" *ngIf="selectedDate && !selectedTimeSlot">
+    <div class="validation-message" *ngIf="selectedDate && !isTimeValid()">
       <mat-icon class="info-icon" inline>info</mat-icon>
-      <span>Please select a time slot to continue</span>
+      <span>Please enter valid start and end times to continue</span>
     </div>
   </div>
 </div>

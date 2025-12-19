@@ -1,29 +1,20 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { BusinessSettingsService } from '../../../../../core/services/business-settings.service';
-
-export interface TimeSlot {
-  id: string;
-  label: string;       // Display: "Morning (8:30 AM - 12:00 PM)"
-  display_time: string;
-  start: string;       // Backend: "08:30:00"
-  end: string;         // Backend: "12:00:00"
-  available: boolean;
-}
 
 export interface DateTimeSelection {
   date: string;
-  time_slot: string;           // Display value
-  scheduled_time_start: string; // "HH:MM:SS" format
-  scheduled_time_end: string;   // "HH:MM:SS" format
+  time_slot: string;           // Display value "9:30 AM - 11:00 AM"
+  scheduled_time_start: string; // "HH:MM:SS" format for backend
+  scheduled_time_end: string;   // "HH:MM:SS" format for backend
   shift_preference: string;     // "morning" or "afternoon"
 }
 
 @Component({
   selector: 'app-select-date-time',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './select-date-time.component.html',
   styleUrls: ['./select-date-time.component.scss']
 })
@@ -32,7 +23,10 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   @Output() dateTimeSelected = new EventEmitter<DateTimeSelection>();
 
   selectedDate: Date | null = null;
-  selectedTimeSlot: TimeSlot | null = null;
+
+  // Time inputs in HH:MM AM/PM format
+  startTime: string = '';
+  endTime: string = '';
 
   // Calendar data
   currentMonth: Date = new Date();
@@ -41,45 +35,16 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
                 'July', 'August', 'September', 'October', 'November', 'December'];
   dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Time slots loaded from database
-  timeSlots: TimeSlot[] = [];
-  isLoadingTimeSlots = false;
-
-  constructor(private businessSettingsService: BusinessSettingsService) {}
-
   ngOnInit(): void {
     this.generateCalendar();
-    this.loadTimeSlots();
-  }
-
-  loadTimeSlots(): void {
-    this.isLoadingTimeSlots = true;
-    this.businessSettingsService.getBookingTimeSlots().subscribe({
-      next: (slots) => {
-        this.timeSlots = slots
-          .filter(s => s.is_active)
-          .map(s => ({
-            id: s.id,
-            label: s.label,
-            display_time: s.display_time,
-            start: s.start_time,
-            end: s.end_time,
-            available: true
-          }));
-        this.isLoadingTimeSlots = false;
-      },
-      error: (err) => {
-        console.error('Error loading time slots:', err);
-        this.isLoadingTimeSlots = false;
-      }
-    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedGroomer']) {
       // Reset selections when groomer changes
       this.selectedDate = null;
-      this.selectedTimeSlot = null;
+      this.startTime = '';
+      this.endTime = '';
     }
   }
 
@@ -133,17 +98,48 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
     }
 
     this.selectedDate = date;
-    this.selectedTimeSlot = null; // Reset time slot when date changes
     this.emitSelection();
   }
 
-  selectTimeSlot(timeSlot: TimeSlot): void {
-    if (!timeSlot.available) {
-      return;
-    }
-
-    this.selectedTimeSlot = timeSlot;
+  onTimeChange(): void {
     this.emitSelection();
+  }
+
+  /**
+   * Convert 12-hour time format to 24-hour format
+   * Example: "9:30 AM" → "09:30:00", "1:00 PM" → "13:00:00"
+   */
+  convertTo24Hour(time12h: string): string {
+    if (!time12h) return '';
+
+    // Normalize the input - handle various formats
+    const normalized = time12h.trim().toUpperCase();
+
+    // Parse "9:30 AM", "9:30AM", "09:30 AM", etc.
+    const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (!match) return '';
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const period = match[3];
+
+    // Validate hours
+    if (hours < 1 || hours > 12) return '';
+
+    // Convert to 24-hour
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+  }
+
+  /**
+   * Check if both times are valid and properly formatted
+   */
+  isTimeValid(): boolean {
+    const start24 = this.convertTo24Hour(this.startTime);
+    const end24 = this.convertTo24Hour(this.endTime);
+    return start24 !== '' && end24 !== '';
   }
 
   isDateSelectable(date: Date): boolean {
@@ -168,17 +164,24 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   }
 
   emitSelection(): void {
-    if (this.selectedDate && this.selectedTimeSlot) {
+    const start24 = this.convertTo24Hour(this.startTime);
+    const end24 = this.convertTo24Hour(this.endTime);
+
+    if (this.selectedDate && start24 && end24) {
       const dateString = this.formatDateForAPI(this.selectedDate);
+
       // Determine shift preference based on start hour (morning = before 12:00)
-      const startHour = parseInt(this.selectedTimeSlot.start.split(':')[0], 10);
+      const startHour = parseInt(start24.split(':')[0], 10);
       const shiftPreference = startHour < 12 ? 'morning' : 'afternoon';
+
+      // Create display label from the entered times
+      const timeSlotLabel = `${this.startTime.trim()} - ${this.endTime.trim()}`;
 
       this.dateTimeSelected.emit({
         date: dateString,
-        time_slot: this.selectedTimeSlot.label,  // Use label from database
-        scheduled_time_start: this.selectedTimeSlot.start,
-        scheduled_time_end: this.selectedTimeSlot.end,
+        time_slot: timeSlotLabel,
+        scheduled_time_start: start24,
+        scheduled_time_end: end24,
         shift_preference: shiftPreference
       });
     } else {
