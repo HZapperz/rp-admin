@@ -69,25 +69,35 @@
           <p>Please select a date first</p>
         </div>
 
-        <div *ngIf="selectedDate" class="timeslots-grid">
+        <div *ngIf="selectedDate && isLoadingTimeSlots" class="loading-message">
+          <mat-icon class="clock-icon" inline>schedule</mat-icon>
+          <p>Loading time slots...</p>
+        </div>
+
+        <div *ngIf="selectedDate && !isLoadingTimeSlots && timeSlots.length === 0" class="no-slots-message">
+          <mat-icon class="clock-icon" inline>schedule</mat-icon>
+          <p>No time slots available</p>
+        </div>
+
+        <div *ngIf="selectedDate && !isLoadingTimeSlots && timeSlots.length > 0" class="timeslots-grid">
           <div
             *ngFor="let slot of timeSlots"
             class="timeslot-card"
-            [class.selected]="selectedTimeSlot?.time === slot.time"
+            [class.selected]="selectedTimeSlot?.id === slot.id"
             [class.unavailable]="!slot.available"
             (click)="selectTimeSlot(slot)"
           >
             <mat-icon class="slot-icon" inline>schedule</mat-icon>
-            <span class="slot-time">{{ slot.time }}</span>
+            <span class="slot-time">{{ slot.label }}</span>
             <span class="unavailable-badge" *ngIf="!slot.available">Booked</span>
-            <div class="check-icon" *ngIf="selectedTimeSlot?.time === slot.time">✓</div>
+            <div class="check-icon" *ngIf="selectedTimeSlot?.id === slot.id">✓</div>
           </div>
         </div>
 
         <!-- Selected Time Display -->
         <div class="selected-time-display" *ngIf="selectedTimeSlot">
           <mat-icon class="clock-icon" inline>schedule</mat-icon>
-          <span class="time-text">{{ selectedTimeSlot?.time }}</span>
+          <span class="time-text">{{ selectedTimeSlot?.label }}</span>
         </div>
       </div>
     </div>
@@ -98,7 +108,7 @@
       <div class="summary-text">
         <div class="summary-title">Appointment Scheduled</div>
         <div class="summary-details">
-          {{ formatDateDisplay(selectedDate) }} at {{ selectedTimeSlot?.time }}
+          {{ formatDateDisplay(selectedDate) }} - {{ selectedTimeSlot?.label }}
         </div>
       </div>
     </div>

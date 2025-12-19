@@ -1,11 +1,14 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { BusinessSettingsService } from '../../../../../core/services/business-settings.service';
 
 export interface TimeSlot {
-  time: string;        // Display: "09:00 AM"
-  start: string;       // Backend: "09:00:00"
-  end: string;         // Backend: "10:30:00"
+  id: string;
+  label: string;       // Display: "Morning (8:30 AM - 12:00 PM)"
+  display_time: string;
+  start: string;       // Backend: "08:30:00"
+  end: string;         // Backend: "12:00:00"
   available: boolean;
 }
 
@@ -38,21 +41,38 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
                 'July', 'August', 'September', 'October', 'November', 'December'];
   dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Time slots with start/end times (1.5 hour service windows)
-  timeSlots: TimeSlot[] = [
-    { time: '09:00 AM', start: '09:00:00', end: '10:30:00', available: true },
-    { time: '10:00 AM', start: '10:00:00', end: '11:30:00', available: true },
-    { time: '11:00 AM', start: '11:00:00', end: '12:30:00', available: true },
-    { time: '12:00 PM', start: '12:00:00', end: '13:30:00', available: true },
-    { time: '01:00 PM', start: '13:00:00', end: '14:30:00', available: true },
-    { time: '02:00 PM', start: '14:00:00', end: '15:30:00', available: true },
-    { time: '03:00 PM', start: '15:00:00', end: '16:30:00', available: true },
-    { time: '04:00 PM', start: '16:00:00', end: '17:30:00', available: true },
-    { time: '05:00 PM', start: '17:00:00', end: '18:30:00', available: true }
-  ];
+  // Time slots loaded from database
+  timeSlots: TimeSlot[] = [];
+  isLoadingTimeSlots = false;
+
+  constructor(private businessSettingsService: BusinessSettingsService) {}
 
   ngOnInit(): void {
     this.generateCalendar();
+    this.loadTimeSlots();
+  }
+
+  loadTimeSlots(): void {
+    this.isLoadingTimeSlots = true;
+    this.businessSettingsService.getBookingTimeSlots().subscribe({
+      next: (slots) => {
+        this.timeSlots = slots
+          .filter(s => s.is_active)
+          .map(s => ({
+            id: s.id,
+            label: s.label,
+            display_time: s.display_time,
+            start: s.start_time,
+            end: s.end_time,
+            available: true
+          }));
+        this.isLoadingTimeSlots = false;
+      },
+      error: (err) => {
+        console.error('Error loading time slots:', err);
+        this.isLoadingTimeSlots = false;
+      }
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -156,7 +176,7 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
 
       this.dateTimeSelected.emit({
         date: dateString,
-        time_slot: this.selectedTimeSlot.time,
+        time_slot: this.selectedTimeSlot.label,  // Use label from database
         scheduled_time_start: this.selectedTimeSlot.start,
         scheduled_time_end: this.selectedTimeSlot.end,
         shift_preference: shiftPreference
