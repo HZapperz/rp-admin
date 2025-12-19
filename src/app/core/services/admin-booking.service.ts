@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SupabaseService } from './supabase.service';
 
 export interface PetBooking {
   pet_id: string;
@@ -80,13 +81,32 @@ export interface PricingItem {
 })
 export class AdminBookingService {
   private http = inject(HttpClient);
+  private supabase = inject(SupabaseService);
   private apiUrl = environment.apiUrl;
+
+  /**
+   * Get authentication headers for API requests
+   */
+  private getAuthHeaders(): Record<string, string> {
+    const session = this.supabase.session;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    return headers;
+  }
 
   /**
    * Create a booking on behalf of a client
    */
   createBooking(bookingData: AdminBookingRequest): Observable<any> {
-    return this.http.post(`${this.apiUrl}/api/admin/bookings`, bookingData);
+    return this.http.post(
+      `${this.apiUrl}/api/admin/bookings`,
+      bookingData,
+      { headers: this.getAuthHeaders() }
+    );
   }
 
   /**
@@ -94,7 +114,8 @@ export class AdminBookingService {
    */
   getClientPaymentMethods(clientId: string): Observable<PaymentMethod[]> {
     return this.http.get<PaymentMethod[]>(
-      `${this.apiUrl}/api/admin/clients/${clientId}/payment-methods`
+      `${this.apiUrl}/api/admin/clients/${clientId}/payment-methods`,
+      { headers: this.getAuthHeaders() }
     );
   }
 
