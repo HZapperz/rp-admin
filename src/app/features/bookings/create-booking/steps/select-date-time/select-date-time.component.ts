@@ -106,6 +106,55 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Auto-format time input to standard "H:MM AM/PM" format
+   * Handles: "930am", "9:30am", "930", "9:30", "0930"
+   */
+  formatTimeInput(value: string): string {
+    if (!value) return '';
+
+    // Remove spaces and normalize
+    let cleaned = value.replace(/\s+/g, '').toUpperCase();
+
+    // Match patterns: "930AM", "9:30AM", "930", "9:30", "0930"
+    const match = cleaned.match(/^(\d{1,2}):?(\d{2})(AM|PM)?$/);
+    if (!match) return value; // Return original if no match
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    let period = match[3] || '';
+
+    // If no period provided, guess based on hour
+    if (!period) {
+      // Assume business hours: 8-11 = AM, 12+ = PM
+      if (hours >= 8 && hours < 12) {
+        period = 'AM';
+      } else if (hours === 12) {
+        period = 'PM';
+      } else if (hours >= 1 && hours <= 5) {
+        period = 'PM'; // 1-5 likely afternoon
+      } else {
+        period = 'AM';
+      }
+    }
+
+    // Normalize hours for display (1-12)
+    if (hours > 12) hours = hours - 12;
+    if (hours === 0) hours = 12;
+
+    return `${hours}:${minutes} ${period}`;
+  }
+
+  onStartTimeBlur(): void {
+    this.startTime = this.formatTimeInput(this.startTime);
+    this.onTimeChange();
+  }
+
+  onEndTimeBlur(): void {
+    this.endTime = this.formatTimeInput(this.endTime);
+    this.onTimeChange();
+  }
+
+  /**
    * Convert 12-hour time format to 24-hour format
    * Example: "9:30 AM" → "09:30:00", "1:00 PM" → "13:00:00"
    */

@@ -76,8 +76,9 @@
               type="text"
               class="time-input"
               [(ngModel)]="startTime"
-              placeholder="e.g., 9:30 AM"
+              placeholder="e.g., 9:30 AM or 930am"
               (ngModelChange)="onTimeChange()"
+              (blur)="onStartTimeBlur()"
             >
           </div>
           <div class="time-input-group">
@@ -86,12 +87,13 @@
               type="text"
               class="time-input"
               [(ngModel)]="endTime"
-              placeholder="e.g., 11:00 AM"
+              placeholder="e.g., 11:00 AM or 1100am"
               (ngModelChange)="onTimeChange()"
+              (blur)="onEndTimeBlur()"
             >
           </div>
           <div class="time-format-hint">
-            <small>Format: HH:MM AM/PM (e.g., 9:30 AM, 1:00 PM)</small>
+            <small>Type time in any format (e.g., 930am, 9:30 AM) - auto-formats on blur</small>
           </div>
         </div>
 
