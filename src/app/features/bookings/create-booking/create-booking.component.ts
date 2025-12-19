@@ -110,6 +110,9 @@ export class CreateBookingComponent implements OnInit {
     this.selectedDateTime = data;
     this.bookingData.scheduled_date = data.date;
     this.bookingData.assigned_time_slot = data.time_slot;
+    this.bookingData.scheduled_time_start = data.scheduled_time_start;
+    this.bookingData.scheduled_time_end = data.scheduled_time_end;
+    this.bookingData.shift_preference = data.shift_preference;
     console.log('Date/Time selected:', data);
   }
 
@@ -219,6 +222,9 @@ export class CreateBookingComponent implements OnInit {
         payment_method_id: this.bookingData.payment_method_id,
         scheduled_date: this.bookingData.scheduled_date!,
         assigned_time_slot: this.bookingData.assigned_time_slot!,
+        scheduled_time_start: this.bookingData.scheduled_time_start!,
+        scheduled_time_end: this.bookingData.scheduled_time_end!,
+        shift_preference: this.bookingData.shift_preference!,
         pets,
         address_id: this.bookingData.address_id!,
         pricing_override: this.bookingData.pricing_override

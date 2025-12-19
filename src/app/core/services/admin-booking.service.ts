@@ -35,6 +35,9 @@ export interface AdminBookingRequest {
   payment_method_id?: string;
   scheduled_date: string;
   assigned_time_slot: string;
+  scheduled_time_start: string;  // "HH:MM:SS" format
+  scheduled_time_end: string;    // "HH:MM:SS" format
+  shift_preference: string;      // "morning" or "afternoon"
   pets: PetBooking[];
   address_id: string;
   notes?: string;

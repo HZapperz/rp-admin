@@ -3,13 +3,18 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 
 export interface TimeSlot {
-  time: string;
+  time: string;        // Display: "09:00 AM"
+  start: string;       // Backend: "09:00:00"
+  end: string;         // Backend: "10:30:00"
   available: boolean;
 }
 
 export interface DateTimeSelection {
   date: string;
-  time_slot: string;
+  time_slot: string;           // Display value
+  scheduled_time_start: string; // "HH:MM:SS" format
+  scheduled_time_end: string;   // "HH:MM:SS" format
+  shift_preference: string;     // "morning" or "afternoon"
 }
 
 @Component({
@@ -24,7 +29,7 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   @Output() dateTimeSelected = new EventEmitter<DateTimeSelection>();
 
   selectedDate: Date | null = null;
-  selectedTimeSlot: string | null = null;
+  selectedTimeSlot: TimeSlot | null = null;
 
   // Calendar data
   currentMonth: Date = new Date();
@@ -33,17 +38,17 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
                 'July', 'August', 'September', 'October', 'November', 'December'];
   dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Time slots
+  // Time slots with start/end times (1.5 hour service windows)
   timeSlots: TimeSlot[] = [
-    { time: '09:00 AM', available: true },
-    { time: '10:00 AM', available: true },
-    { time: '11:00 AM', available: true },
-    { time: '12:00 PM', available: true },
-    { time: '01:00 PM', available: true },
-    { time: '02:00 PM', available: true },
-    { time: '03:00 PM', available: true },
-    { time: '04:00 PM', available: true },
-    { time: '05:00 PM', available: true }
+    { time: '09:00 AM', start: '09:00:00', end: '10:30:00', available: true },
+    { time: '10:00 AM', start: '10:00:00', end: '11:30:00', available: true },
+    { time: '11:00 AM', start: '11:00:00', end: '12:30:00', available: true },
+    { time: '12:00 PM', start: '12:00:00', end: '13:30:00', available: true },
+    { time: '01:00 PM', start: '13:00:00', end: '14:30:00', available: true },
+    { time: '02:00 PM', start: '14:00:00', end: '15:30:00', available: true },
+    { time: '03:00 PM', start: '15:00:00', end: '16:30:00', available: true },
+    { time: '04:00 PM', start: '16:00:00', end: '17:30:00', available: true },
+    { time: '05:00 PM', start: '17:00:00', end: '18:30:00', available: true }
   ];
 
   ngOnInit(): void {
@@ -117,7 +122,7 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.selectedTimeSlot = timeSlot.time;
+    this.selectedTimeSlot = timeSlot;
     this.emitSelection();
   }
 
@@ -145,14 +150,24 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   emitSelection(): void {
     if (this.selectedDate && this.selectedTimeSlot) {
       const dateString = this.formatDateForAPI(this.selectedDate);
+      // Determine shift preference based on start hour (morning = before 12:00)
+      const startHour = parseInt(this.selectedTimeSlot.start.split(':')[0], 10);
+      const shiftPreference = startHour < 12 ? 'morning' : 'afternoon';
+
       this.dateTimeSelected.emit({
         date: dateString,
-        time_slot: this.selectedTimeSlot
+        time_slot: this.selectedTimeSlot.time,
+        scheduled_time_start: this.selectedTimeSlot.start,
+        scheduled_time_end: this.selectedTimeSlot.end,
+        shift_preference: shiftPreference
       });
     } else {
       this.dateTimeSelected.emit({
         date: '',
-        time_slot: ''
+        time_slot: '',
+        scheduled_time_start: '',
+        scheduled_time_end: '',
+        shift_preference: ''
       });
     }
   }
