@@ -86,7 +86,7 @@ export class AdminBookingService {
    * Create a booking on behalf of a client
    */
   createBooking(bookingData: AdminBookingRequest): Observable<any> {
-    return this.http.post(`${this.apiUrl}/admin/bookings`, bookingData);
+    return this.http.post(`${this.apiUrl}/api/admin/bookings`, bookingData);
   }
 
   /**
@@ -94,7 +94,7 @@ export class AdminBookingService {
    */
   getClientPaymentMethods(clientId: string): Observable<PaymentMethod[]> {
     return this.http.get<PaymentMethod[]>(
-      `${this.apiUrl}/admin/clients/${clientId}/payment-methods`
+      `${this.apiUrl}/api/admin/clients/${clientId}/payment-methods`
     );
   }
 
