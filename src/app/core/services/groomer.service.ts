@@ -1,6 +1,14 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Observable, from } from 'rxjs';
+import {
+  GroomerPayout,
+  GroomDetail,
+  PayPeriodData,
+  WeekData,
+  AvailablePayrollMonth,
+  GroomDetailPet
+} from '../models/types';
 
 export interface GroomerWithStats {
   id: string;
@@ -634,5 +642,410 @@ export class GroomerService {
       style: 'currency',
       currency: 'USD'
     }).format(amount);
+  }
+
+  // ==========================================
+  // PAYROLL METHODS
+  // ==========================================
+
+  /**
+   * Get available months with payroll data for a groomer
+   */
+  getAvailablePayrollMonths(groomerId: string): Observable<AvailablePayrollMonth[]> {
+    return from(this.fetchAvailablePayrollMonths(groomerId));
+  }
+
+  private async fetchAvailablePayrollMonths(groomerId: string): Promise<AvailablePayrollMonth[]> {
+    const { data: bookings, error } = await this.supabase
+      .from('bookings')
+      .select('scheduled_date')
+      .eq('groomer_id', groomerId)
+      .eq('status', 'completed')
+      .order('scheduled_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payroll months:', error);
+      throw error;
+    }
+
+    if (!bookings || bookings.length === 0) {
+      return [];
+    }
+
+    // Group by year-month
+    const monthMap = new Map<string, { year: number; month: number; count: number }>();
+
+    bookings.forEach(booking => {
+      const date = new Date(booking.scheduled_date);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const key = `${year}-${month}`;
+
+      if (!monthMap.has(key)) {
+        monthMap.set(key, { year, month, count: 0 });
+      }
+      monthMap.get(key)!.count++;
+    });
+
+    // Convert to array and format labels
+    const months: AvailablePayrollMonth[] = Array.from(monthMap.values()).map(m => ({
+      year: m.year,
+      month: m.month,
+      label: new Date(m.year, m.month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+      booking_count: m.count
+    }));
+
+    return months.sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+  }
+
+  /**
+   * Get monthly payroll data for a groomer
+   */
+  getGroomerMonthlyPayroll(groomerId: string, year: number, month: number): Observable<PayPeriodData> {
+    return from(this.fetchGroomerMonthlyPayroll(groomerId, year, month));
+  }
+
+  private async fetchGroomerMonthlyPayroll(groomerId: string, year: number, month: number): Promise<PayPeriodData> {
+    // Calculate period start and end
+    const periodStart = new Date(year, month, 1);
+    const periodEnd = new Date(year, month + 1, 0); // Last day of month
+
+    const startStr = periodStart.toISOString().split('T')[0];
+    const endStr = periodEnd.toISOString().split('T')[0];
+
+    // Get groomer's commission rate
+    const { data: groomer } = await this.supabase
+      .from('users')
+      .select('commission_rate')
+      .eq('id', groomerId)
+      .single();
+
+    const commissionRate = groomer?.commission_rate || 0.35;
+
+    // Fetch all completed bookings for this period
+    const { data: bookings, error: bookingsError } = await this.supabase
+      .from('bookings')
+      .select(`
+        id,
+        scheduled_date,
+        client_id,
+        total_amount,
+        tax_amount,
+        tip_amount,
+        payment_status
+      `)
+      .eq('groomer_id', groomerId)
+      .eq('status', 'completed')
+      .gte('scheduled_date', startStr)
+      .lte('scheduled_date', endStr)
+      .order('scheduled_date', { ascending: false });
+
+    if (bookingsError) {
+      console.error('Error fetching bookings:', bookingsError);
+      throw bookingsError;
+    }
+
+    if (!bookings || bookings.length === 0) {
+      return this.createEmptyPayPeriodData(startStr, endStr, year, month);
+    }
+
+    // Batch fetch clients, booking_pets, pets, and addons
+    const bookingIds = bookings.map(b => b.id);
+    const clientIds = [...new Set(bookings.map(b => b.client_id).filter(Boolean))];
+
+    const [clientsResult, bookingPetsResult] = await Promise.all([
+      this.supabase
+        .from('users')
+        .select('id, first_name, last_name')
+        .in('id', clientIds),
+      this.supabase
+        .from('booking_pets')
+        .select('id, booking_id, pet_id, package_type, total_price')
+        .in('booking_id', bookingIds)
+    ]);
+
+    const clients = clientsResult.data || [];
+    const bookingPets = bookingPetsResult.data || [];
+
+    // Fetch pet details
+    const petIds = [...new Set(bookingPets.map(bp => bp.pet_id).filter(Boolean))];
+    const { data: pets } = await this.supabase
+      .from('pets')
+      .select('id, name, breed')
+      .in('id', petIds.length > 0 ? petIds : ['00000000-0000-0000-0000-000000000000']);
+
+    // Fetch addons
+    const bookingPetIds = bookingPets.map(bp => bp.id);
+    const { data: addons } = await this.supabase
+      .from('booking_addons')
+      .select('booking_pet_id, addon_name, addon_price')
+      .in('booking_pet_id', bookingPetIds.length > 0 ? bookingPetIds : ['00000000-0000-0000-0000-000000000000']);
+
+    // Create lookup maps
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+    const petMap = new Map((pets || []).map(p => [p.id, p]));
+    const addonsByBookingPetId = (addons || []).reduce((acc, addon) => {
+      if (!acc[addon.booking_pet_id]) acc[addon.booking_pet_id] = [];
+      acc[addon.booking_pet_id].push({ addon_name: addon.addon_name, addon_price: addon.addon_price });
+      return acc;
+    }, {} as Record<string, Array<{ addon_name: string; addon_price: number }>>);
+
+    const bookingPetsByBookingId = bookingPets.reduce((acc, bp) => {
+      if (!acc[bp.booking_id]) acc[bp.booking_id] = [];
+      acc[bp.booking_id].push(bp);
+      return acc;
+    }, {} as Record<string, typeof bookingPets>);
+
+    // Check for existing payout record
+    const { data: existingPayout } = await this.supabase
+      .from('groomer_payouts')
+      .select('*')
+      .eq('groomer_id', groomerId)
+      .eq('period_start', startStr)
+      .eq('period_end', endStr)
+      .single();
+
+    // Build groom details
+    const grooms: GroomDetail[] = bookings.map(booking => {
+      const client = clientMap.get(booking.client_id);
+      const bpets = bookingPetsByBookingId[booking.id] || [];
+
+      const petDetails: GroomDetailPet[] = bpets.map(bp => {
+        const pet = petMap.get(bp.pet_id);
+        return {
+          pet_id: bp.pet_id,
+          pet_name: pet?.name || 'Unknown Pet',
+          breed: pet?.breed,
+          package_type: bp.package_type,
+          total_price: bp.total_price || 0,
+          addons: addonsByBookingPetId[bp.id] || []
+        };
+      });
+
+      const totalAmount = booking.total_amount || 0;
+      const taxAmount = booking.tax_amount || 0;
+      const preTaxAmount = totalAmount - taxAmount;
+      const tipAmount = booking.tip_amount || 0;
+      const groomerCut = (preTaxAmount * commissionRate) + tipAmount;
+
+      return {
+        booking_id: booking.id,
+        scheduled_date: booking.scheduled_date,
+        client: {
+          id: booking.client_id,
+          first_name: client?.first_name || 'Unknown',
+          last_name: client?.last_name || ''
+        },
+        pets: petDetails,
+        total_amount: totalAmount,
+        tax_amount: taxAmount,
+        pre_tax_amount: preTaxAmount,
+        tip_amount: tipAmount,
+        commission_rate: commissionRate,
+        groomer_cut: groomerCut,
+        payment_status: booking.payment_status || 'unknown'
+      };
+    });
+
+    // Group grooms by week
+    const weeks = this.groupGroomsByWeek(grooms, commissionRate);
+
+    // Calculate period totals
+    const totals = {
+      total_amount: grooms.reduce((sum, g) => sum + g.total_amount, 0),
+      tax_amount: grooms.reduce((sum, g) => sum + g.tax_amount, 0),
+      pre_tax_total: grooms.reduce((sum, g) => sum + g.pre_tax_amount, 0),
+      tips: grooms.reduce((sum, g) => sum + g.tip_amount, 0),
+      commission_earnings: grooms.reduce((sum, g) => sum + (g.pre_tax_amount * commissionRate), 0),
+      total_payout: grooms.reduce((sum, g) => sum + g.groomer_cut, 0),
+      booking_count: grooms.length
+    };
+
+    return {
+      period_start: startStr,
+      period_end: endStr,
+      period_label: new Date(year, month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+      totals,
+      payout: existingPayout || undefined,
+      weeks
+    };
+  }
+
+  private groupGroomsByWeek(grooms: GroomDetail[], commissionRate: number): WeekData[] {
+    const weekMap = new Map<string, { start: Date; end: Date; grooms: GroomDetail[] }>();
+
+    grooms.forEach(groom => {
+      const date = new Date(groom.scheduled_date);
+      const weekStart = this.getWeekStart(date);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const key = weekStart.toISOString().split('T')[0];
+
+      if (!weekMap.has(key)) {
+        weekMap.set(key, { start: weekStart, end: weekEnd, grooms: [] });
+      }
+      weekMap.get(key)!.grooms.push(groom);
+    });
+
+    const weeks: WeekData[] = Array.from(weekMap.entries()).map(([_, data]) => {
+      const weekGrooms = data.grooms;
+      return {
+        week_start: data.start.toISOString().split('T')[0],
+        week_end: data.end.toISOString().split('T')[0],
+        week_label: this.formatWeekLabel(data.start, data.end),
+        totals: {
+          pre_tax_total: weekGrooms.reduce((sum, g) => sum + g.pre_tax_amount, 0),
+          tips: weekGrooms.reduce((sum, g) => sum + g.tip_amount, 0),
+          total_payout: weekGrooms.reduce((sum, g) => sum + g.groomer_cut, 0),
+          booking_count: weekGrooms.length
+        },
+        grooms: weekGrooms.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()),
+        is_expanded: false
+      };
+    });
+
+    return weeks.sort((a, b) => new Date(b.week_start).getTime() - new Date(a.week_start).getTime());
+  }
+
+  private getWeekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day;
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  private formatWeekLabel(start: Date, end: Date): string {
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+
+    if (startMonth === endMonth) {
+      return `Week of ${startMonth} ${startDay}-${endDay}`;
+    }
+    return `Week of ${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+  }
+
+  private createEmptyPayPeriodData(startStr: string, endStr: string, year: number, month: number): PayPeriodData {
+    return {
+      period_start: startStr,
+      period_end: endStr,
+      period_label: new Date(year, month).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+      totals: {
+        total_amount: 0,
+        tax_amount: 0,
+        pre_tax_total: 0,
+        tips: 0,
+        commission_earnings: 0,
+        total_payout: 0,
+        booking_count: 0
+      },
+      payout: undefined,
+      weeks: []
+    };
+  }
+
+  /**
+   * Mark a pay period as paid
+   */
+  markPeriodAsPaid(
+    groomerId: string,
+    periodStart: string,
+    periodEnd: string,
+    periodData: PayPeriodData,
+    paymentDetails: {
+      paid_amount: number;
+      payment_method: string;
+      payment_reference?: string;
+      notes?: string;
+    }
+  ): Observable<GroomerPayout> {
+    return from(this.createOrUpdatePayout(groomerId, periodStart, periodEnd, periodData, paymentDetails));
+  }
+
+  private async createOrUpdatePayout(
+    groomerId: string,
+    periodStart: string,
+    periodEnd: string,
+    periodData: PayPeriodData,
+    paymentDetails: {
+      paid_amount: number;
+      payment_method: string;
+      payment_reference?: string;
+      notes?: string;
+    }
+  ): Promise<GroomerPayout> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+
+    // Get groomer's commission rate
+    const { data: groomer } = await this.supabase
+      .from('users')
+      .select('commission_rate')
+      .eq('id', groomerId)
+      .single();
+
+    const commissionRate = groomer?.commission_rate || 0.35;
+
+    const payoutData = {
+      groomer_id: groomerId,
+      period_start: periodStart,
+      period_end: periodEnd,
+      total_amount: periodData.totals.total_amount,
+      total_tax: periodData.totals.tax_amount,
+      total_pre_tax: periodData.totals.pre_tax_total,
+      total_tips: periodData.totals.tips,
+      commission_rate: commissionRate,
+      total_commission_earnings: periodData.totals.commission_earnings,
+      total_payout: periodData.totals.total_payout,
+      booking_count: periodData.totals.booking_count,
+      status: 'paid' as const,
+      paid_amount: paymentDetails.paid_amount,
+      paid_at: new Date().toISOString(),
+      paid_by: user?.id,
+      payment_method: paymentDetails.payment_method,
+      payment_reference: paymentDetails.payment_reference || null,
+      notes: paymentDetails.notes || null
+    };
+
+    const { data, error } = await this.supabase
+      .from('groomer_payouts')
+      .upsert(payoutData, { onConflict: 'groomer_id,period_start,period_end' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating payout:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Get payout history for a groomer
+   */
+  getPayoutHistory(groomerId: string): Observable<GroomerPayout[]> {
+    return from(this.fetchPayoutHistory(groomerId));
+  }
+
+  private async fetchPayoutHistory(groomerId: string): Promise<GroomerPayout[]> {
+    const { data, error } = await this.supabase
+      .from('groomer_payouts')
+      .select('*')
+      .eq('groomer_id', groomerId)
+      .order('period_start', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payout history:', error);
+      throw error;
+    }
+
+    return data || [];
   }
 }

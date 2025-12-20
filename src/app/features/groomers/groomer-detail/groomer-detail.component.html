@@ -113,85 +113,63 @@
       </div>
     </div>
 
-    <!-- Earnings Summary Card -->
-    <div class="section earnings-section">
-      <h2 class="section-title">Earnings Summary</h2>
+    <!-- Payroll Section -->
+    <div class="section payroll-section">
+      <div class="section-header">
+        <h2 class="section-title">Payroll</h2>
+        <app-payroll-period-selector
+          *ngIf="availableMonths.length > 0"
+          [availableMonths]="availableMonths"
+          [selectedYear]="selectedYear"
+          [selectedMonth]="selectedMonth"
+          (periodChange)="onPeriodChange($event)">
+        </app-payroll-period-selector>
+      </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">{{ earningsDetail.summary.totalBookings }}</div>
-          <div class="stat-label">Total Bookings</div>
+      <!-- Loading state -->
+      <div *ngIf="isLoadingPayroll" class="payroll-loading">
+        <div class="spinner"></div>
+        <p>Loading payroll data...</p>
+      </div>
+
+      <!-- No data state -->
+      <div *ngIf="!isLoadingPayroll && availableMonths.length === 0" class="no-payroll">
+        <span class="material-icons">payments</span>
+        <p>No completed grooms yet</p>
+      </div>
+
+      <!-- Payroll content -->
+      <div *ngIf="!isLoadingPayroll && payrollData" class="payroll-content">
+        <app-payroll-summary-card
+          [periodData]="payrollData"
+          [commissionRate]="earningsDetail?.groomer?.commissionRate || 0.35"
+          (markAsPaid)="openMarkPaidDialog()">
+        </app-payroll-summary-card>
+
+        <div class="weeks-container">
+          <app-payroll-week-section
+            *ngFor="let week of payrollData.weeks; let i = index"
+            [weekData]="week"
+            [isExpanded]="week.is_expanded"
+            (toggleExpandEvent)="toggleWeekExpand(i)">
+          </app-payroll-week-section>
         </div>
-        <div class="stat-card highlight">
-          <div class="stat-value">{{ formatCurrency(earningsDetail.summary.totalGrossRevenue) }}</div>
-          <div class="stat-label">Gross Revenue</div>
-        </div>
-        <div class="stat-card negative">
-          <div class="stat-value">-{{ formatCurrency(earningsDetail.summary.totalStripeFees) }}</div>
-          <div class="stat-label">Stripe Fees</div>
-        </div>
-        <div class="stat-card positive">
-          <div class="stat-value">{{ formatCurrency(earningsDetail.summary.totalNetRevenue) }}</div>
-          <div class="stat-label">Net Revenue</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ formatCurrency(earningsDetail.summary.totalServiceCommission) }}</div>
-          <div class="stat-label">Service Commission</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ formatCurrency(earningsDetail.summary.totalTips) }}</div>
-          <div class="stat-label">Tips</div>
-        </div>
-        <div class="stat-card primary">
-          <div class="stat-value">{{ formatCurrency(earningsDetail.summary.totalEarnings) }}</div>
-          <div class="stat-label">Total Groomer Earnings</div>
-        </div>
-        <div class="stat-card pending">
-          <div class="stat-value">{{ formatCurrency(earningsDetail.summary.pendingPayout) }}</div>
-          <div class="stat-label">Pending Payout</div>
+
+        <div *ngIf="payrollData.weeks.length === 0" class="no-grooms">
+          <p>No completed grooms in this period</p>
         </div>
       </div>
     </div>
 
-    <!-- Recent Earnings -->
-    <div class="section earnings-table-section">
-      <h2 class="section-title">Recent Earnings (Last 20)</h2>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Client</th>
-              <th>Gross</th>
-              <th>Stripe Fee</th>
-              <th>Commission</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @if (earningsDetail.earnings.length === 0) {
-              <tr>
-                <td colspan="6" class="no-earnings">No earnings yet</td>
-              </tr>
-            }
-            @for (earning of earningsDetail.earnings.slice(0, 20); track earning.id) {
-              <tr>
-                <td>{{ formatDate(earning.booking?.scheduled_date) }}</td>
-                <td>{{ earning.booking?.client?.first_name }} {{ earning.booking?.client?.last_name }}</td>
-                <td class="currency">{{ formatCurrency(earning.service_amount_gross) }}</td>
-                <td class="currency fee">-{{ formatCurrency(earning.total_stripe_fees) }}</td>
-                <td class="currency earnings">{{ formatCurrency(earning.groomer_amount) }}</td>
-                <td>
-                  <span class="status-badge status-{{ earning.status }}">
-                    {{ earning.status }}
-                  </span>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <!-- Mark Paid Dialog -->
+    <app-mark-paid-dialog
+      [isOpen]="showMarkPaidDialog"
+      [periodData]="payrollData"
+      [groomerName]="earningsDetail?.groomer?.name || ''"
+      [isSubmitting]="isMarkingPaid"
+      (close)="closeMarkPaidDialog()"
+      (confirm)="confirmMarkPaid($event)">
+    </app-mark-paid-dialog>
   </div>
 </div>
 

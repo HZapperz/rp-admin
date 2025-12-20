@@ -3,11 +3,23 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GroomerService, GroomerEarningsDetail, CommissionHistory } from '../../../core/services/groomer.service';
+import { PayPeriodData, AvailablePayrollMonth, WeekData } from '../../../core/models/types';
+import { PayrollPeriodSelectorComponent } from './components/payroll-period-selector.component';
+import { PayrollSummaryCardComponent } from './components/payroll-summary-card.component';
+import { PayrollWeekSectionComponent } from './components/payroll-week-section.component';
+import { MarkPaidDialogComponent, PaymentDetails } from './components/mark-paid-dialog.component';
 
 @Component({
   selector: 'app-groomer-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    PayrollPeriodSelectorComponent,
+    PayrollSummaryCardComponent,
+    PayrollWeekSectionComponent,
+    MarkPaidDialogComponent
+  ],
   templateUrl: './groomer-detail.component.html',
   styleUrls: ['./groomer-detail.component.scss']
 })
@@ -23,6 +35,15 @@ export class GroomerDetailComponent implements OnInit {
   isSaving = false;
   saveError = '';
 
+  // Payroll state
+  availableMonths: AvailablePayrollMonth[] = [];
+  selectedYear: number = new Date().getFullYear();
+  selectedMonth: number = new Date().getMonth();
+  payrollData: PayPeriodData | null = null;
+  isLoadingPayroll = false;
+  showMarkPaidDialog = false;
+  isMarkingPaid = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -32,6 +53,7 @@ export class GroomerDetailComponent implements OnInit {
   ngOnInit() {
     this.groomerId = this.route.snapshot.paramMap.get('id') || '';
     this.loadGroomerData();
+    this.loadPayrollData();
   }
 
   loadGroomerData() {
@@ -56,6 +78,90 @@ export class GroomerDetailComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading commission history:', err);
+      }
+    });
+  }
+
+  // Payroll methods
+  loadPayrollData() {
+    // Load available months
+    this.groomerService.getAvailablePayrollMonths(this.groomerId).subscribe({
+      next: (months) => {
+        this.availableMonths = months;
+        if (months.length > 0) {
+          // Select the most recent month
+          this.selectedYear = months[0].year;
+          this.selectedMonth = months[0].month;
+          this.loadMonthlyPayroll();
+        }
+      },
+      error: (err) => {
+        console.error('Error loading payroll months:', err);
+      }
+    });
+  }
+
+  loadMonthlyPayroll() {
+    this.isLoadingPayroll = true;
+    this.groomerService.getGroomerMonthlyPayroll(this.groomerId, this.selectedYear, this.selectedMonth).subscribe({
+      next: (data) => {
+        this.payrollData = data;
+        // Expand the first week by default
+        if (data.weeks.length > 0) {
+          data.weeks[0].is_expanded = true;
+        }
+        this.isLoadingPayroll = false;
+      },
+      error: (err) => {
+        console.error('Error loading monthly payroll:', err);
+        this.isLoadingPayroll = false;
+      }
+    });
+  }
+
+  onPeriodChange(period: { year: number; month: number }) {
+    this.selectedYear = period.year;
+    this.selectedMonth = period.month;
+    this.loadMonthlyPayroll();
+  }
+
+  toggleWeekExpand(weekIndex: number) {
+    if (this.payrollData && this.payrollData.weeks[weekIndex]) {
+      this.payrollData.weeks[weekIndex].is_expanded = !this.payrollData.weeks[weekIndex].is_expanded;
+    }
+  }
+
+  openMarkPaidDialog() {
+    this.showMarkPaidDialog = true;
+  }
+
+  closeMarkPaidDialog() {
+    this.showMarkPaidDialog = false;
+  }
+
+  confirmMarkPaid(paymentDetails: PaymentDetails) {
+    if (!this.payrollData) return;
+
+    this.isMarkingPaid = true;
+    this.groomerService.markPeriodAsPaid(
+      this.groomerId,
+      this.payrollData.period_start,
+      this.payrollData.period_end,
+      this.payrollData,
+      paymentDetails
+    ).subscribe({
+      next: (payout) => {
+        // Update local state
+        if (this.payrollData) {
+          this.payrollData.payout = payout;
+        }
+        this.isMarkingPaid = false;
+        this.showMarkPaidDialog = false;
+      },
+      error: (err) => {
+        console.error('Error marking period as paid:', err);
+        this.isMarkingPaid = false;
+        alert('Failed to mark period as paid. Please try again.');
       }
     });
   }

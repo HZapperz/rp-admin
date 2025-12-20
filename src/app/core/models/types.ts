@@ -367,3 +367,93 @@ export interface UserFilters {
   blocked?: boolean;
   search?: string;
 }
+
+// Payroll Types
+export type PayoutStatus = 'unpaid' | 'paid';
+
+export interface GroomerPayout {
+  id: string;
+  groomer_id: string;
+  period_start: string;
+  period_end: string;
+  total_amount: number;
+  total_tax: number;
+  total_pre_tax: number;
+  total_tips: number;
+  commission_rate: number;
+  total_commission_earnings: number;
+  total_payout: number;
+  booking_count: number;
+  status: PayoutStatus;
+  paid_amount?: number;
+  paid_at?: string;
+  paid_by?: string;
+  payment_method?: string;
+  payment_reference?: string;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface GroomDetailPet {
+  pet_id: string;
+  pet_name: string;
+  breed?: string;
+  package_type: string;
+  total_price: number;
+  addons: Array<{ addon_name: string; addon_price: number }>;
+}
+
+export interface GroomDetail {
+  booking_id: string;
+  scheduled_date: string;
+  client: { id: string; first_name: string; last_name: string };
+  pets: GroomDetailPet[];
+  total_amount: number;
+  tax_amount: number;
+  pre_tax_amount: number;
+  tip_amount: number;
+  commission_rate: number;
+  groomer_cut: number;
+  payment_status: string;
+}
+
+export interface PayPeriodTotals {
+  total_amount: number;
+  tax_amount: number;
+  pre_tax_total: number;
+  tips: number;
+  commission_earnings: number;
+  total_payout: number;
+  booking_count: number;
+}
+
+export interface WeekData {
+  week_start: string;
+  week_end: string;
+  week_label: string;
+  totals: {
+    pre_tax_total: number;
+    tips: number;
+    total_payout: number;
+    booking_count: number;
+  };
+  grooms: GroomDetail[];
+  is_expanded: boolean;
+}
+
+export interface PayPeriodData {
+  period_start: string;
+  period_end: string;
+  period_label: string;
+  totals: PayPeriodTotals;
+  payout?: GroomerPayout;
+  weeks: WeekData[];
+}
+
+export interface AvailablePayrollMonth {
+  year: number;
+  month: number;
+  label: string;
+  booking_count: number;
+}
