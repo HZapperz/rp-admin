@@ -92,10 +92,13 @@ export class SelectAddressComponent implements OnInit, OnChanges {
   }
 
   formatAddress(address: Address): string {
+    // Use street as primary, fall back to building for legacy data
+    const streetAddress = address.street || address.building;
     const parts = [
-      address.building,
-      address.floor,
-      address.street,
+      // Only show building separately if we have both building AND street
+      (address.building && address.street) ? address.building : null,
+      address.floor ? `Floor ${address.floor}` : null,
+      streetAddress,
       address.city,
       address.state,
       address.zip_code

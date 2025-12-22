@@ -59,14 +59,16 @@
           </div>
 
           <div class="address-details">
-            <div class="address-line" *ngIf="address.building">
+            <!-- Only show building as separate line if we have both building AND street -->
+            <div class="address-line" *ngIf="address.building && address.street">
               <strong>{{ address.building }}</strong>
             </div>
             <div class="address-line" *ngIf="address.floor">
               Floor: {{ address.floor }}
             </div>
+            <!-- Use street, fall back to building for legacy data -->
             <div class="address-line">
-              {{ address.street }}
+              {{ address.street || address.building }}
             </div>
             <div class="address-line" *ngIf="address.city || address.state || address.zip_code">
               <span *ngIf="address.city">{{ address.city }}</span><span *ngIf="address.city && address.state">, </span>

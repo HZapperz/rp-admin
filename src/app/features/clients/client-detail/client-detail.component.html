@@ -187,8 +187,10 @@
             </div>
           </div>
           <div class="address-details">
-            {{ address.building }}<span *ngIf="address.apartment">, Apt {{ address.apartment }}</span><span *ngIf="address.floor">, Floor {{ address.floor }}</span><br/>
-            {{ address.street }}<br/>
+            <!-- Only show building on separate line if we have both building AND street -->
+            <span *ngIf="address.building && address.street">{{ address.building }}<br/></span>
+            <!-- Use street, fall back to building for legacy data -->
+            {{ address.street || address.building }}<span *ngIf="address.apartment">, Apt {{ address.apartment }}</span><span *ngIf="address.floor">, Floor {{ address.floor }}</span><br/>
             {{ address.city }}, {{ address.state }} {{ address.zip_code }}
             <div *ngIf="address.additional_info" class="address-notes">
               {{ address.additional_info }}
