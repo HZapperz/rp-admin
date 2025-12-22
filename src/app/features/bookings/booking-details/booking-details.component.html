@@ -300,6 +300,16 @@
                   <span class="label">Total:</span>
                   <span class="value">${{ petBooking.total_price }}</span>
                 </div>
+                <!-- Modify Service Button -->
+                <button
+                  *ngIf="booking.status === 'confirmed' || booking.status === 'pending'"
+                  (click)="openServiceChangeModal(petBooking)"
+                  class="btn-modify-service">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Modify Service
+                </button>
               </div>
             </div>
 
@@ -1140,6 +1150,130 @@
           {{ savingTimeChange ? 'Saving...' : 'Confirm Change & Notify' }}
         </button>
         <button (click)="closeTimeChangeModal()" class="btn-cancel-dialog">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Service Change Modal -->
+  <div *ngIf="showServiceChangeModal" class="service-change-overlay" (click)="closeServiceChangeModal()">
+    <div class="service-change-dialog" (click)="$event.stopPropagation()">
+      <div class="service-change-dialog-header">
+        <h3>Modify Service for {{ selectedPetForServiceChange?.pet?.name }}</h3>
+        <button (click)="closeServiceChangeModal()" class="dialog-close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="service-change-dialog-body">
+        <!-- Current Service Display -->
+        <div class="current-service-box">
+          <h4 class="current-service-title">Current Service</h4>
+          <div class="current-service-info">
+            <div class="service-detail">
+              <span class="service-label">Package:</span>
+              <span class="service-value">{{ getPackageName(selectedPetForServiceChange?.package_type || 'basic') }}</span>
+            </div>
+            <div class="service-detail">
+              <span class="service-label">Size:</span>
+              <span class="service-value">{{ selectedPetForServiceChange?.service_size | uppercase }}</span>
+            </div>
+            <div class="service-detail">
+              <span class="service-label">Current Total:</span>
+              <span class="service-value">${{ selectedPetForServiceChange?.total_price }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Package Selection -->
+        <div class="form-group">
+          <label class="form-label">Select New Package *</label>
+          <div class="package-selection-grid">
+            <button
+              *ngFor="let pkg of servicePackages"
+              (click)="selectPackage(pkg.id)"
+              [class.selected]="newPackageType === pkg.id"
+              class="package-option-btn">
+              <span class="package-icon">{{ pkg.icon }}</span>
+              <span class="package-name">{{ pkg.name }}</span>
+              <span class="package-price">${{ packagePrices[pkg.id][selectedPetForServiceChange?.service_size || 'medium'] }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Add-ons Selection -->
+        <div class="form-group">
+          <label class="form-label">Add-ons</label>
+          <p class="form-help-text" *ngIf="newPackageType === 'basic'">Some add-ons are only available with Royal Groom or Royal Spa packages.</p>
+          <div class="addons-selection-grid">
+            <div
+              *ngFor="let addon of getFilteredAddons()"
+              (click)="toggleAddon(addon)"
+              [class.selected]="isAddonSelected(addon)"
+              class="addon-option">
+              <div class="addon-checkbox">
+                <svg *ngIf="isAddonSelected(addon)" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="addon-info">
+                <span class="addon-name">{{ addon.name }}</span>
+                <span class="addon-price" *ngIf="!addon.is_percentage">${{ getAddonPriceForSize(addon) }}</span>
+                <span class="addon-price" *ngIf="addon.is_percentage">+{{ addon.percentage }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Price Summary -->
+        <div class="price-summary-box">
+          <h4 class="price-summary-title">Price Summary</h4>
+          <div class="price-summary-details">
+            <div class="summary-row">
+              <span class="summary-label">Package Price:</span>
+              <span class="summary-value">${{ calculateNewPackagePrice() }}</span>
+            </div>
+            <div class="summary-row" *ngIf="selectedAddons.length > 0">
+              <span class="summary-label">Add-ons:</span>
+              <span class="summary-value">${{ calculateNewAddonsTotal() }}</span>
+            </div>
+            <div class="summary-row total-row">
+              <span class="summary-label">New Pet Total:</span>
+              <span class="summary-value">${{ calculateNewPetTotal() }}</span>
+            </div>
+            <div class="summary-row difference-row" [ngClass]="calculatePriceDifference() >= 0 ? 'increase' : 'decrease'">
+              <span class="summary-label">Difference:</span>
+              <span class="summary-value">
+                {{ calculatePriceDifference() >= 0 ? '+' : '' }}${{ calculatePriceDifference().toFixed(2) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reason (Required) -->
+        <div class="form-group">
+          <label class="form-label">Reason for Change *</label>
+          <textarea
+            [(ngModel)]="serviceChangeReason"
+            class="reason-textarea"
+            rows="3"
+            placeholder="Explain why the service is being changed (e.g., customer requested upgrade, adding treatment)..."
+            required></textarea>
+          <p class="form-help-text">This reason will be included in the notification email sent to the customer.</p>
+        </div>
+      </div>
+
+      <div class="service-change-dialog-footer">
+        <button
+          (click)="confirmServiceChange()"
+          [disabled]="!serviceChangeReason.trim() || savingServiceChange"
+          class="btn-confirm-change">
+          {{ savingServiceChange ? 'Saving...' : 'Confirm Change & Notify Customer' }}
+        </button>
+        <button (click)="closeServiceChangeModal()" class="btn-cancel-dialog">
           Cancel
         </button>
       </div>

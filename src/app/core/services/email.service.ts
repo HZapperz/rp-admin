@@ -67,6 +67,37 @@ interface TimeChangeEmailData {
   reason: string;
 }
 
+interface ServiceChangeEmailData {
+  booking: {
+    id: string;
+    scheduled_date: string;
+    address: string;
+    city: string;
+    state: string;
+  };
+  client: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  pet: {
+    name: string;
+  };
+  oldService: {
+    package_name: string;
+    total_price: number;
+    addons: string[];
+  };
+  newService: {
+    package_name: string;
+    total_price: number;
+    addons: string[];
+  };
+  priceDifference: number;
+  reason: string;
+  newBookingTotal?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -258,6 +289,51 @@ export class EmailService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred while sending emails'
+      };
+    }
+  }
+
+  /**
+   * Send service change notification email to customer only
+   */
+  async sendServiceChangeEmail(
+    data: ServiceChangeEmailData
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      // Validate required data
+      if (!data.client?.email) {
+        console.error('Missing client email for service change notification');
+        return {
+          success: false,
+          error: 'Missing client email address'
+        };
+      }
+
+      console.log('Sending service change email...', {
+        bookingId: data.booking.id,
+        clientEmail: data.client.email,
+        petName: data.pet.name,
+        oldPackage: data.oldService.package_name,
+        newPackage: data.newService.package_name,
+        priceDifference: data.priceDifference
+      });
+
+      // Send request to email service
+      const response = await firstValueFrom(
+        this.http.post<EmailResponse>(
+          `${this.emailApiUrl}/send-service-change-email`,
+          data
+        )
+      );
+
+      console.log('Service change email response:', response);
+      return response;
+
+    } catch (error) {
+      console.error('Error sending service change email:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred while sending email'
       };
     }
   }

@@ -100,6 +100,28 @@ export class BookingDetailsComponent implements OnInit {
   newTimeSlot: { label: string; start: string; end: string } | null = null;
   savingTimeChange = false;
 
+  // Service change modal
+  showServiceChangeModal = false;
+  selectedPetForServiceChange: any = null;
+  newPackageType: 'basic' | 'premium' | 'deluxe' = 'basic';
+  selectedAddons: { id: string; name: string; price: number }[] = [];
+  availableAddons: any[] = [];
+  serviceChangeReason = '';
+  savingServiceChange = false;
+
+  // Package configuration
+  servicePackages = [
+    { id: 'basic', name: 'Royal Bath', icon: '🛁' },
+    { id: 'premium', name: 'Royal Groom', icon: '✂️' },
+    { id: 'deluxe', name: 'Royal Spa', icon: '✨' }
+  ];
+
+  packagePrices: Record<string, Record<string, number>> = {
+    basic: { small: 59, medium: 79, large: 99, xl: 119 },
+    premium: { small: 95, medium: 125, large: 150, xl: 175 },
+    deluxe: { small: 115, medium: 145, large: 175, xl: 205 }
+  };
+
   // Time slots configuration
   morningSlots = [
     { label: '8:30 AM - 9:45 AM', start: '08:30:00', end: '09:45:00' },
@@ -214,6 +236,15 @@ export class BookingDetailsComponent implements OnInit {
       this.modifications = mods;
       this.pendingChangeRequest = pendingRequest;
       this.buildTimeline();
+
+      // Debug: Log photo data
+      console.log('Booking photos loaded:', {
+        bookingId: booking.id,
+        before_photos: booking.before_photos,
+        after_photos: booking.after_photos,
+        beforeCount: booking.before_photos?.length || 0,
+        afterCount: booking.after_photos?.length || 0
+      });
 
       // Load earnings breakdown if payment was captured
       if (booking.payment_captured_at) {
@@ -837,6 +868,257 @@ export class BookingDetailsComponent implements OnInit {
       console.error('Error changing booking time:', error);
       alert('An unexpected error occurred. Please try again.');
       this.savingTimeChange = false;
+    }
+  }
+
+  // Service Change Methods
+  async openServiceChangeModal(bookingPet: any) {
+    if (!this.booking) return;
+
+    // Load available addons from database
+    try {
+      const { data: addons, error } = await this.supabase
+        .from('addons')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) {
+        console.error('Error loading addons:', error);
+        alert('Failed to load add-ons. Please try again.');
+        return;
+      }
+
+      this.availableAddons = addons || [];
+    } catch (err) {
+      console.error('Exception loading addons:', err);
+      alert('Failed to load add-ons. Please try again.');
+      return;
+    }
+
+    // Initialize modal with current pet's package and addons
+    this.selectedPetForServiceChange = bookingPet;
+    this.newPackageType = bookingPet.package_type || 'basic';
+
+    // Initialize selected addons from current booking addons
+    this.selectedAddons = (bookingPet.addons || []).map((addon: any) => ({
+      id: addon.id,
+      name: addon.addon_name,
+      price: parseFloat(addon.addon_price) || 0
+    }));
+
+    this.serviceChangeReason = '';
+    this.showServiceChangeModal = true;
+  }
+
+  closeServiceChangeModal() {
+    this.showServiceChangeModal = false;
+    this.selectedPetForServiceChange = null;
+    this.newPackageType = 'basic';
+    this.selectedAddons = [];
+    this.serviceChangeReason = '';
+  }
+
+  selectPackage(packageId: string) {
+    if (packageId === 'basic' || packageId === 'premium' || packageId === 'deluxe') {
+      const previousPackage = this.newPackageType;
+      this.newPackageType = packageId;
+
+      // Remove any selected addons that are no longer available for the new package
+      if (previousPackage !== packageId) {
+        this.selectedAddons = this.selectedAddons.filter(selectedAddon => {
+          const addon = this.availableAddons.find(a => a.id === selectedAddon.id);
+          if (!addon) return false;
+          return this.isAddonAvailableForPackage(addon);
+        });
+      }
+    }
+  }
+
+  toggleAddon(addon: any) {
+    const existingIndex = this.selectedAddons.findIndex(a => a.name === addon.name);
+
+    if (existingIndex >= 0) {
+      // Remove addon
+      this.selectedAddons = this.selectedAddons.filter((_, i) => i !== existingIndex);
+    } else {
+      // Add addon with size-based pricing
+      const price = addon.is_percentage
+        ? this.calculatePercentageAddonPrice(addon.percentage)
+        : this.getAddonPriceForSize(addon);
+
+      this.selectedAddons = [...this.selectedAddons, {
+        id: addon.id,
+        name: addon.name,
+        price: price
+      }];
+    }
+  }
+
+  isAddonSelected(addon: any): boolean {
+    return this.selectedAddons.some(a => a.name === addon.name);
+  }
+
+  // Calculate addon price based on pet size (supports size-based pricing)
+  getAddonPriceForSize(addon: any): number {
+    if (!this.selectedPetForServiceChange) return parseFloat(addon.price) || 0;
+
+    const size = (this.selectedPetForServiceChange.service_size || 'medium').toLowerCase();
+
+    // Check for size-based pricing
+    if (size === 'small' && addon.price_small !== null && addon.price_small !== undefined) {
+      return parseFloat(addon.price_small);
+    }
+    if (size === 'medium' && addon.price_medium !== null && addon.price_medium !== undefined) {
+      return parseFloat(addon.price_medium);
+    }
+    if (size === 'large' && addon.price_large !== null && addon.price_large !== undefined) {
+      return parseFloat(addon.price_large);
+    }
+    if (size === 'xl' && addon.price_xl !== null && addon.price_xl !== undefined) {
+      return parseFloat(addon.price_xl);
+    }
+
+    // Fall back to flat price
+    return parseFloat(addon.price) || 0;
+  }
+
+  // Check if addon is available for the selected package
+  isAddonAvailableForPackage(addon: any): boolean {
+    // If no required_packages, available for all
+    if (!addon.required_packages || addon.required_packages.length === 0) {
+      return true;
+    }
+    // Check if current package is in the required packages list
+    return addon.required_packages.includes(this.newPackageType);
+  }
+
+  // Get filtered addons for the current package
+  getFilteredAddons(): any[] {
+    return this.availableAddons.filter(addon =>
+      !addon.is_percentage && this.isAddonAvailableForPackage(addon)
+    );
+  }
+
+  calculatePercentageAddonPrice(percentage: number): number {
+    if (!this.selectedPetForServiceChange) return 0;
+    const packagePrice = this.calculateNewPackagePrice();
+    return Math.round(packagePrice * (percentage / 100) * 100) / 100;
+  }
+
+  calculateNewPackagePrice(): number {
+    if (!this.selectedPetForServiceChange) return 0;
+    const size = this.selectedPetForServiceChange.service_size || 'medium';
+    return this.packagePrices[this.newPackageType]?.[size] || 0;
+  }
+
+  calculateNewAddonsTotal(): number {
+    return this.selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+  }
+
+  calculateNewPetTotal(): number {
+    return this.calculateNewPackagePrice() + this.calculateNewAddonsTotal();
+  }
+
+  calculatePriceDifference(): number {
+    if (!this.selectedPetForServiceChange) return 0;
+    const currentTotal = parseFloat(this.selectedPetForServiceChange.total_price) || 0;
+    return this.calculateNewPetTotal() - currentTotal;
+  }
+
+  getPackageName(packageType: string): string {
+    const pkg = this.servicePackages.find(p => p.id === packageType);
+    return pkg ? pkg.name : packageType;
+  }
+
+  async confirmServiceChange() {
+    if (!this.booking || !this.selectedPetForServiceChange) return;
+
+    // Validate inputs
+    if (!this.serviceChangeReason.trim()) {
+      alert('Please provide a reason for the service change');
+      return;
+    }
+
+    if (this.savingServiceChange) return;
+
+    try {
+      this.savingServiceChange = true;
+
+      const newPackagePrice = this.calculateNewPackagePrice();
+      const newTotalPrice = this.calculateNewPetTotal();
+      const addonsData = this.selectedAddons.map(a => ({
+        name: a.name,
+        price: a.price
+      }));
+
+      // Call the booking service to change the service
+      const result = await this.bookingService.changeBookingService(
+        this.booking.id,
+        this.selectedPetForServiceChange.id,
+        this.newPackageType,
+        newPackagePrice,
+        newTotalPrice,
+        addonsData,
+        this.serviceChangeReason
+      );
+
+      if (!result.success) {
+        alert('Failed to update booking service. Please try again.');
+        this.savingServiceChange = false;
+        return;
+      }
+
+      // Send service change notification email to customer
+      if (this.booking.client?.email && result.oldValues) {
+        try {
+          await this.emailService.sendServiceChangeEmail({
+            booking: {
+              id: this.booking.id,
+              scheduled_date: this.booking.scheduled_date,
+              address: this.booking.address,
+              city: this.booking.city,
+              state: this.booking.state
+            },
+            client: {
+              first_name: this.booking.client.first_name,
+              last_name: this.booking.client.last_name,
+              email: this.booking.client.email
+            },
+            pet: {
+              name: this.selectedPetForServiceChange.pet?.name || 'Your pet'
+            },
+            oldService: {
+              package_name: this.getPackageName(result.oldValues.package_type),
+              total_price: result.oldValues.total_price,
+              addons: result.oldValues.addons.map((a: any) => a.addon_name)
+            },
+            newService: {
+              package_name: this.getPackageName(this.newPackageType),
+              total_price: newTotalPrice,
+              addons: this.selectedAddons.map(a => a.name)
+            },
+            priceDifference: this.calculatePriceDifference(),
+            reason: this.serviceChangeReason,
+            newBookingTotal: result.newBookingTotal
+          });
+        } catch (emailErr) {
+          console.error('Error sending service change email:', emailErr);
+          // Don't fail the operation if email fails
+        }
+      }
+
+      alert('Service updated successfully! Customer has been notified.');
+
+      // Close modal and reload booking
+      this.closeServiceChangeModal();
+      this.savingServiceChange = false;
+      await this.loadBookingDetails(this.booking.id);
+
+    } catch (error) {
+      console.error('Error changing booking service:', error);
+      alert('An unexpected error occurred. Please try again.');
+      this.savingServiceChange = false;
     }
   }
 

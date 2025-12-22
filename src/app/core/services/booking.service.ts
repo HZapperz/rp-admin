@@ -59,6 +59,10 @@ export class BookingService {
       return [];
     }
 
+    // Debug: Log bookings with photos
+    const bookingsWithPhotos = bookings.filter(b => b.before_photos?.length > 0 || b.after_photos?.length > 0);
+    console.log('Bookings with photos:', bookingsWithPhotos.length, bookingsWithPhotos.map(b => ({ id: b.id, before: b.before_photos, after: b.after_photos })));
+
     // Step 2: Extract unique IDs (filter out null groomer_id for pending bookings)
     const groomerIds = [...new Set(bookings.map(b => b.groomer_id).filter(Boolean))];
     const clientIds = [...new Set(bookings.map(b => b.client_id).filter(Boolean))];
@@ -166,7 +170,12 @@ export class BookingService {
       return null;
     }
 
-    console.log('Booking fetched, now fetching related data...', { bookingId: booking.id });
+    console.log('Booking fetched, now fetching related data...', {
+      bookingId: booking.id,
+      before_photos: booking.before_photos,
+      after_photos: booking.after_photos,
+      hasPhotos: !!(booking.before_photos?.length || booking.after_photos?.length)
+    });
 
     // Batch fetch related data (groomer might be null for pending bookings)
     const [groomerResult, clientResult, bookingPetsResult] = await Promise.all([
@@ -392,6 +401,186 @@ export class BookingService {
       return { success: true, oldValues };
     } catch (error) {
       console.error('Exception while changing booking time:', error);
+      return { success: false };
+    }
+  }
+
+  async changeBookingService(
+    bookingId: string,
+    bookingPetId: string,
+    newPackageType: string,
+    newPackagePrice: number,
+    newTotalPrice: number,
+    addons: { name: string; price: number }[],
+    reason: string
+  ): Promise<{
+    success: boolean;
+    oldValues?: { package_type: string; total_price: number; addons: any[] };
+    newBookingTotal?: number;
+  }> {
+    try {
+      // 1. Fetch current booking_pet data for logging old values
+      const { data: currentPet, error: fetchPetError } = await this.supabase
+        .from('booking_pets')
+        .select('*')
+        .eq('id', bookingPetId)
+        .single();
+
+      if (fetchPetError || !currentPet) {
+        console.error('Error fetching current booking pet:', fetchPetError);
+        return { success: false };
+      }
+
+      // 2. Fetch current addons for this pet
+      const { data: currentAddons, error: fetchAddonsError } = await this.supabase
+        .from('booking_addons')
+        .select('*')
+        .eq('booking_pet_id', bookingPetId);
+
+      if (fetchAddonsError) {
+        console.error('Error fetching current addons:', fetchAddonsError);
+        return { success: false };
+      }
+
+      const oldValues = {
+        package_type: currentPet.package_type,
+        total_price: parseFloat(currentPet.total_price) || 0,
+        addons: currentAddons || []
+      };
+
+      // 3. Update booking_pets record with new package_type and prices
+      const { error: updatePetError } = await this.supabase
+        .from('booking_pets')
+        .update({
+          package_type: newPackageType,
+          package_price: newPackagePrice,
+          total_price: newTotalPrice
+        })
+        .eq('id', bookingPetId);
+
+      if (updatePetError) {
+        console.error('Error updating booking pet:', updatePetError);
+        return { success: false };
+      }
+
+      // 4. Delete existing booking_addons for this pet
+      const { error: deleteAddonsError } = await this.supabase
+        .from('booking_addons')
+        .delete()
+        .eq('booking_pet_id', bookingPetId);
+
+      if (deleteAddonsError) {
+        console.error('Error deleting old addons:', deleteAddonsError);
+        // Continue anyway, as the main update succeeded
+      }
+
+      // 5. Insert new booking_addons records
+      if (addons.length > 0) {
+        const addonRecords = addons.map(addon => ({
+          booking_pet_id: bookingPetId,
+          addon_name: addon.name,
+          addon_price: addon.price
+        }));
+
+        const { error: insertAddonsError } = await this.supabase
+          .from('booking_addons')
+          .insert(addonRecords);
+
+        if (insertAddonsError) {
+          console.error('Error inserting new addons:', insertAddonsError);
+          // Continue anyway
+        }
+      }
+
+      // 6. Recalculate and update bookings.total_amount
+      // First, get all booking_pets for this booking to sum their totals
+      const { data: allBookingPets, error: fetchAllPetsError } = await this.supabase
+        .from('booking_pets')
+        .select('total_price')
+        .eq('booking_id', bookingId);
+
+      if (fetchAllPetsError) {
+        console.error('Error fetching all booking pets:', fetchAllPetsError);
+        return { success: false };
+      }
+
+      // Calculate new subtotal from all pets
+      const subtotal = (allBookingPets || []).reduce(
+        (sum, pet) => sum + (parseFloat(pet.total_price) || 0),
+        0
+      );
+
+      // Get current booking for tax rate and fees
+      const { data: currentBooking, error: fetchBookingError } = await this.supabase
+        .from('bookings')
+        .select('tax_rate, service_fee, processing_fee, rush_fee, discount_amount')
+        .eq('id', bookingId)
+        .single();
+
+      if (fetchBookingError || !currentBooking) {
+        console.error('Error fetching current booking:', fetchBookingError);
+        return { success: false };
+      }
+
+      // Calculate tax and new total
+      const taxRate = parseFloat(currentBooking.tax_rate) || 0.0825;
+      const serviceFee = parseFloat(currentBooking.service_fee) || 0;
+      const processingFee = parseFloat(currentBooking.processing_fee) || 0;
+      const rushFee = parseFloat(currentBooking.rush_fee) || 0;
+      const discountAmount = parseFloat(currentBooking.discount_amount) || 0;
+
+      const subtotalBeforeTax = subtotal + serviceFee + rushFee - discountAmount;
+      const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
+      const newTotalAmount = Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
+
+      // Update booking totals
+      const { error: updateBookingError } = await this.supabase
+        .from('bookings')
+        .update({
+          subtotal_before_tax: subtotalBeforeTax,
+          tax_amount: taxAmount,
+          total_amount: newTotalAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (updateBookingError) {
+        console.error('Error updating booking totals:', updateBookingError);
+        return { success: false };
+      }
+
+      // 7. Log modification to booking_modifications table
+      const currentUser = this.supabase.session?.user;
+      const priceChange = newTotalPrice - oldValues.total_price;
+
+      const { error: logError } = await this.supabase
+        .from('booking_modifications')
+        .insert({
+          booking_id: bookingId,
+          modified_by: currentUser?.id,
+          modification_type: 'service_change',
+          old_value: {
+            package_type: oldValues.package_type,
+            total_price: oldValues.total_price,
+            addons: oldValues.addons.map(a => ({ name: a.addon_name, price: a.addon_price }))
+          },
+          new_value: {
+            package_type: newPackageType,
+            total_price: newTotalPrice,
+            addons: addons
+          },
+          price_change: priceChange,
+          reason: reason
+        });
+
+      if (logError) {
+        console.error('Error logging modification:', logError);
+        // Don't fail the operation for logging error
+      }
+
+      return { success: true, oldValues, newBookingTotal: newTotalAmount };
+    } catch (error) {
+      console.error('Exception while changing booking service:', error);
       return { success: false };
     }
   }

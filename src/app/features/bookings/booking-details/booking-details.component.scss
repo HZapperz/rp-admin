@@ -2149,3 +2149,345 @@
     border-color: #9ca3af;
   }
 }
+
+// Modify Service Button
+.btn-modify-service {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &:hover {
+    background: #6d28d9;
+    transform: translateY(-1px);
+  }
+}
+
+// Service Change Modal
+.service-change-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.service-change-dialog {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.3);
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+}
+
+.service-change-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+
+  h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .dialog-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: background 0.2s, color 0.2s;
+
+    &:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+  }
+}
+
+.service-change-dialog-body {
+  padding: 1.5rem;
+}
+
+// Current Service Box
+.current-service-box {
+  background: #f3f4f6;
+  border-left: 4px solid #6b7280;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+
+  .current-service-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .current-service-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .service-detail {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .service-label {
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  .service-value {
+    color: #111827;
+    font-weight: 600;
+  }
+}
+
+// Package Selection Grid
+.package-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.package-option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem;
+  background: white;
+  border: 2px solid #d1d5db;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(.selected) {
+    border-color: #7c3aed;
+    background: #f5f3ff;
+    transform: translateY(-2px);
+  }
+
+  &.selected {
+    border-color: #7c3aed;
+    background: #7c3aed;
+    color: white;
+    box-shadow: 0 4px 6px rgba(124, 58, 237, 0.3);
+
+    .package-name {
+      color: white;
+    }
+
+    .package-price {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+
+  .package-icon {
+    font-size: 2rem;
+  }
+
+  .package-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #111827;
+  }
+
+  .package-price {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: #7c3aed;
+  }
+}
+
+// Add-ons Selection Grid
+.addons-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+
+  @media (max-width: 500px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.addon-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(.selected) {
+    border-color: #7c3aed;
+    background: #f5f3ff;
+  }
+
+  &.selected {
+    border-color: #10b981;
+    background: #d1fae5;
+
+    .addon-checkbox {
+      background: #10b981;
+      border-color: #10b981;
+      color: white;
+    }
+  }
+
+  .addon-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #d1d5db;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .addon-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .addon-name {
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .addon-price {
+    font-weight: 600;
+    color: #7c3aed;
+  }
+}
+
+// Price Summary Box
+.price-summary-box {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #0ea5e9;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  margin-top: 1.5rem;
+
+  .price-summary-title {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0369a1;
+  }
+
+  .price-summary-details {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .summary-label {
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .summary-value {
+      font-weight: 600;
+      color: #111827;
+    }
+  }
+
+  .total-row {
+    border-top: 2px solid #0ea5e9;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+
+    .summary-value {
+      font-size: 1.25rem;
+      color: #0369a1;
+    }
+  }
+
+  .difference-row {
+    background: #f9fafb;
+    margin: 0.5rem -1rem -1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0 0 0.5rem 0.5rem;
+
+    &.increase .summary-value {
+      color: #dc2626;
+    }
+
+    &.decrease .summary-value {
+      color: #059669;
+    }
+  }
+}
+
+.service-change-dialog-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 2px solid #e5e7eb;
+  background: #f9fafb;
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+  position: sticky;
+  bottom: 0;
+}

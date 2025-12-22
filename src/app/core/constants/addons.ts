@@ -14,6 +14,7 @@ export const ADDON_ID_TO_NAME: Record<string, { name: string; price: number | nu
   '7b0e6f98-243b-4af3-896b-0470aac518d3': { name: 'Paw Balm', price: 8.00 },
   '863f77d5-2b0a-4082-af54-32ff469716c7': { name: 'Cologne Spritz', price: 5.00 },
   'e948efce-2f9e-4092-b1a3-6bf69a22dc6b': { name: 'Bow or Bandana', price: 3.00 },
+  '62f514b6-8dac-4b42-8859-5cdaf06c1243': { name: 'Show Cut', price: null }, // Size-based pricing: Small $30, Medium $40, Large $50, XL $60
 };
 
 /**
