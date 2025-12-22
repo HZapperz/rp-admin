@@ -71,12 +71,13 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
 
   ngOnInit(): void {
     if (this.address) {
-      // Client app stores street address in 'building' field
-      // Load from building for display in the street input
+      // Load address fields directly - building is for building name, street is for street address
+      // Support legacy data where street address was incorrectly stored in building field
+      const hasLegacyFormat = this.address.building && !this.address.street;
       this.formData = {
         name: this.address.name || '',
-        building: '', // Will be set on save
-        street: this.address.building || this.address.street || '', // Load from building (client format)
+        building: hasLegacyFormat ? '' : (this.address.building || ''),
+        street: hasLegacyFormat ? this.address.building : (this.address.street || ''),
         city: this.address.city || '',
         state: this.address.state || 'TX',
         zip_code: this.address.zip_code || '',
@@ -331,12 +332,9 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
     this.error = '';
 
     try {
-      // Transform data to match client app format:
-      // Client app stores street address in 'building' field, leaves 'street' empty
+      // Save address fields properly - street contains the street address
       const dataToSave: AddressFormData = {
         ...this.formData,
-        building: this.formData.street, // Put street address in building field
-        street: '', // Leave street empty
       };
 
       if (this.isEditMode && this.address) {

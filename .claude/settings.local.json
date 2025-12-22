@@ -9,7 +9,8 @@
       "Bash(npm run email-server:*)",
       "mcp__supabase__list_tables",
       "mcp__supabase__list_projects",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
