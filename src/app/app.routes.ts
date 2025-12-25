@@ -69,6 +69,11 @@ export const routes: Routes = [
           import('./features/profile/profile.routes').then(m => m.routes)
       },
       {
+        path: 'sessions',
+        loadChildren: () =>
+          import('./features/sessions/sessions.routes').then(m => m.routes)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

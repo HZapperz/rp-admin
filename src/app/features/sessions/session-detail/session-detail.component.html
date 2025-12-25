@@ -1,0 +1,139 @@
+<div class="session-detail-container">
+  <!-- Back Button -->
+  <button class="back-button" (click)="goBack()">
+    <span class="material-icons">arrow_back</span>
+    Back to Sessions
+  </button>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Loading session...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state" *ngIf="error">
+    <span class="material-icons">error_outline</span>
+    <h3>{{ error }}</h3>
+    <button (click)="goBack()">Go Back</button>
+  </div>
+
+  <!-- Session Content -->
+  <div class="session-content" *ngIf="!isLoading && !error && session">
+    <!-- Header -->
+    <div class="session-header">
+      <div class="header-main">
+        <h1>Session Recording</h1>
+        <span class="session-id">{{ session.session_id }}</span>
+      </div>
+      <span class="status-badge" [ngClass]="getStatusClass()">
+        {{ getStatusLabel() }}
+      </span>
+    </div>
+
+    <!-- Metadata Grid -->
+    <div class="metadata-grid">
+      <div class="metadata-card">
+        <span class="material-icons">schedule</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Started</span>
+          <span class="metadata-value">{{ formatDate(session.started_at) }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card">
+        <span class="material-icons">timer</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Duration</span>
+          <span class="metadata-value">{{ duration }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card">
+        <span class="material-icons">devices</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Device</span>
+          <span class="metadata-value">{{ deviceInfo.device }} / {{ deviceInfo.browser }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card">
+        <span class="material-icons">aspect_ratio</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Screen</span>
+          <span class="metadata-value">{{ getScreenSize() }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card">
+        <span class="material-icons">link</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Referrer</span>
+          <span class="metadata-value">{{ getReferrerDisplay() }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card">
+        <span class="material-icons">login</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Entry Page</span>
+          <span class="metadata-value url">{{ session.initial_url || '-' }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card" *ngIf="session.rage_clicks > 0">
+        <span class="material-icons warning">warning</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Rage Clicks</span>
+          <span class="metadata-value warning">{{ session.rage_clicks }}</span>
+        </div>
+      </div>
+
+      <div class="metadata-card">
+        <span class="material-icons">visibility</span>
+        <div class="metadata-content">
+          <span class="metadata-label">Page Views</span>
+          <span class="metadata-value">{{ session.page_views || 0 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pages Visited -->
+    <div class="pages-visited" *ngIf="session.pages_visited && session.pages_visited.length > 0">
+      <h3>Pages Visited</h3>
+      <div class="pages-flow">
+        <ng-container *ngFor="let page of session.pages_visited; let last = last">
+          <span class="page-chip">{{ page }}</span>
+          <span class="arrow" *ngIf="!last">
+            <span class="material-icons">arrow_forward</span>
+          </span>
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- Player Section -->
+    <div class="player-section">
+      <h3>Session Replay</h3>
+
+      <div class="player-loading" *ngIf="isLoadingEvents">
+        <div class="spinner"></div>
+        <p>Loading replay data...</p>
+      </div>
+
+      <div class="player-empty" *ngIf="!isLoadingEvents && events.length === 0">
+        <span class="material-icons">videocam_off</span>
+        <p>No replay data available for this session</p>
+      </div>
+
+      <div
+        #playerContainer
+        class="player-container"
+        *ngIf="!isLoadingEvents && events.length > 0"
+      ></div>
+
+      <div class="player-controls-hint" *ngIf="!isLoadingEvents && events.length > 0">
+        <p>Use the controls below the player to play, pause, and scrub through the recording.</p>
+      </div>
+    </div>
+  </div>
+</div>

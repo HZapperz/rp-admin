@@ -109,6 +109,12 @@ export class BookingDetailsComponent implements OnInit {
   serviceChangeReason = '';
   savingServiceChange = false;
 
+  // Discount management
+  discountOption: 'keep' | 'recalculate' | 'custom' | 'remove' = 'keep';
+  customDiscountAmount: number = 0;
+  currentDiscountAmount: number = 0;
+  currentDiscountPercentage: number = 0;
+
   // Package configuration
   servicePackages = [
     { id: 'basic', name: 'Royal Bath', icon: '🛁' },
@@ -907,6 +913,16 @@ export class BookingDetailsComponent implements OnInit {
       price: parseFloat(addon.addon_price) || 0
     }));
 
+    // Initialize discount values from booking
+    this.currentDiscountAmount = Number(this.booking.discount_amount) || 0;
+    // Calculate current discount percentage based on original subtotal
+    const originalSubtotal = Number(this.booking.original_subtotal) || 0;
+    this.currentDiscountPercentage = originalSubtotal > 0
+      ? (this.currentDiscountAmount / originalSubtotal) * 100
+      : 0;
+    this.discountOption = 'keep';
+    this.customDiscountAmount = this.currentDiscountAmount;
+
     this.serviceChangeReason = '';
     this.showServiceChangeModal = true;
   }
@@ -917,6 +933,11 @@ export class BookingDetailsComponent implements OnInit {
     this.newPackageType = 'basic';
     this.selectedAddons = [];
     this.serviceChangeReason = '';
+    // Reset discount values
+    this.discountOption = 'keep';
+    this.customDiscountAmount = 0;
+    this.currentDiscountAmount = 0;
+    this.currentDiscountPercentage = 0;
   }
 
   selectPackage(packageId: string) {
@@ -1026,6 +1047,57 @@ export class BookingDetailsComponent implements OnInit {
     return this.calculateNewPetTotal() - currentTotal;
   }
 
+  // Discount calculation methods
+  getCalculatedDiscount(): number {
+    switch (this.discountOption) {
+      case 'keep':
+        return this.currentDiscountAmount;
+      case 'recalculate':
+        // Apply same percentage to new subtotal
+        const newSubtotal = this.calculateNewBookingSubtotal();
+        return Math.round(newSubtotal * (this.currentDiscountPercentage / 100) * 100) / 100;
+      case 'custom':
+        return this.customDiscountAmount;
+      case 'remove':
+        return 0;
+      default:
+        return this.currentDiscountAmount;
+    }
+  }
+
+  calculateNewBookingSubtotal(): number {
+    if (!this.booking) return 0;
+    // Sum all pets' totals, replacing the selected pet's price with new price
+    let subtotal = 0;
+    for (const pet of this.booking.pets || []) {
+      if (pet.id === this.selectedPetForServiceChange?.id) {
+        subtotal += this.calculateNewPetTotal();
+      } else {
+        subtotal += Number(pet.total_price) || 0;
+      }
+    }
+    return subtotal;
+  }
+
+  calculateNewBookingTotal(): number {
+    const subtotal = this.calculateNewBookingSubtotal();
+    const discount = this.getCalculatedDiscount();
+    const taxRate = Number(this.booking?.tax_rate) || 0.0825;
+    const serviceFee = Number(this.booking?.service_fee) || 0;
+    const processingFee = Number(this.booking?.processing_fee) || 0;
+    const rushFee = Number(this.booking?.rush_fee) || 0;
+
+    const subtotalBeforeTax = subtotal + serviceFee + rushFee - discount;
+    const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
+    return Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
+  }
+
+  calculateBookingTotalDifference(): number {
+    if (!this.booking) return 0;
+    const currentTotal = Number(this.booking.total_amount) || 0;
+    return this.calculateNewBookingTotal() - currentTotal;
+  }
+
   getPackageName(packageType: string): string {
     const pkg = this.servicePackages.find(p => p.id === packageType);
     return pkg ? pkg.name : packageType;
@@ -1060,7 +1132,8 @@ export class BookingDetailsComponent implements OnInit {
         newPackagePrice,
         newTotalPrice,
         addonsData,
-        this.serviceChangeReason
+        this.serviceChangeReason,
+        this.getCalculatedDiscount()
       );
 
       if (!result.success) {

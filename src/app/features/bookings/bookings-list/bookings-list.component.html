@@ -69,13 +69,14 @@
           <th>Service</th>
           <th>Amount</th>
           <th>Status</th>
+          <th>Photos</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         @if (filteredBookings.length === 0) {
         <tr>
-          <td colspan="7" class="no-bookings">No bookings found</td>
+          <td colspan="8" class="no-bookings">No bookings found</td>
         </tr>
         } @for (booking of filteredBookings; track booking.id) {
         <tr class="booking-row" (click)="openBookingDetail(booking)">
@@ -128,6 +129,32 @@
             >
               {{ getStatusLabel(booking.status) }}
             </span>
+          </td>
+          <td class="photos-cell">
+            @if (booking.before_photos?.length || booking.after_photos?.length) {
+            <div class="photo-thumbnails">
+              @if (booking.before_photos?.[0]) {
+              <img
+                [src]="booking.before_photos![0]"
+                alt="Before"
+                class="thumbnail"
+                title="Before"
+                (click)="$event.stopPropagation(); openPhoto(booking.before_photos![0])"
+              />
+              }
+              @if (booking.after_photos?.[0]) {
+              <img
+                [src]="booking.after_photos![0]"
+                alt="After"
+                class="thumbnail"
+                title="After"
+                (click)="$event.stopPropagation(); openPhoto(booking.after_photos![0])"
+              />
+              }
+            </div>
+            } @else {
+            <span class="no-photos">—</span>
+            }
           </td>
           <td class="actions">
             <button
@@ -264,6 +291,32 @@
             booking.service_name || booking.service?.name || "N/A"
           }}</span>
         </div>
+
+        @if (booking.before_photos?.length || booking.after_photos?.length) {
+        <div class="booking-info-row photos-row">
+          <span class="info-label">Photos:</span>
+          <div class="photo-thumbnails">
+            @if (booking.before_photos?.[0]) {
+            <img
+              [src]="booking.before_photos![0]"
+              alt="Before"
+              class="thumbnail"
+              title="Before"
+              (click)="$event.stopPropagation(); openPhoto(booking.before_photos![0])"
+            />
+            }
+            @if (booking.after_photos?.[0]) {
+            <img
+              [src]="booking.after_photos![0]"
+              alt="After"
+              class="thumbnail"
+              title="After"
+              (click)="$event.stopPropagation(); openPhoto(booking.after_photos![0])"
+            />
+            }
+          </div>
+        </div>
+        }
       </div>
 
       <!-- Always visible footer with View Details button -->

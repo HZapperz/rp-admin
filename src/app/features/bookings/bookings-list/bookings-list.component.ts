@@ -149,4 +149,8 @@ export class BookingsListComponent implements OnInit {
   isCardExpanded(bookingId: string): boolean {
     return this.expandedCards.has(bookingId);
   }
+
+  openPhoto(url: string): void {
+    window.open(url, '_blank');
+  }
 }

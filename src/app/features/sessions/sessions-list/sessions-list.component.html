@@ -1,0 +1,110 @@
+<div class="sessions-container">
+  <div class="page-header">
+    <h1>Session Recordings</h1>
+    <p class="subtitle">Watch how users interact with your site</p>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Sessions</div>
+      <div class="stat-period">Last 7 days</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.signedUp }}</div>
+      <div class="stat-label">Signed Up</div>
+      <div class="stat-rate">{{ getSignupRate() }} of visitors</div>
+    </div>
+    <div class="stat-card highlight">
+      <div class="stat-value">{{ stats.converted }}</div>
+      <div class="stat-label">Converted</div>
+      <div class="stat-rate">{{ getConversionRate() }} of signups</div>
+    </div>
+    <div class="stat-card warning" *ngIf="stats.withRageClicks > 0">
+      <div class="stat-value">{{ stats.withRageClicks }}</div>
+      <div class="stat-label">With Rage Clicks</div>
+      <div class="stat-rate">Frustrated users</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Status:</label>
+      <select [(ngModel)]="statusFilter" (change)="onFilterChange()">
+        <option value="all">All Sessions</option>
+        <option value="converted">Converted</option>
+        <option value="signed_up">Signed Up (not converted)</option>
+        <option value="dropped">Dropped (anonymous)</option>
+      </select>
+    </div>
+
+    <div class="filter-group checkbox">
+      <label>
+        <input
+          type="checkbox"
+          [(ngModel)]="hasRageClicksFilter"
+          (change)="onFilterChange()"
+        />
+        Has Rage Clicks
+      </label>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Loading sessions...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && sessions.length === 0">
+    <span class="material-icons">videocam_off</span>
+    <h3>No sessions found</h3>
+    <p>Try adjusting your filters or wait for more sessions to be recorded.</p>
+  </div>
+
+  <!-- Sessions Table -->
+  <div class="sessions-table" *ngIf="!isLoading && sessions.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Started</th>
+          <th>Entry Page</th>
+          <th>Pages</th>
+          <th>Rage</th>
+          <th>Device</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let session of sessions"
+          (click)="viewSession(session)"
+          class="session-row"
+        >
+          <td class="date-cell">{{ formatDate(session.started_at) }}</td>
+          <td class="url-cell">{{ truncateUrl(session.initial_url) }}</td>
+          <td class="pages-cell">{{ session.page_views || 0 }}</td>
+          <td class="rage-cell">
+            <span *ngIf="session.rage_clicks > 0" class="rage-badge">
+              {{ session.rage_clicks }}
+            </span>
+            <span *ngIf="session.rage_clicks === 0" class="no-rage">-</span>
+          </td>
+          <td class="device-cell">{{ getDeviceInfo(session) }}</td>
+          <td class="status-cell">
+            <span class="status-badge" [ngClass]="getStatusClass(session)">
+              {{ getStatusLabel(session) }}
+            </span>
+          </td>
+          <td class="action-cell">
+            <span class="material-icons">play_circle</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

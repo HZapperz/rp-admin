@@ -13,6 +13,18 @@ export class BookingService {
 
   constructor(private supabase: SupabaseService) {}
 
+  /**
+   * Maps package type to display service name
+   */
+  private getServiceNameFromPackage(packageType: string): string {
+    const packageToServiceName: Record<string, string> = {
+      'basic': 'Royal Bath',
+      'premium': 'Royal Groom',
+      'deluxe': 'Royal Spa'
+    };
+    return packageToServiceName[packageType] || 'Grooming Service';
+  }
+
   getAllBookings(filters?: BookingFilters): Observable<BookingWithDetails[]> {
     return from(this.fetchBookings(filters));
   }
@@ -412,7 +424,8 @@ export class BookingService {
     newPackagePrice: number,
     newTotalPrice: number,
     addons: { name: string; price: number }[],
-    reason: string
+    reason: string,
+    newDiscountAmount?: number
   ): Promise<{
     success: boolean;
     oldValues?: { package_type: string; total_price: number; addons: any[] };
@@ -527,16 +540,22 @@ export class BookingService {
       const serviceFee = parseFloat(currentBooking.service_fee) || 0;
       const processingFee = parseFloat(currentBooking.processing_fee) || 0;
       const rushFee = parseFloat(currentBooking.rush_fee) || 0;
-      const discountAmount = parseFloat(currentBooking.discount_amount) || 0;
+      // Use new discount amount if provided, otherwise keep existing
+      const discountAmount = newDiscountAmount !== undefined
+        ? newDiscountAmount
+        : (parseFloat(currentBooking.discount_amount) || 0);
 
       const subtotalBeforeTax = subtotal + serviceFee + rushFee - discountAmount;
       const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
       const newTotalAmount = Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
 
-      // Update booking totals
+      // Update booking totals, service_name, and discount
+      const serviceName = this.getServiceNameFromPackage(newPackageType);
       const { error: updateBookingError } = await this.supabase
         .from('bookings')
         .update({
+          service_name: serviceName,
+          discount_amount: discountAmount,
           subtotal_before_tax: subtotalBeforeTax,
           tax_amount: taxAmount,
           total_amount: newTotalAmount,
@@ -558,7 +577,7 @@ export class BookingService {
         .insert({
           booking_id: bookingId,
           modified_by: currentUser?.id,
-          modification_type: 'service_change',
+          modification_type: 'service_adjustment',
           old_value: {
             package_type: oldValues.package_type,
             total_price: oldValues.total_price,

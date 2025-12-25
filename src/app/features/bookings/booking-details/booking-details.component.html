@@ -1228,6 +1228,74 @@
           </div>
         </div>
 
+        <!-- Discount Management Section -->
+        <div class="form-group" *ngIf="currentDiscountAmount > 0 || discountOption !== 'keep'">
+          <label class="form-label">Discount Management</label>
+          <p class="form-help-text">Current discount: ${{ currentDiscountAmount.toFixed(2) }} ({{ currentDiscountPercentage.toFixed(1) }}%)</p>
+
+          <div class="discount-options-grid">
+            <div
+              (click)="discountOption = 'keep'"
+              [class.selected]="discountOption === 'keep'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="discountOption === 'keep'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Keep Existing</span>
+                <span class="option-desc">Maintain ${{ currentDiscountAmount.toFixed(2) }} discount</span>
+              </div>
+            </div>
+
+            <div
+              (click)="discountOption = 'recalculate'"
+              [class.selected]="discountOption === 'recalculate'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="discountOption === 'recalculate'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Recalculate ({{ currentDiscountPercentage.toFixed(1) }}%)</span>
+                <span class="option-desc">Apply same percentage to new subtotal</span>
+              </div>
+            </div>
+
+            <div
+              (click)="discountOption = 'custom'"
+              [class.selected]="discountOption === 'custom'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="discountOption === 'custom'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Custom Amount</span>
+                <div class="custom-input" *ngIf="discountOption === 'custom'">
+                  <span class="currency-prefix">$</span>
+                  <input
+                    type="number"
+                    [(ngModel)]="customDiscountAmount"
+                    min="0"
+                    step="0.01"
+                    class="discount-input">
+                </div>
+              </div>
+            </div>
+
+            <div
+              (click)="discountOption = 'remove'"
+              [class.selected]="discountOption === 'remove'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="discountOption === 'remove'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Remove Discount</span>
+                <span class="option-desc">No discount applied</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Price Summary -->
         <div class="price-summary-box">
           <h4 class="price-summary-title">Price Summary</h4>
@@ -1240,14 +1308,22 @@
               <span class="summary-label">Add-ons:</span>
               <span class="summary-value">${{ calculateNewAddonsTotal() }}</span>
             </div>
-            <div class="summary-row total-row">
+            <div class="summary-row">
               <span class="summary-label">New Pet Total:</span>
               <span class="summary-value">${{ calculateNewPetTotal() }}</span>
             </div>
-            <div class="summary-row difference-row" [ngClass]="calculatePriceDifference() >= 0 ? 'increase' : 'decrease'">
-              <span class="summary-label">Difference:</span>
+            <div class="summary-row discount-row" *ngIf="getCalculatedDiscount() > 0">
+              <span class="summary-label text-green-600">Discount:</span>
+              <span class="summary-value text-green-600">-${{ getCalculatedDiscount().toFixed(2) }}</span>
+            </div>
+            <div class="summary-row total-row">
+              <span class="summary-label">New Booking Total:</span>
+              <span class="summary-value">${{ calculateNewBookingTotal().toFixed(2) }}</span>
+            </div>
+            <div class="summary-row difference-row" [ngClass]="calculateBookingTotalDifference() >= 0 ? 'increase' : 'decrease'">
+              <span class="summary-label">Total Difference:</span>
               <span class="summary-value">
-                {{ calculatePriceDifference() >= 0 ? '+' : '' }}${{ calculatePriceDifference().toFixed(2) }}
+                {{ calculateBookingTotalDifference() >= 0 ? '+' : '' }}${{ calculateBookingTotalDifference().toFixed(2) }}
               </span>
             </div>
           </div>
