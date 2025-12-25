@@ -862,6 +862,52 @@
   }
 }
 
+// Pet Photos per pet
+.pet-photos-group {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+
+  &:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+.pet-photo-title {
+  color: #1e40af;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.before-after-grid {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.photo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+
+  .photo-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .photo-thumbnail {
+    width: 150px;
+    height: 150px;
+    aspect-ratio: 1;
+  }
+}
+
 // Photo Lightbox
 .photo-lightbox {
   position: fixed;

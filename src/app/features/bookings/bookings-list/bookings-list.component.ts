@@ -153,4 +153,19 @@ export class BookingsListComponent implements OnInit {
   openPhoto(url: string): void {
     window.open(url, '_blank');
   }
+
+  // Helper methods to check for pet photos
+  hasPhotos(booking: BookingWithDetails): boolean {
+    return booking.pets?.some(pet => pet.before_photo_url || pet.after_photo_url) || false;
+  }
+
+  getFirstBeforePhoto(booking: BookingWithDetails): string | null {
+    const petWithPhoto = booking.pets?.find(pet => pet.before_photo_url);
+    return petWithPhoto?.before_photo_url || null;
+  }
+
+  getFirstAfterPhoto(booking: BookingWithDetails): string | null {
+    const petWithPhoto = booking.pets?.find(pet => pet.after_photo_url);
+    return petWithPhoto?.after_photo_url || null;
+  }
 }

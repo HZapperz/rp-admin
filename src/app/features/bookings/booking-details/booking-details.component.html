@@ -829,34 +829,34 @@
           </div>
         </div>
 
-        <!-- Before/After Photos -->
-        <div class="card" *ngIf="(booking.before_photos && booking.before_photos.length > 0) || (booking.after_photos && booking.after_photos.length > 0)">
+        <!-- Before/After Photos (per pet) -->
+        <div class="card" *ngIf="hasAnyPetPhotos()">
           <div class="card-header">
             <h2>Service Photos</h2>
           </div>
 
           <div class="photos-section">
-            <div *ngIf="booking.before_photos && booking.before_photos.length > 0">
-              <h4 class="section-subtitle">Before Photos</h4>
-              <div class="photo-grid">
-                <img
-                  *ngFor="let photo of booking.before_photos"
-                  [src]="photo"
-                  alt="Before photo"
-                  class="photo-thumbnail"
-                  (click)="openPhotoGallery(photo)">
-              </div>
-            </div>
-
-            <div *ngIf="booking.after_photos && booking.after_photos.length > 0">
-              <h4 class="section-subtitle">After Photos</h4>
-              <div class="photo-grid">
-                <img
-                  *ngFor="let photo of booking.after_photos"
-                  [src]="photo"
-                  alt="After photo"
-                  class="photo-thumbnail"
-                  (click)="openPhotoGallery(photo)">
+            <div *ngFor="let petBooking of booking.pets" class="pet-photos-group">
+              <div *ngIf="petBooking.before_photo_url || petBooking.after_photo_url">
+                <h4 class="section-subtitle pet-photo-title">{{ petBooking.pet?.name || 'Pet' }}</h4>
+                <div class="photo-grid before-after-grid">
+                  <div *ngIf="petBooking.before_photo_url" class="photo-item">
+                    <span class="photo-label">Before</span>
+                    <img
+                      [src]="petBooking.before_photo_url"
+                      alt="Before photo"
+                      class="photo-thumbnail"
+                      (click)="openPhotoGallery(petBooking.before_photo_url!)">
+                  </div>
+                  <div *ngIf="petBooking.after_photo_url" class="photo-item">
+                    <span class="photo-label">After</span>
+                    <img
+                      [src]="petBooking.after_photo_url"
+                      alt="After photo"
+                      class="photo-thumbnail"
+                      (click)="openPhotoGallery(petBooking.after_photo_url!)">
+                  </div>
+                </div>
               </div>
             </div>
           </div>

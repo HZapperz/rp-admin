@@ -415,10 +415,12 @@ export class BookingDetailsComponent implements OnInit {
   navigatePhoto(direction: 'prev' | 'next') {
     if (!this.booking) return;
 
-    const allPhotos = [
-      ...(this.booking.before_photos || []),
-      ...(this.booking.after_photos || [])
-    ];
+    // Collect all pet photos
+    const allPhotos: string[] = [];
+    for (const pet of this.booking.pets || []) {
+      if (pet.before_photo_url) allPhotos.push(pet.before_photo_url);
+      if (pet.after_photo_url) allPhotos.push(pet.after_photo_url);
+    }
 
     const currentIndex = allPhotos.indexOf(this.selectedPhoto!);
 
@@ -427,6 +429,11 @@ export class BookingDetailsComponent implements OnInit {
     } else {
       this.selectedPhoto = allPhotos[(currentIndex - 1 + allPhotos.length) % allPhotos.length];
     }
+  }
+
+  hasAnyPetPhotos(): boolean {
+    if (!this.booking?.pets) return false;
+    return this.booking.pets.some(pet => pet.before_photo_url || pet.after_photo_url);
   }
 
   toggleEditMode() {

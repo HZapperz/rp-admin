@@ -131,24 +131,24 @@
             </span>
           </td>
           <td class="photos-cell">
-            @if (booking.before_photos?.length || booking.after_photos?.length) {
+            @if (hasPhotos(booking)) {
             <div class="photo-thumbnails">
-              @if (booking.before_photos?.[0]) {
+              @if (getFirstBeforePhoto(booking)) {
               <img
-                [src]="booking.before_photos![0]"
+                [src]="getFirstBeforePhoto(booking)!"
                 alt="Before"
                 class="thumbnail"
                 title="Before"
-                (click)="$event.stopPropagation(); openPhoto(booking.before_photos![0])"
+                (click)="$event.stopPropagation(); openPhoto(getFirstBeforePhoto(booking)!)"
               />
               }
-              @if (booking.after_photos?.[0]) {
+              @if (getFirstAfterPhoto(booking)) {
               <img
-                [src]="booking.after_photos![0]"
+                [src]="getFirstAfterPhoto(booking)!"
                 alt="After"
                 class="thumbnail"
                 title="After"
-                (click)="$event.stopPropagation(); openPhoto(booking.after_photos![0])"
+                (click)="$event.stopPropagation(); openPhoto(getFirstAfterPhoto(booking)!)"
               />
               }
             </div>
@@ -292,26 +292,26 @@
           }}</span>
         </div>
 
-        @if (booking.before_photos?.length || booking.after_photos?.length) {
+        @if (hasPhotos(booking)) {
         <div class="booking-info-row photos-row">
           <span class="info-label">Photos:</span>
           <div class="photo-thumbnails">
-            @if (booking.before_photos?.[0]) {
+            @if (getFirstBeforePhoto(booking)) {
             <img
-              [src]="booking.before_photos![0]"
+              [src]="getFirstBeforePhoto(booking)!"
               alt="Before"
               class="thumbnail"
               title="Before"
-              (click)="$event.stopPropagation(); openPhoto(booking.before_photos![0])"
+              (click)="$event.stopPropagation(); openPhoto(getFirstBeforePhoto(booking)!)"
             />
             }
-            @if (booking.after_photos?.[0]) {
+            @if (getFirstAfterPhoto(booking)) {
             <img
-              [src]="booking.after_photos![0]"
+              [src]="getFirstAfterPhoto(booking)!"
               alt="After"
               class="thumbnail"
               title="After"
-              (click)="$event.stopPropagation(); openPhoto(booking.after_photos![0])"
+              (click)="$event.stopPropagation(); openPhoto(getFirstAfterPhoto(booking)!)"
             />
             }
           </div>
