@@ -125,14 +125,22 @@
         <p>No replay data available for this session</p>
       </div>
 
+      <div class="player-error" *ngIf="playerError">
+        <span class="material-icons">error_outline</span>
+        <p>{{ playerError }}</p>
+      </div>
+
       <div
         #playerContainer
         class="player-container"
         *ngIf="!isLoadingEvents && events.length > 0"
       ></div>
 
-      <div class="player-controls-hint" *ngIf="!isLoadingEvents && events.length > 0">
-        <p>Use the controls below the player to play, pause, and scrub through the recording.</p>
+      <div class="player-controls-hint" *ngIf="!isLoadingEvents && events.length > 0 && !playerError">
+        <p>
+          <strong>{{ totalEvents }} events</strong> recorded.
+          Use the controls below the player to play, pause, and scrub through the recording.
+        </p>
       </div>
     </div>
   </div>

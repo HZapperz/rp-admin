@@ -249,7 +249,8 @@
   }
 
   .player-loading,
-  .player-empty {
+  .player-empty,
+  .player-error {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -279,22 +280,60 @@
     }
   }
 
+  .player-error {
+    background: #fef2f2;
+    border-color: #fecaca;
+
+    .material-icons {
+      color: #ef4444;
+    }
+
+    p {
+      color: #dc2626;
+    }
+  }
+
   .player-container {
     background: #1a1a2e;
     border-radius: 8px;
     overflow: hidden;
-    display: flex;
-    justify-content: center;
     min-height: 500px;
+    width: 100%;
 
-    // Override rrweb-player styles
-    :host ::ng-deep {
+    // rrweb-player renders inside this container
+    // Make sure it takes full width
+    ::ng-deep {
       .rr-player {
-        background: #1a1a2e !important;
+        margin: 0 auto;
+      }
+
+      .rr-player__frame {
+        background: #1a1a2e;
+      }
+
+      .replayer-wrapper {
+        background: #f5f5f5;
       }
 
       .rr-controller {
-        background: rgba(0, 0, 0, 0.8) !important;
+        background: rgba(0, 0, 0, 0.85) !important;
+        padding: 8px 16px;
+      }
+
+      .rr-timeline {
+        width: 100%;
+      }
+
+      .rr-progress {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .rr-progress__step {
+        background: #3b82f6;
+      }
+
+      .rr-controller__btns button {
+        color: white;
       }
     }
   }

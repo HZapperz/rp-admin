@@ -107,8 +107,19 @@ export class SessionDetailComponent implements OnInit, OnDestroy, AfterViewInit 
     });
   }
 
+  playerError: string | null = null;
+  totalEvents = 0;
+
   async initPlayer() {
-    if (!this.playerContainer?.nativeElement || this.events.length === 0) {
+    if (!this.playerContainer?.nativeElement) {
+      console.error('Player container not found');
+      this.playerError = 'Player container not ready';
+      return;
+    }
+
+    if (this.events.length === 0) {
+      console.warn('No event chunks to replay');
+      this.playerError = 'No recording data available';
       return;
     }
 
@@ -129,20 +140,28 @@ export class SessionDetailComponent implements OnInit, OnDestroy, AfterViewInit 
         }
       }
 
+      this.totalEvents = allEvents.length;
+      console.log(`Loaded ${allEvents.length} events for replay`);
+
       if (allEvents.length === 0) {
-        console.warn('No events to replay');
+        console.warn('No events to replay after unpacking');
+        this.playerError = 'No valid events found in recording';
         return;
       }
 
       // Sort events by timestamp
       allEvents.sort((a, b) => a.timestamp - b.timestamp);
 
-      // Dynamically import rrweb-player (it's an ES module)
+      // Dynamically import rrweb-player
       const rrwebPlayer = await import('rrweb-player');
       const RRWebPlayer = rrwebPlayer.default;
 
       // Clear container
       this.playerContainer.nativeElement.innerHTML = '';
+
+      // Get container width for responsive sizing
+      const containerWidth = Math.min(this.playerContainer.nativeElement.offsetWidth || 800, 1000);
+      const containerHeight = Math.round(containerWidth * 0.625); // 16:10 aspect ratio
 
       // Create player
       this.player = new RRWebPlayer({
@@ -151,14 +170,17 @@ export class SessionDetailComponent implements OnInit, OnDestroy, AfterViewInit 
           events: allEvents,
           showController: true,
           autoPlay: false,
-          width: 800,
-          height: 500,
+          width: containerWidth,
+          height: containerHeight,
           skipInactive: true,
           speedOption: [1, 2, 4, 8],
         },
       });
+
+      console.log('Player initialized successfully');
     } catch (err) {
       console.error('Error initializing player:', err);
+      this.playerError = `Failed to initialize player: ${err}`;
     }
   }
 

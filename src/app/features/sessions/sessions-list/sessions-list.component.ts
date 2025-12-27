@@ -22,6 +22,7 @@ export class SessionsListComponent implements OnInit {
   // Filters
   statusFilter: 'all' | 'converted' | 'dropped' | 'signed_up' = 'all';
   hasRageClicksFilter = false;
+  hideNoEventsFilter = true; // Default to hiding sessions without replay data
 
   // Stats
   stats = {
@@ -55,7 +56,8 @@ export class SessionsListComponent implements OnInit {
 
     const filters: SessionFilters = {
       status: this.statusFilter,
-      hasRageClicks: this.hasRageClicksFilter
+      hasRageClicks: this.hasRageClicksFilter,
+      hideNoEvents: this.hideNoEventsFilter
     };
 
     this.sessionService.getSessions(filters, 100).subscribe({

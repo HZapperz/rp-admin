@@ -38,6 +38,7 @@ export interface RecordingSessionEvent {
 export interface SessionFilters {
   status?: 'all' | 'converted' | 'dropped' | 'signed_up';
   hasRageClicks?: boolean;
+  hideNoEvents?: boolean;
   startDate?: string;
   endDate?: string;
   search?: string;
@@ -73,6 +74,10 @@ export class SessionRecordingService {
 
     if (filters?.hasRageClicks) {
       query = query.gt('rage_clicks', 0);
+    }
+
+    if (filters?.hideNoEvents) {
+      query = query.gt('event_count', 0);
     }
 
     if (filters?.startDate) {

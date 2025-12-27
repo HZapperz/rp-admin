@@ -50,6 +50,17 @@
         Has Rage Clicks
       </label>
     </div>
+
+    <div class="filter-group checkbox">
+      <label>
+        <input
+          type="checkbox"
+          [(ngModel)]="hideNoEventsFilter"
+          (change)="onFilterChange()"
+        />
+        Hide Empty Sessions
+      </label>
+    </div>
   </div>
 
   <!-- Loading State -->
