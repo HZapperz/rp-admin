@@ -179,7 +179,20 @@ export class ClientService {
       .order('created_at', { ascending: false });
 
     if (search) {
-      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
+      // First, find user_ids of clients whose pets match the search term
+      const { data: matchingPets } = await this.supabase
+        .from('pets')
+        .select('user_id')
+        .ilike('name', `%${search}%`);
+
+      const petOwnerIds = matchingPets?.map(p => p.user_id).filter(Boolean) || [];
+
+      // Build the search query with client fields OR pet owner IDs
+      if (petOwnerIds.length > 0) {
+        query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,id.in.(${petOwnerIds.join(',')})`);
+      } else {
+        query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
+      }
     }
 
     const { data: clients, error } = await query;
