@@ -50,6 +50,7 @@
         <thead>
           <tr>
             <th>Name</th>
+            <th>Pets</th>
             <th>Email</th>
             <th>Phone</th>
             <th>Total Bookings</th>
@@ -60,7 +61,7 @@
         <tbody>
           @if (clients.length === 0) {
             <tr>
-              <td colspan="6" class="no-clients">No clients found</td>
+              <td colspan="7" class="no-clients">No clients found</td>
             </tr>
           }
           @for (client of clients; track client.id) {
@@ -85,6 +86,15 @@
                     {{ client.first_name }} {{ client.last_name }}
                   </div>
                 </div>
+              </td>
+              <td>
+                <span class="pets-list">
+                  @if (client.pets && client.pets.length > 0) {
+                    {{ client.pets.map(p => p.name).join(', ') }}
+                  } @else {
+                    <span class="no-pets">No pets</span>
+                  }
+                </span>
               </td>
               <td>{{ client.email }}</td>
               <td>{{ client.phone || 'N/A' }}</td>
@@ -160,6 +170,16 @@
           </div>
           <!-- Always visible summary -->
           <div class="client-card-summary">
+            <div class="summary-row">
+              <span class="summary-label">Pets:</span>
+              <span class="summary-value">
+                @if (client.pets && client.pets.length > 0) {
+                  {{ client.pets.map(p => p.name).join(', ') }}
+                } @else {
+                  <span class="no-pets">No pets</span>
+                }
+              </span>
+            </div>
             <div class="summary-row">
               <span class="summary-label">Phone:</span>
               <span class="summary-value">{{ client.phone || 'N/A' }}</span>

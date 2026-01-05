@@ -45,6 +45,7 @@ export interface ClientWithStats {
   last_booking_date?: string;
   blocked_at?: string;
   last_sign_in_at?: string;
+  pets?: { id: string; name: string }[];
 }
 
 export interface Pet {
@@ -206,17 +207,26 @@ export class ClientService {
       return [];
     }
 
-    // Step 2: Batch fetch all bookings for these clients
+    // Step 2: Batch fetch all bookings and pets for these clients
     const clientIds = clients.map(c => c.id);
 
-    const { data: bookings } = await this.supabase
-      .from('bookings')
-      .select('client_id, total_amount, scheduled_date, status')
-      .in('client_id', clientIds)
-      .eq('status', 'completed');
+    const [bookingsResult, petsResult] = await Promise.all([
+      this.supabase
+        .from('bookings')
+        .select('client_id, total_amount, scheduled_date, status')
+        .in('client_id', clientIds)
+        .eq('status', 'completed'),
+      this.supabase
+        .from('pets')
+        .select('id, user_id, name')
+        .in('user_id', clientIds)
+    ]);
 
-    // Step 3: Create lookup by client_id
-    const bookingsByClient: Record<string, any[]> = (bookings || []).reduce((acc, booking) => {
+    const bookings = bookingsResult.data || [];
+    const pets = petsResult.data || [];
+
+    // Step 3: Create lookups by client_id
+    const bookingsByClient: Record<string, any[]> = bookings.reduce((acc, booking) => {
       if (!acc[booking.client_id]) {
         acc[booking.client_id] = [];
       }
@@ -224,9 +234,18 @@ export class ClientService {
       return acc;
     }, {} as Record<string, any[]>);
 
+    const petsByClient: Record<string, { id: string; name: string }[]> = pets.reduce((acc, pet) => {
+      if (!acc[pet.user_id]) {
+        acc[pet.user_id] = [];
+      }
+      acc[pet.user_id].push({ id: pet.id, name: pet.name });
+      return acc;
+    }, {} as Record<string, { id: string; name: string }[]>);
+
     // Step 4: Combine and calculate stats
     const clientsWithStats: ClientWithStats[] = clients.map(client => {
       const clientBookings = bookingsByClient[client.id] || [];
+      const clientPets = petsByClient[client.id] || [];
 
       const totalBookings = clientBookings.length;
       const totalSpent = clientBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
@@ -238,7 +257,8 @@ export class ClientService {
         ...client,
         total_bookings: totalBookings,
         total_spent: totalSpent,
-        last_booking_date: lastBookingDate
+        last_booking_date: lastBookingDate,
+        pets: clientPets
       };
     });
 
