@@ -29,6 +29,7 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
 
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('streetInput', { static: false }) streetInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('modalBody', { static: false }) modalBody!: ElementRef<HTMLDivElement>;
 
   formData: AddressFormData = {
     name: '',
@@ -63,6 +64,9 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
   error = '';
   mapboxToken = environment.mapboxAccessToken;
 
+  // Mobile scroll hint
+  showScrollHint = false;
+
   get isEditMode(): boolean {
     return !!this.address;
   }
@@ -84,6 +88,42 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
         address_type: this.address.address_type || 'home',
         is_default: this.address.is_default || false
       };
+    }
+
+    // Auto-set name based on address type if not already set
+    if (!this.formData.name) {
+      this.formData.name = this.getNameFromType(this.formData.address_type);
+    }
+
+    // Show scroll hint on mobile devices
+    this.checkMobileScrollHint();
+  }
+
+  private checkMobileScrollHint(): void {
+    // Show scroll hint on mobile screens (< 600px)
+    if (typeof window !== 'undefined' && window.innerWidth <= 600) {
+      this.showScrollHint = true;
+    }
+  }
+
+  private getNameFromType(type: string): string {
+    const typeNames: { [key: string]: string } = {
+      'home': 'Home',
+      'work': 'Work',
+      'other': 'Other'
+    };
+    return typeNames[type] || 'Home';
+  }
+
+  setAddressType(type: 'home' | 'work' | 'other'): void {
+    this.formData.address_type = type;
+    this.formData.name = this.getNameFromType(type);
+  }
+
+  onModalScroll(): void {
+    // Hide scroll hint once user scrolls
+    if (this.showScrollHint) {
+      this.showScrollHint = false;
     }
   }
 
@@ -289,9 +329,9 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
   validateForm(): boolean {
     this.error = '';
 
+    // Ensure name is set based on type (should already be set, but just in case)
     if (!this.formData.name?.trim()) {
-      this.error = 'Address name is required (e.g., "Home", "Office")';
-      return false;
+      this.formData.name = this.getNameFromType(this.formData.address_type);
     }
 
     if (!this.formData.street?.trim()) {
