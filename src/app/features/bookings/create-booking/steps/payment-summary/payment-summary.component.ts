@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ClientService } from '../../../../../core/services/client.service';
 
 export interface PaymentConfig {
-  payment_type: 'pay_on_completion' | 'use_saved_card' | 'cash_on_service';
+  payment_type: 'use_saved_card' | 'cash_on_service';
   payment_method_id?: string;
   original_amount: number;
   discount_amount: number;
@@ -38,7 +38,7 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
   @Input() selectedAddress: any = null;
   @Output() paymentConfigured = new EventEmitter<PaymentConfig>();
 
-  paymentType: 'pay_on_completion' | 'use_saved_card' | 'cash_on_service' = 'pay_on_completion';
+  paymentType: 'use_saved_card' | 'cash_on_service' = 'use_saved_card';
   selectedPaymentMethod: PaymentMethod | null = null;
   paymentMethods: PaymentMethod[] = [];
 
@@ -87,12 +87,16 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
 
       this.paymentMethods = methods;
 
-      // Auto-select default payment method
-      const defaultMethod = methods.find(m => m.is_default);
-      if (defaultMethod) {
+      // Auto-select default payment method and set payment type
+      if (methods.length > 0) {
+        const defaultMethod = methods.find(m => m.is_default) || methods[0];
         this.selectedPaymentMethod = defaultMethod;
-        this.emitPaymentConfig();
+        this.paymentType = 'use_saved_card';
+      } else {
+        // No saved cards, default to cash on service
+        this.paymentType = 'cash_on_service';
       }
+      this.emitPaymentConfig();
 
       this.isLoadingPaymentMethods = false;
     } catch (err) {
@@ -101,7 +105,7 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     }
   }
 
-  onPaymentTypeChange(type: 'pay_on_completion' | 'use_saved_card' | 'cash_on_service'): void {
+  onPaymentTypeChange(type: 'use_saved_card' | 'cash_on_service'): void {
     this.paymentType = type;
 
     if (type !== 'use_saved_card') {

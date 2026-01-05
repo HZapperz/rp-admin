@@ -162,26 +162,13 @@
       <div class="payment-types">
         <div
           class="payment-type-card"
-          [class.selected]="paymentType === 'pay_on_completion'"
-          (click)="onPaymentTypeChange('pay_on_completion')"
-        >
-          <mat-icon class="type-icon">access_time</mat-icon>
-          <div class="type-info">
-            <div class="type-name">Pay on Completion</div>
-            <div class="type-description">Client will be charged after service</div>
-          </div>
-          <mat-icon class="check-icon" *ngIf="paymentType === 'pay_on_completion'">check</mat-icon>
-        </div>
-
-        <div
-          class="payment-type-card"
           [class.selected]="paymentType === 'use_saved_card'"
           (click)="onPaymentTypeChange('use_saved_card')"
         >
           <mat-icon class="type-icon">credit_card</mat-icon>
           <div class="type-info">
             <div class="type-name">Use Saved Card</div>
-            <div class="type-description">Charge client's saved payment method now</div>
+            <div class="type-description">Charge client's saved payment method</div>
           </div>
           <mat-icon class="check-icon" *ngIf="paymentType === 'use_saved_card'">check</mat-icon>
         </div>
