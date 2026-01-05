@@ -211,6 +211,21 @@
           color: #94a3b8;
           font-size: 0.875rem;
         }
+
+        .client-pets {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          color: #667eea;
+          font-size: 0.875rem;
+          margin-top: 0.25rem;
+
+          .pets-icon {
+            font-size: 1rem;
+            width: 1rem;
+            height: 1rem;
+          }
+        }
       }
 
       .client-stats {

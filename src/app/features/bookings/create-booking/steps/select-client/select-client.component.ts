@@ -76,8 +76,14 @@ export class SelectClientComponent implements OnInit {
       client.first_name.toLowerCase().includes(term) ||
       client.last_name.toLowerCase().includes(term) ||
       client.email.toLowerCase().includes(term) ||
-      (client.phone && client.phone.includes(term))
+      (client.phone && client.phone.includes(term)) ||
+      (client.pets && client.pets.some(pet => pet.name.toLowerCase().includes(term)))
     );
+  }
+
+  getPetNames(pets: { id: string; name: string }[] | undefined): string {
+    if (!pets || pets.length === 0) return '';
+    return pets.map(p => p.name).join(', ');
   }
 
   selectClient(client: ClientWithStats): void {

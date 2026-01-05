@@ -6,7 +6,7 @@
         type="text"
         [(ngModel)]="searchTerm"
         (input)="onSearchChange($event)"
-        placeholder="Search by name, email, or phone..."
+        placeholder="Search by name, email, phone, or pet name..."
         class="search-input"
       />
       <mat-icon class="search-icon">search</mat-icon>
@@ -61,6 +61,10 @@
         </div>
         <div class="client-email">{{ client.email }}</div>
         <div *ngIf="client.phone" class="client-phone">{{ client.phone }}</div>
+        <div *ngIf="client.pets && client.pets.length > 0" class="client-pets">
+          <mat-icon inline class="pets-icon">pets</mat-icon>
+          {{ getPetNames(client.pets) }}
+        </div>
       </div>
 
       <!-- Stats -->
