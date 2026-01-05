@@ -69,6 +69,11 @@ export class ClientsListComponent implements OnInit {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   }
 
+  getPetNames(pets: { id: string; name: string }[] | undefined): string {
+    if (!pets || pets.length === 0) return '';
+    return pets.map(p => p.name).join(', ');
+  }
+
   toggleCard(clientId: string, event: Event): void {
     event.stopPropagation();
     if (this.expandedCards.has(clientId)) {

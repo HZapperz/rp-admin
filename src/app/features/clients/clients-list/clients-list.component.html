@@ -90,7 +90,7 @@
               <td>
                 <span class="pets-list">
                   @if (client.pets && client.pets.length > 0) {
-                    {{ client.pets.map(p => p.name).join(', ') }}
+                    {{ getPetNames(client.pets) }}
                   } @else {
                     <span class="no-pets">No pets</span>
                   }
@@ -174,7 +174,7 @@
               <span class="summary-label">Pets:</span>
               <span class="summary-value">
                 @if (client.pets && client.pets.length > 0) {
-                  {{ client.pets.map(p => p.name).join(', ') }}
+                  {{ getPetNames(client.pets) }}
                 } @else {
                   <span class="no-pets">No pets</span>
                 }
