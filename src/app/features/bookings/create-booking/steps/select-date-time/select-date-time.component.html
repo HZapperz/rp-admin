@@ -62,7 +62,32 @@
 
       <!-- Time Input Section -->
       <div class="timeslots-section">
-        <h4>Enter Time</h4>
+        <div class="time-section-header">
+          <h4>Enter Time</h4>
+          <button class="help-btn" (click)="toggleTimeHelp()" type="button">
+            <mat-icon inline>help_outline</mat-icon>
+          </button>
+        </div>
+
+        <!-- Time Help Modal -->
+        <div class="time-help-modal" *ngIf="showTimeHelp">
+          <div class="help-header">
+            <span>Accepted Time Formats</span>
+            <button class="close-btn" (click)="toggleTimeHelp()" type="button">
+              <mat-icon inline>close</mat-icon>
+            </button>
+          </div>
+          <div class="help-content">
+            <ul>
+              <li><code>930am</code> or <code>9:30am</code></li>
+              <li><code>1230pm</code> or <code>12:30pm</code></li>
+              <li><code>12.30pm</code> (dot notation)</li>
+              <li><code>9:30 AM</code> (with spaces)</li>
+              <li><code>930</code> or <code>1230</code> (auto-detects AM/PM)</li>
+            </ul>
+            <p class="help-note">Times auto-format when you click out of the field. Grooming typically runs 8 AM - 5 PM.</p>
+          </div>
+        </div>
 
         <div *ngIf="!selectedDate" class="no-date-message">
           <mat-icon class="clock-icon" inline>schedule</mat-icon>

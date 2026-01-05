@@ -35,6 +35,9 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
                 'July', 'August', 'September', 'October', 'November', 'December'];
   dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // Help modal state
+  showTimeHelp = false;
+
   ngOnInit(): void {
     this.generateCalendar();
   }
@@ -107,16 +110,34 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
 
   /**
    * Auto-format time input to standard "H:MM AM/PM" format
-   * Handles: "930am", "9:30am", "930", "9:30", "0930"
+   * Handles many formats: "930am", "9:30am", "1230pm", "12.30pm", "930", "9:30", "0930"
    */
   formatTimeInput(value: string): string {
     if (!value) return '';
 
-    // Remove spaces and normalize
+    // Remove spaces and normalize to uppercase
     let cleaned = value.replace(/\s+/g, '').toUpperCase();
 
-    // Match patterns: "930AM", "9:30AM", "930", "9:30", "0930"
-    const match = cleaned.match(/^(\d{1,2}):?(\d{2})(AM|PM)?$/);
+    // Convert dots to colons (12.30pm -> 12:30pm)
+    cleaned = cleaned.replace(/\./g, ':');
+
+    // Handle formats without separator (1230pm -> 12:30pm, 930am -> 9:30am)
+    // Match 3 or 4 digits followed by optional AM/PM
+    const noSeparatorMatch = cleaned.match(/^(\d{3,4})(AM|PM)?$/);
+    if (noSeparatorMatch) {
+      const digits = noSeparatorMatch[1];
+      const period = noSeparatorMatch[2] || '';
+      if (digits.length === 3) {
+        // 930 -> 9:30
+        cleaned = digits[0] + ':' + digits.slice(1) + period;
+      } else if (digits.length === 4) {
+        // 1230 -> 12:30
+        cleaned = digits.slice(0, 2) + ':' + digits.slice(2) + period;
+      }
+    }
+
+    // Match patterns: "9:30AM", "12:30PM", "9:30", "12:30"
+    const match = cleaned.match(/^(\d{1,2}):(\d{2})(AM|PM)?$/);
     if (!match) return value; // Return original if no match
 
     let hours = parseInt(match[1], 10);
@@ -142,6 +163,10 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
     if (hours === 0) hours = 12;
 
     return `${hours}:${minutes} ${period}`;
+  }
+
+  toggleTimeHelp(): void {
+    this.showTimeHelp = !this.showTimeHelp;
   }
 
   onStartTimeBlur(): void {
