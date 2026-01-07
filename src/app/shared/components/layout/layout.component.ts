@@ -33,6 +33,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Bookings', route: '/bookings', icon: 'event' },
     { label: 'Change Requests', route: '/change-requests', icon: 'schedule' },
     { label: 'Clients', route: '/clients', icon: 'people' },
+    { label: 'Warm Leads', route: '/warm-leads', icon: 'whatshot' },
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },
     { label: 'Services', route: '/services', icon: 'spa' },
     { label: 'Analytics', route: '/analytics', icon: 'analytics' },

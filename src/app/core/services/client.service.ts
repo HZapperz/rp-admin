@@ -46,7 +46,18 @@ export interface ClientWithStats {
   blocked_at?: string;
   last_sign_in_at?: string;
   pets?: { id: string; name: string }[];
+  // Warm lead fields
+  is_warm_lead: boolean;
+  completion_status: {
+    profile_complete: boolean;
+    has_pet: boolean;
+    has_address: boolean;
+    has_payment_method: boolean;
+    has_started_booking: boolean;
+  };
 }
+
+export type ClientFilterType = 'all' | 'clients' | 'warm_leads';
 
 export interface Pet {
   id: string;
@@ -207,26 +218,54 @@ export class ClientService {
       return [];
     }
 
-    // Step 2: Batch fetch all bookings and pets for these clients
+    // Step 2: Batch fetch all related data for these clients
     const clientIds = clients.map(c => c.id);
 
-    const [bookingsResult, petsResult] = await Promise.all([
+    const [completedBookingsResult, allBookingsResult, petsResult, addressesResult, paymentMethodsResult] = await Promise.all([
+      // Completed bookings for stats
       this.supabase
         .from('bookings')
         .select('client_id, total_amount, scheduled_date, status')
         .in('client_id', clientIds)
         .eq('status', 'completed'),
+      // All bookings to check "has started booking"
+      this.supabase
+        .from('bookings')
+        .select('client_id')
+        .in('client_id', clientIds),
+      // Pets
       this.supabase
         .from('pets')
         .select('id, user_id, name')
+        .in('user_id', clientIds),
+      // Addresses
+      this.supabase
+        .from('addresses')
+        .select('user_id')
+        .in('user_id', clientIds),
+      // Payment methods
+      this.supabase
+        .from('payment_methods')
+        .select('user_id')
         .in('user_id', clientIds)
     ]);
 
-    const bookings = bookingsResult.data || [];
+    const completedBookings = completedBookingsResult.data || [];
+    const allBookings = allBookingsResult.data || [];
     const pets = petsResult.data || [];
+    const addresses = addressesResult.data || [];
+    const paymentMethods = paymentMethodsResult.data || [];
 
     // Step 3: Create lookups by client_id
-    const bookingsByClient: Record<string, any[]> = bookings.reduce((acc, booking) => {
+    const completedBookingsByClient: Record<string, any[]> = completedBookings.reduce((acc, booking) => {
+      if (!acc[booking.client_id]) {
+        acc[booking.client_id] = [];
+      }
+      acc[booking.client_id].push(booking);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const allBookingsByClient: Record<string, any[]> = allBookings.reduce((acc, booking) => {
       if (!acc[booking.client_id]) {
         acc[booking.client_id] = [];
       }
@@ -242,23 +281,57 @@ export class ClientService {
       return acc;
     }, {} as Record<string, { id: string; name: string }[]>);
 
+    const addressesByClient: Record<string, any[]> = addresses.reduce((acc, addr) => {
+      if (!acc[addr.user_id]) {
+        acc[addr.user_id] = [];
+      }
+      acc[addr.user_id].push(addr);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const paymentMethodsByClient: Record<string, any[]> = paymentMethods.reduce((acc, pm) => {
+      if (!acc[pm.user_id]) {
+        acc[pm.user_id] = [];
+      }
+      acc[pm.user_id].push(pm);
+      return acc;
+    }, {} as Record<string, any[]>);
+
     // Step 4: Combine and calculate stats
     const clientsWithStats: ClientWithStats[] = clients.map(client => {
-      const clientBookings = bookingsByClient[client.id] || [];
+      const clientCompletedBookings = completedBookingsByClient[client.id] || [];
+      const clientAllBookings = allBookingsByClient[client.id] || [];
       const clientPets = petsByClient[client.id] || [];
+      const clientAddresses = addressesByClient[client.id] || [];
+      const clientPaymentMethods = paymentMethodsByClient[client.id] || [];
 
-      const totalBookings = clientBookings.length;
-      const totalSpent = clientBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-      const lastBookingDate = clientBookings.length > 0
-        ? clientBookings.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())[0].scheduled_date
+      const totalBookings = clientCompletedBookings.length;
+      const totalSpent = clientCompletedBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+      const lastBookingDate = clientCompletedBookings.length > 0
+        ? clientCompletedBookings.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())[0].scheduled_date
         : undefined;
+
+      const isWarmLead = totalBookings === 0;
 
       return {
         ...client,
         total_bookings: totalBookings,
         total_spent: totalSpent,
         last_booking_date: lastBookingDate,
-        pets: clientPets
+        pets: clientPets,
+        is_warm_lead: isWarmLead,
+        completion_status: {
+          profile_complete: !!(
+            client.first_name?.trim() &&
+            client.last_name?.trim() &&
+            client.phone?.trim() &&
+            client.email?.trim()
+          ),
+          has_pet: clientPets.length > 0,
+          has_address: clientAddresses.length > 0,
+          has_payment_method: clientPaymentMethods.length > 0,
+          has_started_booking: clientAllBookings.length > 0
+        }
       };
     });
 

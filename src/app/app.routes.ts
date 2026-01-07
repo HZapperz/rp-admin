@@ -34,6 +34,11 @@ export const routes: Routes = [
           import('./features/clients/clients.routes').then(m => m.routes)
       },
       {
+        path: 'warm-leads',
+        loadChildren: () =>
+          import('./features/warm-leads/warm-leads.routes').then(m => m.routes)
+      },
+      {
         path: 'groomers',
         loadChildren: () =>
           import('./features/groomers/groomers.routes').then(m => m.routes)

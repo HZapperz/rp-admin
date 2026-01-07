@@ -1,0 +1,322 @@
+<div class="warm-leads-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>Warm Leads</h1>
+        <p class="subtitle">Users who signed up but haven't completed a booking</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Section -->
+  <div class="search-section">
+    <div class="search-box">
+      <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by name, email, phone, or pet name..."
+        (input)="onSearch($event)"
+        [value]="searchTerm"
+      />
+    </div>
+    <div class="results-count" *ngIf="!isLoading">
+      {{ filteredLeads.length }} {{ filteredLeads.length === 1 ? 'warm lead' : 'warm leads' }} found
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading warm leads...</p>
+    </div>
+  }
+
+  <!-- Desktop Table View -->
+  @if (!isLoading) {
+    <div class="leads-table-container desktop-view">
+      <table class="leads-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Pets</th>
+            <th>Phone</th>
+            <th>Progress</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredLeads.length === 0) {
+            <tr>
+              <td colspan="5" class="no-leads">No warm leads found</td>
+            </tr>
+          }
+          @for (lead of filteredLeads; track lead.id) {
+            <tr (click)="viewLeadDetail(lead.id)" class="lead-row">
+              <td>
+                <div class="lead-name-cell">
+                  <div class="lead-avatar">
+                    @if (lead.avatar_url) {
+                      <img
+                        [src]="lead.avatar_url"
+                        [alt]="lead.first_name + ' ' + lead.last_name"
+                        (error)="onAvatarError(lead.id)"
+                      />
+                    }
+                    @if (!lead.avatar_url || hasAvatarFailed(lead.id)) {
+                      <span class="avatar-initials">
+                        {{ getInitials(lead.first_name, lead.last_name) }}
+                      </span>
+                    }
+                  </div>
+                  <div class="lead-name">
+                    {{ lead.first_name }} {{ lead.last_name }}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="pets-list">
+                  @if (lead.pets && lead.pets.length > 0) {
+                    {{ getPetNames(lead.pets) }}
+                  } @else {
+                    <span class="no-pets">No pets</span>
+                  }
+                </span>
+              </td>
+              <td>{{ lead.phone || 'N/A' }}</td>
+              <td class="completion-indicators">
+                <div class="indicator-row">
+                  <span class="indicator" [class.complete]="lead.completion_status.profile_complete" title="Profile Complete">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_pet" title="Has Pet">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.855-1.45 2.344-2.5M14 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.344-2.5"/>
+                      <path d="M8 14v.5M16 14v.5"/>
+                      <path d="M11.25 16.25h1.5L12 17l-.75-.75z"/>
+                      <path d="M4.42 11.247A13.152 13.152 0 004 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_address" title="Has Address">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_payment_method" title="Has Payment Method">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                      <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_started_booking" title="Started Booking">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                  </span>
+                </div>
+                <span class="completion-count">{{ getCompletionCount(lead) }}/5</span>
+              </td>
+              <td class="actions-cell">
+                <div class="quick-actions">
+                  <button
+                    class="action-btn call-btn"
+                    (click)="callLead(lead, $event)"
+                    [disabled]="!lead.phone"
+                    title="Call"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                    </svg>
+                  </button>
+                  <button
+                    class="action-btn sms-btn"
+                    (click)="smsLead(lead, $event)"
+                    [disabled]="!lead.phone"
+                    title="SMS"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="leads-cards-container mobile-view">
+      @if (filteredLeads.length === 0) {
+        <div class="no-leads-card">
+          <p>No warm leads found</p>
+        </div>
+      }
+      @for (lead of filteredLeads; track lead.id) {
+        <div class="lead-card" [class.expanded]="isCardExpanded(lead.id)">
+          <div class="lead-card-header">
+            <div class="header-left">
+              <div class="lead-avatar-large">
+                @if (lead.avatar_url) {
+                  <img
+                    [src]="lead.avatar_url"
+                    [alt]="lead.first_name + ' ' + lead.last_name"
+                    (error)="onAvatarError(lead.id)"
+                  />
+                }
+                @if (!lead.avatar_url || hasAvatarFailed(lead.id)) {
+                  <span class="avatar-initials">
+                    {{ getInitials(lead.first_name, lead.last_name) }}
+                  </span>
+                }
+              </div>
+              <div class="lead-info">
+                <h3 class="lead-name">{{ lead.first_name }} {{ lead.last_name }}</h3>
+              </div>
+            </div>
+            <button
+              class="expand-toggle-btn"
+              (click)="toggleCard(lead.id, $event)"
+              [attr.aria-expanded]="isCardExpanded(lead.id)"
+              aria-label="Toggle lead details"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                [class.rotated]="isCardExpanded(lead.id)"
+              >
+                <path
+                  d="M6 9l6 6 6-6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <!-- Always visible summary -->
+          <div class="lead-card-summary">
+            <div class="summary-row">
+              <span class="summary-label">Pets:</span>
+              <span class="summary-value">
+                @if (lead.pets && lead.pets.length > 0) {
+                  {{ getPetNames(lead.pets) }}
+                } @else {
+                  <span class="no-pets">No pets</span>
+                }
+              </span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Phone:</span>
+              <span class="summary-value">{{ lead.phone || 'N/A' }}</span>
+            </div>
+            <div class="summary-row completion-row">
+              <span class="summary-label">Progress:</span>
+              <div class="mobile-completion-indicators">
+                <div class="indicator-row">
+                  <span class="indicator" [class.complete]="lead.completion_status.profile_complete" title="Profile">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_pet" title="Pet">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.855-1.45 2.344-2.5M14 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.344-2.5"/>
+                      <path d="M8 14v.5M16 14v.5"/>
+                      <path d="M4.42 11.247A13.152 13.152 0 004 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_address" title="Address">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_payment_method" title="Payment">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                      <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                  </span>
+                  <span class="indicator" [class.complete]="lead.completion_status.has_started_booking" title="Booking">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                  </span>
+                </div>
+                <span class="completion-count">{{ getCompletionCount(lead) }}/5</span>
+              </div>
+            </div>
+          </div>
+          <!-- Expandable details -->
+          <div
+            class="lead-card-details"
+            [class.expanded]="isCardExpanded(lead.id)"
+          >
+            <div class="lead-stats">
+              <div class="stat-item">
+                <span class="stat-label">Signed Up</span>
+                <span class="stat-value-small">
+                  {{ formatDate(lead.created_at) }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <!-- Footer with actions -->
+          <div class="lead-card-footer">
+            <div class="mobile-quick-actions">
+              <button
+                class="action-btn call-btn"
+                (click)="callLead(lead, $event)"
+                [disabled]="!lead.phone"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                </svg>
+                Call
+              </button>
+              <button
+                class="action-btn sms-btn"
+                (click)="smsLead(lead, $event)"
+                [disabled]="!lead.phone"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                SMS
+              </button>
+            </div>
+            <button
+              class="btn-view-details"
+              (click)="viewLeadDetail(lead.id)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              View Details
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

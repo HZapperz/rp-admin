@@ -30,10 +30,10 @@ export class ClientsListComponent implements OnInit {
 
   loadClients() {
     this.clientService.getAllClients(this.searchTerm).subscribe({
-      next: (clients) => {
-        this.clients = clients;
+      next: (allClients) => {
+        // Filter to only show actual clients (users with completed bookings)
+        this.clients = allClients.filter((c) => !c.is_warm_lead);
         this.isLoading = false;
-        // Reset failed avatars when loading new clients
         this.failedAvatars.clear();
       },
       error: (err) => {
@@ -41,6 +41,20 @@ export class ClientsListComponent implements OnInit {
         this.isLoading = false;
       },
     });
+  }
+
+  callClient(client: ClientWithStats, event: Event): void {
+    event.stopPropagation();
+    if (client.phone) {
+      window.location.href = `tel:${client.phone}`;
+    }
+  }
+
+  smsClient(client: ClientWithStats, event: Event): void {
+    event.stopPropagation();
+    if (client.phone) {
+      window.location.href = `sms:${client.phone}`;
+    }
   }
 
   onAvatarError(clientId: string) {
@@ -71,7 +85,7 @@ export class ClientsListComponent implements OnInit {
 
   getPetNames(pets: { id: string; name: string }[] | undefined): string {
     if (!pets || pets.length === 0) return '';
-    return pets.map(p => p.name).join(', ');
+    return pets.map((p) => p.name).join(', ');
   }
 
   toggleCard(clientId: string, event: Event): void {
@@ -102,7 +116,6 @@ export class ClientsListComponent implements OnInit {
 
   onClientCreated(clientId: string): void {
     this.showCreateClientModal = false;
-    // Navigate to the new client's detail page
     this.router.navigate(['/clients', clientId]);
   }
 }

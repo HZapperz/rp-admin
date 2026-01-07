@@ -56,12 +56,13 @@
             <th>Total Bookings</th>
             <th>Total Spent</th>
             <th>Last Booking</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           @if (clients.length === 0) {
             <tr>
-              <td colspan="7" class="no-clients">No clients found</td>
+              <td colspan="8" class="no-clients">No clients found</td>
             </tr>
           }
           @for (client of clients; track client.id) {
@@ -108,6 +109,30 @@
                 <span class="date-value">
                   {{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}
                 </span>
+              </td>
+              <td class="actions-cell">
+                <div class="quick-actions">
+                  <button
+                    class="action-btn call-btn"
+                    (click)="callClient(client, $event)"
+                    [disabled]="!client.phone"
+                    title="Call"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                    </svg>
+                  </button>
+                  <button
+                    class="action-btn sms-btn"
+                    (click)="smsClient(client, $event)"
+                    [disabled]="!client.phone"
+                    title="SMS"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                    </svg>
+                  </button>
+                </div>
               </td>
             </tr>
           }
@@ -211,8 +236,30 @@
               </div>
             </div>
           </div>
-          <!-- View Details Button (Always visible) -->
+          <!-- Footer with actions -->
           <div class="client-card-footer">
+            <div class="mobile-quick-actions">
+              <button
+                class="action-btn call-btn"
+                (click)="callClient(client, $event)"
+                [disabled]="!client.phone"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                </svg>
+                Call
+              </button>
+              <button
+                class="action-btn sms-btn"
+                (click)="smsClient(client, $event)"
+                [disabled]="!client.phone"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                SMS
+              </button>
+            </div>
             <button
               class="btn-view-details"
               (click)="viewClientDetail(client.id)"
