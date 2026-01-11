@@ -25,6 +25,23 @@
     <div class="results-count" *ngIf="!isLoading">
       {{ filteredLeads.length }} {{ filteredLeads.length === 1 ? 'warm lead' : 'warm leads' }} found
     </div>
+    <div class="sort-toggle" *ngIf="!isLoading">
+      <span class="sort-label">Sort by:</span>
+      <div class="toggle-buttons">
+        <button
+          class="toggle-btn"
+          [class.active]="sortBy === 'recent'"
+          (click)="setSortBy('recent')">
+          Most Recent
+        </button>
+        <button
+          class="toggle-btn"
+          [class.active]="sortBy === 'complete'"
+          (click)="setSortBy('complete')">
+          Most Complete
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Loading State -->

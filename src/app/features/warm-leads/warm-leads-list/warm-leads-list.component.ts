@@ -20,6 +20,7 @@ export class WarmLeadsListComponent implements OnInit {
   searchTerm = '';
   failedAvatars = new Set<string>();
   expandedCards: Set<string> = new Set();
+  sortBy: 'recent' | 'complete' = 'recent';
 
   constructor(private clientService: ClientService, private router: Router) {}
 
@@ -39,15 +40,14 @@ export class WarmLeadsListComponent implements OnInit {
       next: (clients) => {
         // Filter to only show warm leads (users with no completed bookings)
         // Exclude hidden test/admin accounts
-        // Sort by progress descending (most complete at top)
         this.warmLeads = clients
           .filter((c) => c.is_warm_lead)
           .filter((c) => {
             const fullName = `${c.first_name} ${c.last_name}`.toLowerCase();
             return !this.hiddenUsers.some(hidden => hidden.toLowerCase() === fullName);
-          })
-          .sort((a, b) => this.getCompletionCount(b) - this.getCompletionCount(a));
+          });
         this.filteredLeads = [...this.warmLeads];
+        this.applySorting();
         this.isLoading = false;
         this.failedAvatars.clear();
       },
@@ -129,6 +129,24 @@ export class WarmLeadsListComponent implements OnInit {
     event.stopPropagation();
     if (lead.phone) {
       window.location.href = `sms:${lead.phone}`;
+    }
+  }
+
+  setSortBy(mode: 'recent' | 'complete'): void {
+    this.sortBy = mode;
+    this.applySorting();
+  }
+
+  private applySorting(): void {
+    if (this.sortBy === 'recent') {
+      this.filteredLeads.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    } else {
+      this.filteredLeads.sort(
+        (a, b) => this.getCompletionCount(b) - this.getCompletionCount(a)
+      );
     }
   }
 }
