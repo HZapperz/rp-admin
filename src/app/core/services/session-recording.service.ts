@@ -2,6 +2,15 @@ import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Observable, from, map } from 'rxjs';
 
+export interface SignupEvent {
+  event: string;
+  timestamp: string;
+  field?: string;
+  error?: string;
+  errors?: Record<string, string>;
+  userId?: string;
+}
+
 export interface RecordingSession {
   id: string;
   session_id: string;
@@ -19,6 +28,7 @@ export interface RecordingSession {
   is_completed: boolean;
   is_converted: boolean;
   has_signed_up: boolean;
+  signup_events: SignupEvent[] | null;
   started_at: string;
   ended_at: string | null;
   created_at: string;

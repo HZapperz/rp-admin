@@ -111,6 +111,27 @@
       </div>
     </div>
 
+    <!-- Signup Events -->
+    <div class="signup-events" *ngIf="hasSignupEvents()">
+      <h3>Signup Funnel Events</h3>
+      <div class="events-timeline">
+        <div
+          class="event-item"
+          *ngFor="let event of getSignupEvents()"
+          [ngClass]="getSignupEventClass(event)"
+        >
+          <span class="material-icons event-icon">{{ getSignupEventIcon(event) }}</span>
+          <div class="event-content">
+            <span class="event-label">{{ getSignupEventLabel(event) }}</span>
+            <span class="event-detail" *ngIf="getSignupEventDetail(event)">
+              {{ getSignupEventDetail(event) }}
+            </span>
+            <span class="event-time">{{ formatEventTime(event.timestamp) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Player Section -->
     <div class="player-section">
       <h3>Session Replay</h3>

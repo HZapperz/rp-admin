@@ -12,7 +12,8 @@ import { unpack } from '@rrweb/packer';
 import {
   SessionRecordingService,
   RecordingSession,
-  RecordingSessionEvent
+  RecordingSessionEvent,
+  SignupEvent
 } from '../../../core/services/session-recording.service';
 
 @Component({
@@ -229,5 +230,86 @@ export class SessionDetailComponent implements OnInit, OnDestroy, AfterViewInit 
       return 'Unknown';
     }
     return `${this.session.screen_width} x ${this.session.screen_height}`;
+  }
+
+  // Signup Events helpers
+  hasSignupEvents(): boolean {
+    return !!this.session?.signup_events && this.session.signup_events.length > 0;
+  }
+
+  getSignupEvents(): SignupEvent[] {
+    return this.session?.signup_events || [];
+  }
+
+  getSignupEventIcon(event: SignupEvent): string {
+    switch (event.event) {
+      case 'form_submit_attempt':
+        return 'send';
+      case 'validation_error':
+      case 'form_validation_failed':
+        return 'error_outline';
+      case 'terms_not_accepted':
+        return 'gavel';
+      case 'signup_success':
+        return 'check_circle';
+      case 'signup_error':
+        return 'cancel';
+      default:
+        return 'radio_button_unchecked';
+    }
+  }
+
+  getSignupEventClass(event: SignupEvent): string {
+    switch (event.event) {
+      case 'signup_success':
+        return 'event-success';
+      case 'validation_error':
+      case 'form_validation_failed':
+      case 'terms_not_accepted':
+      case 'signup_error':
+        return 'event-error';
+      default:
+        return 'event-info';
+    }
+  }
+
+  getSignupEventLabel(event: SignupEvent): string {
+    switch (event.event) {
+      case 'form_submit_attempt':
+        return 'Form Submitted';
+      case 'validation_error':
+        return `Validation Error: ${event.field || 'unknown'}`;
+      case 'form_validation_failed':
+        return 'Form Validation Failed';
+      case 'terms_not_accepted':
+        return 'Terms Not Accepted';
+      case 'signup_success':
+        return 'Signup Successful';
+      case 'signup_error':
+        return 'Signup Failed';
+      default:
+        return event.event;
+    }
+  }
+
+  getSignupEventDetail(event: SignupEvent): string {
+    if (event.error) {
+      return event.error;
+    }
+    if (event.errors) {
+      return Object.entries(event.errors)
+        .map(([field, error]) => `${field}: ${error}`)
+        .join(', ');
+    }
+    return '';
+  }
+
+  formatEventTime(timestamp: string): string {
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
   }
 }
