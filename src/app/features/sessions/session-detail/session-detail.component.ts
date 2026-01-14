@@ -192,14 +192,16 @@ export class SessionDetailComponent implements OnInit, OnDestroy, AfterViewInit 
   getStatusLabel(): string {
     if (!this.session) return '';
     if (this.session.is_converted) return 'Converted';
-    if (this.session.has_signed_up || this.session.user_id) return 'Signed Up';
+    if (this.session.has_signed_up) return 'Signed Up';
+    if (this.session.user_id) return 'Logged In';
     return 'Dropped';
   }
 
   getStatusClass(): string {
     if (!this.session) return '';
     if (this.session.is_converted) return 'status-converted';
-    if (this.session.has_signed_up || this.session.user_id) return 'status-signed-up';
+    if (this.session.has_signed_up) return 'status-signed-up';
+    if (this.session.user_id) return 'status-logged-in';
     return 'status-dropped';
   }
 

@@ -71,6 +71,23 @@
       color: #d97706;
     }
   }
+
+  &.clickable {
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .view-more {
+      color: #3b82f6;
+      font-weight: 500;
+      margin-left: 8px;
+    }
+  }
 }
 
 // Filters
@@ -279,6 +296,11 @@
     &.status-signed-up {
       background: #dbeafe;
       color: #1d4ed8;
+    }
+
+    &.status-logged-in {
+      background: #fef3c7;
+      color: #b45309;
     }
 
     &.status-dropped {

@@ -54,6 +54,20 @@ export interface SessionFilters {
   search?: string;
 }
 
+export interface SessionAnalytics {
+  totalSessions: number;
+  signups: number;
+  loggedIn: number;
+  conversions: number;
+  bounces: number;
+  sessionsWithRageClicks: number;
+  totalRageClicks: number;
+  avgPageViews: number;
+  bounceRate: number;
+  signupRate: number;
+  conversionRate: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -178,9 +192,84 @@ export class SessionRecordingService {
     const sessions = data || [];
     return {
       total: sessions.length,
-      signedUp: sessions.filter(s => s.has_signed_up || s.user_id).length,
+      signedUp: sessions.filter(s => s.has_signed_up).length,
       converted: sessions.filter(s => s.is_converted).length,
       withRageClicks: sessions.filter(s => s.rage_clicks > 0).length,
+    };
+  }
+
+  /**
+   * Get detailed analytics for a time period
+   */
+  getAnalytics(period: 'week' | 'month' | 'quarter' | 'year' | 'all'): Observable<SessionAnalytics> {
+    return from(this.fetchAnalytics(period));
+  }
+
+  private async fetchAnalytics(period: 'week' | 'month' | 'quarter' | 'year' | 'all'): Promise<SessionAnalytics> {
+    const startDate = this.calculateStartDate(period);
+
+    let query = this.supabase.from('recording_sessions')
+      .select('page_views, has_signed_up, is_converted, rage_clicks, user_id');
+
+    if (startDate) {
+      query = query.gte('started_at', startDate.toISOString());
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching analytics:', error);
+      throw error;
+    }
+
+    const sessions = data || [];
+    return this.calculateAnalytics(sessions);
+  }
+
+  private calculateStartDate(period: 'week' | 'month' | 'quarter' | 'year' | 'all'): Date | null {
+    const now = new Date();
+    switch (period) {
+      case 'week':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case 'month':
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case 'quarter':
+        return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      case 'year':
+        return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      case 'all':
+        return null;
+    }
+  }
+
+  private calculateAnalytics(sessions: Array<{
+    page_views: number;
+    has_signed_up: boolean;
+    is_converted: boolean;
+    rage_clicks: number;
+    user_id: string | null;
+  }>): SessionAnalytics {
+    const totalSessions = sessions.length;
+    const signups = sessions.filter(s => s.has_signed_up).length;
+    const loggedIn = sessions.filter(s => s.user_id && !s.has_signed_up).length;
+    const conversions = sessions.filter(s => s.is_converted).length;
+    const bounces = sessions.filter(s => s.page_views === 1).length;
+    const sessionsWithRageClicks = sessions.filter(s => s.rage_clicks > 0).length;
+    const totalRageClicks = sessions.reduce((sum, s) => sum + (s.rage_clicks || 0), 0);
+    const totalPageViews = sessions.reduce((sum, s) => sum + (s.page_views || 0), 0);
+
+    return {
+      totalSessions,
+      signups,
+      loggedIn,
+      conversions,
+      bounces,
+      sessionsWithRageClicks,
+      totalRageClicks,
+      avgPageViews: totalSessions > 0 ? Math.round((totalPageViews / totalSessions) * 10) / 10 : 0,
+      bounceRate: totalSessions > 0 ? Math.round((bounces / totalSessions) * 1000) / 10 : 0,
+      signupRate: totalSessions > 0 ? Math.round((signups / totalSessions) * 1000) / 10 : 0,
+      conversionRate: totalSessions > 0 ? Math.round((conversions / totalSessions) * 1000) / 10 : 0,
     };
   }
 

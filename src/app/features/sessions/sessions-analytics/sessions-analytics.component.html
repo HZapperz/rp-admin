@@ -1,0 +1,84 @@
+<div class="analytics-container">
+  <button class="back-button" (click)="goBack()">
+    <span class="material-icons">arrow_back</span>
+    Back to Sessions
+  </button>
+
+  <div class="page-header">
+    <h1>Session Analytics</h1>
+    <p class="subtitle">Detailed metrics for the selected time period</p>
+  </div>
+
+  <div class="period-selector">
+    @for (period of periods; track period.value) {
+      <button
+        class="period-btn"
+        [class.active]="selectedPeriod === period.value"
+        (click)="selectPeriod(period.value)"
+      >
+        {{ period.label }}
+      </button>
+    }
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading analytics...</p>
+    </div>
+  } @else if (analytics) {
+    <div class="stats-grid">
+      <!-- Row 1: Core Metrics -->
+      <div class="stat-card">
+        <div class="stat-value">{{ analytics.totalSessions | number }}</div>
+        <div class="stat-label">Total Sessions</div>
+        <div class="stat-period">{{ getPeriodLabel() }}</div>
+      </div>
+
+      <div class="stat-card highlight-green">
+        <div class="stat-value">{{ analytics.signups | number }}</div>
+        <div class="stat-label">Signups</div>
+        <div class="stat-rate">{{ analytics.signupRate }}% of sessions</div>
+      </div>
+
+      <div class="stat-card highlight-blue">
+        <div class="stat-value">{{ analytics.loggedIn | number }}</div>
+        <div class="stat-label">Logged In</div>
+        <div class="stat-rate">Existing users</div>
+      </div>
+
+      <div class="stat-card highlight-purple">
+        <div class="stat-value">{{ analytics.conversions | number }}</div>
+        <div class="stat-label">Conversions</div>
+        <div class="stat-rate">{{ analytics.conversionRate }}% of sessions</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <!-- Row 2: Engagement Metrics -->
+      <div class="stat-card" [class.warning]="analytics.bounceRate > 50">
+        <div class="stat-value">{{ analytics.bounceRate }}%</div>
+        <div class="stat-label">Bounce Rate</div>
+        <div class="stat-rate">{{ analytics.bounces | number }} single-page visits</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-value">{{ analytics.avgPageViews }}</div>
+        <div class="stat-label">Avg Page Views</div>
+        <div class="stat-rate">per session</div>
+      </div>
+
+      <div class="stat-card" [class.warning]="analytics.sessionsWithRageClicks > 0">
+        <div class="stat-value">{{ analytics.sessionsWithRageClicks | number }}</div>
+        <div class="stat-label">Rage Click Sessions</div>
+        <div class="stat-rate">Sessions with frustration</div>
+      </div>
+
+      <div class="stat-card" [class.warning]="analytics.totalRageClicks > 0">
+        <div class="stat-value">{{ analytics.totalRageClicks | number }}</div>
+        <div class="stat-label">Total Rage Clicks</div>
+        <div class="stat-rate">Frustrated interactions</div>
+      </div>
+    </div>
+  }
+</div>

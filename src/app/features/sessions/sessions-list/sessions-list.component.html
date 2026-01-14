@@ -6,10 +6,10 @@
 
   <!-- Stats Cards -->
   <div class="stats-grid">
-    <div class="stat-card">
+    <div class="stat-card clickable" (click)="goToAnalytics()">
       <div class="stat-value">{{ stats.total }}</div>
       <div class="stat-label">Total Sessions</div>
-      <div class="stat-period">Last 7 days</div>
+      <div class="stat-period">Last 7 days <span class="view-more">View Details</span></div>
     </div>
     <div class="stat-card">
       <div class="stat-value">{{ stats.signedUp }}</div>

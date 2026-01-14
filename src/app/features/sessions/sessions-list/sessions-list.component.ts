@@ -82,13 +82,15 @@ export class SessionsListComponent implements OnInit {
 
   getStatusLabel(session: RecordingSession): string {
     if (session.is_converted) return 'Converted';
-    if (session.has_signed_up || session.user_id) return 'Signed Up';
+    if (session.has_signed_up) return 'Signed Up';
+    if (session.user_id) return 'Logged In';
     return 'Dropped';
   }
 
   getStatusClass(session: RecordingSession): string {
     if (session.is_converted) return 'status-converted';
-    if (session.has_signed_up || session.user_id) return 'status-signed-up';
+    if (session.has_signed_up) return 'status-signed-up';
+    if (session.user_id) return 'status-logged-in';
     return 'status-dropped';
   }
 
@@ -126,5 +128,9 @@ export class SessionsListComponent implements OnInit {
   getSignupRate(): string {
     if (this.stats.total === 0) return '0%';
     return ((this.stats.signedUp / this.stats.total) * 100).toFixed(1) + '%';
+  }
+
+  goToAnalytics() {
+    this.router.navigate(['/sessions/analytics']);
   }
 }
