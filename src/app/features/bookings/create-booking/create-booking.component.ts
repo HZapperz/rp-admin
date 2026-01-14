@@ -131,18 +131,16 @@ export class CreateBookingComponent implements OnInit {
     this.bookingData.payment_type = config.payment_type;
     this.bookingData.payment_method_id = config.payment_method_id;
 
-    // Set pricing override if there's a discount
-    if (config.discount_amount > 0) {
-      this.bookingData.pricing_override = {
-        subtotal: config.original_amount,
-        discount_amount: config.discount_amount,
-        discount_reason: config.discount_reason || '',
-        tax_amount: 0,
-        total: config.final_amount
-      };
-    } else {
-      this.bookingData.pricing_override = undefined;
-    }
+    // Always send pricing override to avoid API defaulting to $100
+    const subtotalAfterDiscount = config.original_amount - config.discount_amount;
+    const taxAmount = Math.round(subtotalAfterDiscount * 0.0825 * 100) / 100;
+    this.bookingData.pricing_override = {
+      subtotal: config.original_amount,
+      discount_amount: config.discount_amount,
+      discount_reason: config.discount_reason || '',
+      tax_amount: taxAmount,
+      total: subtotalAfterDiscount + taxAmount
+    };
 
     console.log('Payment configured:', config);
   }

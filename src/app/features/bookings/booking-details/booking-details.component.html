@@ -478,7 +478,7 @@
               </div>
               <div class="price-row total">
                 <span class="label">Total Amount:</span>
-                <span class="value">${{ booking.authorized_amount || booking.total_amount }}</span>
+                <span class="value">${{ booking.total_amount }}</span>
               </div>
               <div class="price-row" *ngIf="booking.tip_amount && booking.tip_amount > 0">
                 <span class="label">Tip:</span>
