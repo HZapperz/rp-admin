@@ -380,7 +380,7 @@ textarea.form-control {
   }
 }
 
-// Scroll hint - only visible on mobile
+// Scroll hint - visible on smaller screens
 .scroll-hint {
   display: none;
 }
@@ -391,6 +391,53 @@ textarea.form-control {
   }
   50% {
     transform: translateY(4px);
+  }
+}
+
+// Smaller laptop screens (13-14" laptops)
+@media (max-height: 800px) {
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  .map-container .map {
+    height: 150px;
+  }
+
+  .scroll-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 8px;
+    color: #667eea;
+    font-size: 0.8rem;
+    font-weight: 500;
+
+    svg {
+      animation: bounce 1s ease-in-out infinite;
+      stroke: #667eea;
+    }
+  }
+
+  .modal-header {
+    padding: 1rem 1.5rem;
+
+    h2 {
+      font-size: 1.25rem;
+    }
+  }
+
+  .modal-body {
+    padding: 1rem 1.5rem;
+  }
+
+  .modal-footer {
+    padding: 0.75rem 1.5rem;
   }
 }
 

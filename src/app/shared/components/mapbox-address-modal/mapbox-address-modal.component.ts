@@ -100,8 +100,8 @@ export class MapboxAddressModalComponent implements OnInit, AfterViewInit, OnDes
   }
 
   private checkMobileScrollHint(): void {
-    // Show scroll hint on mobile screens (< 600px)
-    if (typeof window !== 'undefined' && window.innerWidth <= 600) {
+    // Show scroll hint on mobile screens (< 600px) or smaller laptop screens (height < 800px)
+    if (typeof window !== 'undefined' && (window.innerWidth <= 600 || window.innerHeight <= 800)) {
       this.showScrollHint = true;
     }
   }
