@@ -100,6 +100,18 @@ export class BookingDetailsComponent implements OnInit {
   newTimeSlot: { label: string; start: string; end: string } | null = null;
   savingTimeChange = false;
 
+  // Custom time slot for time change modal
+  useCustomTimeSlotForChange = false;
+  customStartTimeForChange = '';
+  customEndTimeForChange = '';
+  showTimeHelpForChange = false;
+
+  // Custom time slot for groomer assignment
+  useCustomTimeSlot = false;
+  customStartTime = '';
+  customEndTime = '';
+  showTimeHelp = false;
+
   // Service change modal
   showServiceChangeModal = false;
   selectedPetForServiceChange: any = null;
@@ -584,6 +596,11 @@ export class BookingDetailsComponent implements OnInit {
     this.showAssignmentForm = false;
     this.selectedGroomerId = '';
     this.selectedTimeSlot = null;
+    // Reset custom time state
+    this.useCustomTimeSlot = false;
+    this.customStartTime = '';
+    this.customEndTime = '';
+    this.showTimeHelp = false;
   }
 
   async onDateChange() {
@@ -619,15 +636,152 @@ export class BookingDetailsComponent implements OnInit {
 
   selectTimeSlot(slot: { label: string; start: string; end: string }) {
     this.selectedTimeSlot = slot;
+    // Clear custom time when selecting predefined slot
+    if (this.useCustomTimeSlot) {
+      this.useCustomTimeSlot = false;
+    }
+  }
+
+  // Custom Time Slot Methods
+  toggleCustomTimeSlot() {
+    this.useCustomTimeSlot = !this.useCustomTimeSlot;
+    if (this.useCustomTimeSlot) {
+      // Clear predefined slot selection when switching to custom mode
+      this.selectedTimeSlot = null;
+    } else {
+      // Clear custom time inputs when switching to predefined mode
+      this.customStartTime = '';
+      this.customEndTime = '';
+    }
+  }
+
+  toggleTimeHelp() {
+    this.showTimeHelp = !this.showTimeHelp;
+  }
+
+  /**
+   * Auto-format time input to standard "H:MM AM/PM" format
+   * Handles many formats: "930am", "9:30am", "1230pm", "12.30pm", "930", "9:30", "0930"
+   */
+  formatTimeInput(value: string): string {
+    if (!value) return '';
+
+    // Remove spaces and normalize to uppercase
+    let cleaned = value.replace(/\s+/g, '').toUpperCase();
+
+    // Convert dots to colons (12.30pm -> 12:30pm)
+    cleaned = cleaned.replace(/\./g, ':');
+
+    // Handle formats without separator (1230pm -> 12:30pm, 930am -> 9:30am)
+    // Match 3 or 4 digits followed by optional AM/PM
+    const noSeparatorMatch = cleaned.match(/^(\d{3,4})(AM|PM)?$/);
+    if (noSeparatorMatch) {
+      const digits = noSeparatorMatch[1];
+      const period = noSeparatorMatch[2] || '';
+      if (digits.length === 3) {
+        // 930 -> 9:30
+        cleaned = digits[0] + ':' + digits.slice(1) + period;
+      } else if (digits.length === 4) {
+        // 1230 -> 12:30
+        cleaned = digits.slice(0, 2) + ':' + digits.slice(2) + period;
+      }
+    }
+
+    // Match patterns: "9:30AM", "12:30PM", "9:30", "12:30"
+    const match = cleaned.match(/^(\d{1,2}):(\d{2})(AM|PM)?$/);
+    if (!match) return value; // Return original if no match
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    let period = match[3] || '';
+
+    // If no period provided, guess based on hour
+    if (!period) {
+      // Assume business hours: 8-11 = AM, 12+ = PM
+      if (hours >= 8 && hours < 12) {
+        period = 'AM';
+      } else if (hours === 12) {
+        period = 'PM';
+      } else if (hours >= 1 && hours <= 5) {
+        period = 'PM'; // 1-5 likely afternoon
+      } else {
+        period = 'AM';
+      }
+    }
+
+    // Normalize hours for display (1-12)
+    if (hours > 12) hours = hours - 12;
+    if (hours === 0) hours = 12;
+
+    return `${hours}:${minutes} ${period}`;
+  }
+
+  /**
+   * Convert 12-hour time format to 24-hour format
+   * Example: "9:30 AM" → "09:30:00", "1:00 PM" → "13:00:00"
+   */
+  convertTo24Hour(time12h: string): string {
+    if (!time12h) return '';
+
+    // Normalize the input - handle various formats
+    const normalized = time12h.trim().toUpperCase();
+
+    // Parse "9:30 AM", "9:30AM", "09:30 AM", etc.
+    const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (!match) return '';
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const period = match[3];
+
+    // Validate hours
+    if (hours < 1 || hours > 12) return '';
+
+    // Convert to 24-hour
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+  }
+
+  onCustomStartTimeBlur() {
+    this.customStartTime = this.formatTimeInput(this.customStartTime);
+  }
+
+  onCustomEndTimeBlur() {
+    this.customEndTime = this.formatTimeInput(this.customEndTime);
+  }
+
+  isCustomTimeValid(): boolean {
+    const start24 = this.convertTo24Hour(this.customStartTime);
+    const end24 = this.convertTo24Hour(this.customEndTime);
+    return start24 !== '' && end24 !== '';
   }
 
   async assignGroomerAndApprove() {
-    if (!this.booking || !this.selectedGroomerId || !this.selectedTimeSlot || !this.selectedDate) {
+    // Validate based on whether using custom time or predefined slot
+    const hasValidTime = this.useCustomTimeSlot
+      ? this.isCustomTimeValid()
+      : !!this.selectedTimeSlot;
+
+    if (!this.booking || !this.selectedGroomerId || !hasValidTime || !this.selectedDate) {
       alert('Please select a date, groomer, and time slot');
       return;
     }
 
     if (this.assigningGroomer) return; // Prevent double submission
+
+    // Get time values based on mode
+    let timeSlotStart: string;
+    let timeSlotEnd: string;
+
+    if (this.useCustomTimeSlot) {
+      timeSlotStart = this.convertTo24Hour(this.customStartTime);
+      timeSlotEnd = this.convertTo24Hour(this.customEndTime);
+    } else {
+      timeSlotStart = this.selectedTimeSlot!.start;
+      timeSlotEnd = this.selectedTimeSlot!.end;
+    }
 
     try {
       this.assigningGroomer = true;
@@ -637,15 +791,17 @@ export class BookingDetailsComponent implements OnInit {
         bookingId: this.booking.id,
         groomerId: this.selectedGroomerId,
         scheduledDate: this.selectedDate,
-        timeSlot: this.selectedTimeSlot
+        timeSlotStart,
+        timeSlotEnd,
+        isCustomTime: this.useCustomTimeSlot
       });
 
       const success = await this.bookingService.approveBooking(
         this.booking.id,
         this.selectedGroomerId,
         this.selectedDate,
-        this.selectedTimeSlot.start,
-        this.selectedTimeSlot.end
+        timeSlotStart,
+        timeSlotEnd
       );
 
       if (!success) {
@@ -806,10 +962,50 @@ export class BookingDetailsComponent implements OnInit {
     this.newScheduledDate = '';
     this.newTimeSlot = null;
     this.timeChangeReason = '';
+    // Reset custom time state
+    this.useCustomTimeSlotForChange = false;
+    this.customStartTimeForChange = '';
+    this.customEndTimeForChange = '';
+    this.showTimeHelpForChange = false;
   }
 
   selectNewTimeSlot(slot: { label: string; start: string; end: string }) {
     this.newTimeSlot = slot;
+    // Clear custom time when selecting predefined slot
+    if (this.useCustomTimeSlotForChange) {
+      this.useCustomTimeSlotForChange = false;
+    }
+  }
+
+  // Custom Time Slot Methods for Time Change Modal
+  toggleCustomTimeSlotForChange() {
+    this.useCustomTimeSlotForChange = !this.useCustomTimeSlotForChange;
+    if (this.useCustomTimeSlotForChange) {
+      // Clear predefined slot selection when switching to custom mode
+      this.newTimeSlot = null;
+    } else {
+      // Clear custom time inputs when switching to predefined mode
+      this.customStartTimeForChange = '';
+      this.customEndTimeForChange = '';
+    }
+  }
+
+  toggleTimeHelpForChange() {
+    this.showTimeHelpForChange = !this.showTimeHelpForChange;
+  }
+
+  onCustomStartTimeForChangeBlur() {
+    this.customStartTimeForChange = this.formatTimeInput(this.customStartTimeForChange);
+  }
+
+  onCustomEndTimeForChangeBlur() {
+    this.customEndTimeForChange = this.formatTimeInput(this.customEndTimeForChange);
+  }
+
+  isCustomTimeForChangeValid(): boolean {
+    const start24 = this.convertTo24Hour(this.customStartTimeForChange);
+    const end24 = this.convertTo24Hour(this.customEndTimeForChange);
+    return start24 !== '' && end24 !== '';
   }
 
   async confirmTimeChange() {
@@ -821,8 +1017,13 @@ export class BookingDetailsComponent implements OnInit {
       return;
     }
 
-    if (!this.newTimeSlot) {
-      alert('Please select a new time slot');
+    // Validate based on whether using custom time or predefined slot
+    const hasValidTime = this.useCustomTimeSlotForChange
+      ? this.isCustomTimeForChangeValid()
+      : !!this.newTimeSlot;
+
+    if (!hasValidTime) {
+      alert('Please select a new time slot or enter a valid custom time');
       return;
     }
 
@@ -833,6 +1034,18 @@ export class BookingDetailsComponent implements OnInit {
 
     if (this.savingTimeChange) return;
 
+    // Get time values based on mode
+    let timeSlotStart: string;
+    let timeSlotEnd: string;
+
+    if (this.useCustomTimeSlotForChange) {
+      timeSlotStart = this.convertTo24Hour(this.customStartTimeForChange);
+      timeSlotEnd = this.convertTo24Hour(this.customEndTimeForChange);
+    } else {
+      timeSlotStart = this.newTimeSlot!.start;
+      timeSlotEnd = this.newTimeSlot!.end;
+    }
+
     try {
       this.savingTimeChange = true;
 
@@ -840,8 +1053,8 @@ export class BookingDetailsComponent implements OnInit {
       const result = await this.bookingService.changeBookingTime(
         this.booking.id,
         this.newScheduledDate,
-        this.newTimeSlot.start,
-        this.newTimeSlot.end
+        timeSlotStart,
+        timeSlotEnd
       );
 
       if (!result.success) {

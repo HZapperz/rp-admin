@@ -1399,6 +1399,179 @@
   }
 }
 
+// Time Slot Header with Toggle
+.time-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.custom-time-toggle {
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border: 2px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// Custom Time Section
+.custom-time-section {
+  background: #f0f9ff;
+  border: 2px solid #0ea5e9;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.custom-time-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.custom-time-description {
+  margin: 0;
+  color: #0369a1;
+  font-size: 0.9375rem;
+}
+
+.time-help-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: white;
+  border: 1px solid #0ea5e9;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  color: #0369a1;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &:hover {
+    background: #e0f2fe;
+  }
+}
+
+.time-help-modal {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  .time-help-content {
+    h4 {
+      margin: 0 0 0.75rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    ul {
+      margin: 0 0 1rem;
+      padding-left: 1.25rem;
+      color: #374151;
+      font-size: 0.875rem;
+      line-height: 1.8;
+
+      code {
+        background: #f3f4f6;
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.25rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.8125rem;
+      }
+    }
+
+    .time-help-close {
+      padding: 0.375rem 0.75rem;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #6d28d9;
+      }
+    }
+  }
+}
+
+.custom-time-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.time-input-group {
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .time-input {
+    font-size: 1rem;
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+}
+
+.custom-time-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #d1fae5;
+  border: 2px solid #10b981;
+  border-radius: 0.5rem;
+  color: #065f46;
+  font-weight: 600;
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #10b981;
+  }
+}
+
 // Form Actions
 .form-actions {
   display: flex;

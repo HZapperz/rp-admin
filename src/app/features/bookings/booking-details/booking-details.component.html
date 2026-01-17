@@ -734,33 +734,106 @@
 
               <!-- Time Slot Selection -->
               <div class="form-group">
-                <label class="form-label">Select Time Slot</label>
+                <div class="time-slot-header">
+                  <label class="form-label">Select Time Slot</label>
+                  <button
+                    type="button"
+                    (click)="toggleCustomTimeSlot()"
+                    class="custom-time-toggle"
+                    [disabled]="!selectedGroomerId">
+                    {{ useCustomTimeSlot ? 'Use Predefined Slots' : 'Enter Custom Time' }}
+                  </button>
+                </div>
 
-                <div class="time-slots-section">
-                  <h4 class="shift-title">Morning Shift (8:30 AM - 12:15 PM)</h4>
-                  <div class="time-slots-grid">
-                    <button
-                      *ngFor="let slot of morningSlots"
-                      (click)="selectTimeSlot(slot)"
-                      [class.selected]="selectedTimeSlot?.start === slot.start"
-                      [disabled]="!selectedGroomerId"
-                      class="time-slot-btn">
-                      {{ slot.label }}
-                    </button>
+                <!-- Predefined Time Slots (shown when NOT in custom mode) -->
+                <div *ngIf="!useCustomTimeSlot">
+                  <div class="time-slots-section">
+                    <h4 class="shift-title">Morning Shift (8:30 AM - 12:15 PM)</h4>
+                    <div class="time-slots-grid">
+                      <button
+                        *ngFor="let slot of morningSlots"
+                        (click)="selectTimeSlot(slot)"
+                        [class.selected]="selectedTimeSlot?.start === slot.start"
+                        [disabled]="!selectedGroomerId"
+                        class="time-slot-btn">
+                        {{ slot.label }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="time-slots-section">
+                    <h4 class="shift-title">Afternoon Shift (1:00 PM - 5:00 PM)</h4>
+                    <div class="time-slots-grid">
+                      <button
+                        *ngFor="let slot of afternoonSlots"
+                        (click)="selectTimeSlot(slot)"
+                        [class.selected]="selectedTimeSlot?.start === slot.start"
+                        [disabled]="!selectedGroomerId"
+                        class="time-slot-btn">
+                        {{ slot.label }}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div class="time-slots-section">
-                  <h4 class="shift-title">Afternoon Shift (1:00 PM - 5:00 PM)</h4>
-                  <div class="time-slots-grid">
+                <!-- Custom Time Input (shown when in custom mode) -->
+                <div *ngIf="useCustomTimeSlot" class="custom-time-section">
+                  <div class="custom-time-header">
+                    <p class="custom-time-description">Enter a custom time range for this booking.</p>
                     <button
-                      *ngFor="let slot of afternoonSlots"
-                      (click)="selectTimeSlot(slot)"
-                      [class.selected]="selectedTimeSlot?.start === slot.start"
-                      [disabled]="!selectedGroomerId"
-                      class="time-slot-btn">
-                      {{ slot.label }}
+                      type="button"
+                      (click)="toggleTimeHelp()"
+                      class="time-help-btn">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Accepted Formats
                     </button>
+                  </div>
+
+                  <!-- Help Modal -->
+                  <div *ngIf="showTimeHelp" class="time-help-modal">
+                    <div class="time-help-content">
+                      <h4>Accepted Time Formats</h4>
+                      <ul>
+                        <li><code>930am</code> or <code>9:30am</code> or <code>9:30 AM</code></li>
+                        <li><code>1230pm</code> or <code>12:30pm</code> or <code>12:30 PM</code></li>
+                        <li><code>930</code> (will auto-detect AM/PM based on business hours)</li>
+                        <li><code>12.30pm</code> (dots work too)</li>
+                      </ul>
+                      <button type="button" (click)="toggleTimeHelp()" class="time-help-close">Got it</button>
+                    </div>
+                  </div>
+
+                  <div class="custom-time-inputs">
+                    <div class="time-input-group">
+                      <label>Start Time</label>
+                      <input
+                        type="text"
+                        [(ngModel)]="customStartTime"
+                        (blur)="onCustomStartTimeBlur()"
+                        placeholder="e.g., 930am"
+                        class="form-input time-input"
+                        [disabled]="!selectedGroomerId">
+                    </div>
+                    <div class="time-input-group">
+                      <label>End Time</label>
+                      <input
+                        type="text"
+                        [(ngModel)]="customEndTime"
+                        (blur)="onCustomEndTimeBlur()"
+                        placeholder="e.g., 1100am"
+                        class="form-input time-input"
+                        [disabled]="!selectedGroomerId">
+                    </div>
+                  </div>
+
+                  <!-- Show formatted time when valid -->
+                  <div *ngIf="isCustomTimeValid()" class="custom-time-display">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{{ customStartTime }} - {{ customEndTime }}</span>
                   </div>
                 </div>
               </div>
@@ -769,7 +842,7 @@
               <div class="form-actions">
                 <button
                   (click)="assignGroomerAndApprove()"
-                  [disabled]="!selectedDate || !selectedGroomerId || !selectedTimeSlot || assigningGroomer"
+                  [disabled]="!selectedDate || !selectedGroomerId || (!selectedTimeSlot && (!useCustomTimeSlot || !isCustomTimeValid())) || assigningGroomer"
                   class="btn-approve">
                   {{ assigningGroomer ? 'Approving...' : 'Approve Booking' }}
                 </button>
@@ -1100,31 +1173,101 @@
 
         <!-- Time Slot Selection -->
         <div class="form-group" *ngIf="newScheduledDate">
-          <label class="form-label">New Time Slot *</label>
+          <div class="time-slot-header">
+            <label class="form-label">New Time Slot *</label>
+            <button
+              type="button"
+              (click)="toggleCustomTimeSlotForChange()"
+              class="custom-time-toggle">
+              {{ useCustomTimeSlotForChange ? 'Use Predefined Slots' : 'Enter Custom Time' }}
+            </button>
+          </div>
 
-          <div class="time-slots-section">
-            <h4 class="shift-title">Morning Shift</h4>
-            <div class="time-slots-grid">
-              <button
-                *ngFor="let slot of morningSlots"
-                (click)="selectNewTimeSlot(slot)"
-                [class.selected]="newTimeSlot?.start === slot.start"
-                class="time-slot-btn">
-                {{ slot.label }}
-              </button>
+          <!-- Predefined Time Slots (shown when NOT in custom mode) -->
+          <div *ngIf="!useCustomTimeSlotForChange">
+            <div class="time-slots-section">
+              <h4 class="shift-title">Morning Shift</h4>
+              <div class="time-slots-grid">
+                <button
+                  *ngFor="let slot of morningSlots"
+                  (click)="selectNewTimeSlot(slot)"
+                  [class.selected]="newTimeSlot?.start === slot.start"
+                  class="time-slot-btn">
+                  {{ slot.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="time-slots-section">
+              <h4 class="shift-title">Afternoon Shift</h4>
+              <div class="time-slots-grid">
+                <button
+                  *ngFor="let slot of afternoonSlots"
+                  (click)="selectNewTimeSlot(slot)"
+                  [class.selected]="newTimeSlot?.start === slot.start"
+                  class="time-slot-btn">
+                  {{ slot.label }}
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="time-slots-section">
-            <h4 class="shift-title">Afternoon Shift</h4>
-            <div class="time-slots-grid">
+          <!-- Custom Time Input (shown when in custom mode) -->
+          <div *ngIf="useCustomTimeSlotForChange" class="custom-time-section">
+            <div class="custom-time-header">
+              <p class="custom-time-description">Enter a custom time range for this booking.</p>
               <button
-                *ngFor="let slot of afternoonSlots"
-                (click)="selectNewTimeSlot(slot)"
-                [class.selected]="newTimeSlot?.start === slot.start"
-                class="time-slot-btn">
-                {{ slot.label }}
+                type="button"
+                (click)="toggleTimeHelpForChange()"
+                class="time-help-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Accepted Formats
               </button>
+            </div>
+
+            <!-- Help Modal -->
+            <div *ngIf="showTimeHelpForChange" class="time-help-modal">
+              <div class="time-help-content">
+                <h4>Accepted Time Formats</h4>
+                <ul>
+                  <li><code>930am</code> or <code>9:30am</code> or <code>9:30 AM</code></li>
+                  <li><code>1230pm</code> or <code>12:30pm</code> or <code>12:30 PM</code></li>
+                  <li><code>930</code> (will auto-detect AM/PM based on business hours)</li>
+                  <li><code>12.30pm</code> (dots work too)</li>
+                </ul>
+                <button type="button" (click)="toggleTimeHelpForChange()" class="time-help-close">Got it</button>
+              </div>
+            </div>
+
+            <div class="custom-time-inputs">
+              <div class="time-input-group">
+                <label>Start Time</label>
+                <input
+                  type="text"
+                  [(ngModel)]="customStartTimeForChange"
+                  (blur)="onCustomStartTimeForChangeBlur()"
+                  placeholder="e.g., 930am"
+                  class="form-input time-input">
+              </div>
+              <div class="time-input-group">
+                <label>End Time</label>
+                <input
+                  type="text"
+                  [(ngModel)]="customEndTimeForChange"
+                  (blur)="onCustomEndTimeForChangeBlur()"
+                  placeholder="e.g., 1100am"
+                  class="form-input time-input">
+              </div>
+            </div>
+
+            <!-- Show formatted time when valid -->
+            <div *ngIf="isCustomTimeForChangeValid()" class="custom-time-display">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{{ customStartTimeForChange }} - {{ customEndTimeForChange }}</span>
             </div>
           </div>
         </div>
@@ -1145,7 +1288,7 @@
       <div class="time-change-dialog-footer">
         <button
           (click)="confirmTimeChange()"
-          [disabled]="!newScheduledDate || !newTimeSlot || !timeChangeReason.trim() || savingTimeChange"
+          [disabled]="!newScheduledDate || (!newTimeSlot && (!useCustomTimeSlotForChange || !isCustomTimeForChangeValid())) || !timeChangeReason.trim() || savingTimeChange"
           class="btn-confirm-change">
           {{ savingTimeChange ? 'Saving...' : 'Confirm Change & Notify' }}
         </button>
