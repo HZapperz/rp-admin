@@ -534,9 +534,9 @@
               </div>
             </div>
 
-            <!-- Payment Actions -->
-            <div class="payment-actions" *ngIf="booking.payment_intent_id">
-              <h4 class="section-subtitle">Payment Actions</h4>
+            <!-- Payment Status Section -->
+            <div class="payment-status-section">
+              <h4 class="section-subtitle">Payment Status</h4>
 
               <!-- Success/Error Messages -->
               <div *ngIf="paymentSuccess" class="alert alert-success">
@@ -546,27 +546,64 @@
                 {{ paymentError }}
               </div>
 
-              <div class="action-buttons">
-                <!-- Capture Payment Button (for card_saved bookings after service completion) -->
-                <button
-                  *ngIf="booking.payment_status === 'card_saved' && !booking.payment_captured_at && booking.status === 'completed'"
-                  (click)="openCaptureModal()"
-                  class="btn btn-capture">
-                  Capture Payment (${{ booking.total_amount }})
-                </button>
-
+              <!-- Payment Captured -->
+              <div *ngIf="booking.payment_captured_at" class="payment-status-card captured">
+                <div class="status-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="status-details">
+                  <span class="status-label">Payment Captured</span>
+                  <span class="status-date">{{ booking.payment_captured_at | date:'medium' }}</span>
+                  <span class="status-amount">${{ booking.total_amount }}</span>
+                </div>
                 <!-- Add Tip Button -->
                 <button
-                  *ngIf="booking.payment_captured_at && !booking.tip_amount && booking.payment_method_id"
+                  *ngIf="!booking.tip_amount && booking.payment_method_id"
                   (click)="openTipModal()"
-                  class="btn btn-secondary">
+                  class="btn btn-add-tip">
                   Add Tip
                 </button>
+              </div>
 
-                <!-- Payment Already Captured Notice -->
-                <span *ngIf="booking.payment_captured_at" class="captured-notice">
-                  Payment captured on {{ booking.payment_captured_at | date:'short' }}
+              <!-- Payment NOT Captured -->
+              <div *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'" class="payment-status-card pending">
+                <div class="status-icon warning">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="status-details">
+                  <span class="status-label">Payment Pending</span>
+                  <span class="status-info" *ngIf="booking.payment_status === 'card_saved'">Card on file - ready to charge</span>
+                  <span class="status-info" *ngIf="booking.payment_status !== 'card_saved'">Status: {{ booking.payment_status }}</span>
+                  <span class="status-amount">${{ booking.total_amount }}</span>
+                </div>
+                <!-- Capture Payment Button -->
+                <button
+                  *ngIf="booking.payment_status === 'card_saved' && booking.status === 'completed'"
+                  (click)="openCaptureModal()"
+                  class="btn btn-capture-payment"
+                  [disabled]="isCapturingPayment">
+                  {{ isCapturingPayment ? 'Processing...' : 'Capture Payment' }}
+                </button>
+                <span *ngIf="booking.status !== 'completed' && booking.payment_status === 'card_saved'" class="status-note">
+                  Complete the booking to capture payment
                 </span>
+              </div>
+
+              <!-- Cancelled Booking -->
+              <div *ngIf="booking.status === 'cancelled' && !booking.payment_captured_at" class="payment-status-card cancelled">
+                <div class="status-icon cancelled">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="status-details">
+                  <span class="status-label">Booking Cancelled</span>
+                  <span class="status-info">No payment captured</span>
+                </div>
               </div>
             </div>
 

@@ -2480,6 +2480,135 @@
   }
 }
 
+// Payment Status Section
+.payment-status-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.payment-status-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  margin-top: 0.75rem;
+
+  &.captured {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #10b981;
+  }
+
+  &.pending {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #f59e0b;
+  }
+
+  &.cancelled {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #ef4444;
+  }
+
+  .status-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #10b981;
+    color: white;
+
+    &.warning {
+      background: #f59e0b;
+    }
+
+    &.cancelled {
+      background: #ef4444;
+    }
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .status-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    .status-label {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #1f2937;
+    }
+
+    .status-date, .status-info {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .status-amount {
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: #1f2937;
+    }
+  }
+
+  .status-note {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-style: italic;
+  }
+}
+
+.btn-capture-payment {
+  flex-shrink: 0;
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.btn-add-tip {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #4f46e5;
+  }
+}
+
 // Service Change Modal
 .service-change-overlay {
   position: fixed;

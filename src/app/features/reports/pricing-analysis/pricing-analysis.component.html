@@ -1,0 +1,354 @@
+<div class="pricing-analysis">
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading pricing analysis...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error) {
+    <div class="error-message">{{ error }}</div>
+  }
+
+  @if (!isLoading && !error) {
+    <h1 class="page-title">Pricing Analysis Report</h1>
+
+    <!-- Executive Summary -->
+    <section class="section">
+      <h2 class="section-title">Executive Summary</h2>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-content">
+            <div class="kpi-label">Valid Grooms Analyzed</div>
+            <div class="kpi-value">{{ validGrooms }}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">📈</div>
+          <div class="kpi-content">
+            <div class="kpi-label">Hourly Return Range</div>
+            <div class="kpi-value">${{ minHourlyReturn }} - ${{ maxHourlyReturn }}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" style="border-left-color: #10b981">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-content">
+            <div class="kpi-label">Average Hourly Return</div>
+            <div class="kpi-value">${{ avgHourlyReturn }}/hr</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">⚠️</div>
+          <div class="kpi-content">
+            <div class="kpi-label">Outliers Excluded</div>
+            <div class="kpi-value">{{ outlierCount }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box success">
+        <strong>Key Finding:</strong> Your grooming times are significantly faster than industry standards. The main opportunity is reducing variance - some grooms take 2x longer than others for similar dogs.
+      </div>
+
+      <div class="insight-box warning">
+        <strong>Pricing Opportunity:</strong> Small dog prices (basic & premium) are ~$8-12 below the $80/hr target. Large/XL dogs are highly profitable at $127-159/hr.
+      </div>
+    </section>
+
+    <!-- Per-Pet Grooming Data -->
+    <section class="section">
+      <h2 class="section-title">Per-Pet Grooming Data</h2>
+      <p class="section-subtitle">Individual timing for each pet groomed. Sorted by date (newest first).</p>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Service</th>
+              <th>Pet</th>
+              <th>Size</th>
+              <th>Package</th>
+              <th class="text-right">Price</th>
+              <th class="text-right">Minutes</th>
+              <th class="text-right">$/Hour</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (groom of petGrooms; track groom.date + groom.pet) {
+              <tr [class]="getRowClass(groom)">
+                <td>{{ groom.date }}</td>
+                <td>{{ groom.service }}</td>
+                <td>{{ groom.pet }}</td>
+                <td><span class="badge" [class]="getSizeClass(groom.size)">{{ groom.size }}</span></td>
+                <td><span class="badge" [class]="getPackageClass(groom.package)">{{ groom.package }}</span></td>
+                <td class="text-right">${{ groom.price }}</td>
+                <td class="text-right">{{ groom.minutes }}</td>
+                <td class="text-right" [class]="getHourlyReturnClass(groom.hourlyReturn)">
+                  <strong>${{ groom.hourlyReturn }}</strong>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (outliers.length > 0) {
+        <h3 class="subsection-title">Outliers (Excluded from Analysis)</h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Pet</th>
+                <th>Size</th>
+                <th>Package</th>
+                <th class="text-right">Minutes</th>
+                <th>Issue</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (groom of outliers; track groom.date + groom.pet) {
+                <tr class="row-outlier">
+                  <td>{{ groom.date }}</td>
+                  <td>{{ groom.pet }}</td>
+                  <td>{{ groom.size }}</td>
+                  <td>{{ groom.package }}</td>
+                  <td class="text-right">{{ groom.minutes }}</td>
+                  <td>Button test</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <!-- Size & Package Analysis -->
+    <section class="section">
+      <h2 class="section-title">Average by Size & Package</h2>
+      <p class="section-subtitle">Aggregated metrics by pet size and package combination.</p>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Size</th>
+              <th>Package</th>
+              <th class="text-center"># Grooms</th>
+              <th class="text-right">Avg Time</th>
+              <th class="text-right">Avg Price</th>
+              <th class="text-right">Avg $/Hour</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (avg of sizePackageAvgs; track avg.size + avg.package) {
+              <tr [class]="getSizePackageRowClass(avg)">
+                <td><span class="badge" [class]="getSizeClass(avg.size)">{{ avg.size }}</span></td>
+                <td><span class="badge" [class]="getPackageClass(avg.package)">{{ avg.package }}</span></td>
+                <td class="text-center">{{ avg.grooms }}</td>
+                <td class="text-right">{{ avg.avgMinutes }} min</td>
+                <td class="text-right">${{ avg.avgPrice }}</td>
+                <td class="text-right" [class]="getHourlyReturnClass(avg.avgHourlyReturn)">
+                  <strong>${{ avg.avgHourlyReturn }}/hr</strong>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="insight-box">
+        <strong>Insight:</strong> Large/XL dogs are your most profitable ($127-159/hr) while small dogs dominate volume. Premium package adds 24 min over basic but only $4/hr more return.
+      </div>
+    </section>
+
+    <!-- Breed Analysis -->
+    <section class="section">
+      <h2 class="section-title">Breed Analysis</h2>
+
+      @if (timeSinkBreeds.length > 0) {
+        <h3 class="subsection-title">Time Sinks (Under $70/hr)</h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Breed</th>
+                <th>Size</th>
+                <th class="text-center"># Grooms</th>
+                <th class="text-right">Avg Time</th>
+                <th class="text-right">Avg Price</th>
+                <th class="text-right">$/Hour</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (breed of timeSinkBreeds; track breed.breed + breed.size) {
+                <tr class="row-bad">
+                  <td>{{ breed.breed }}</td>
+                  <td><span class="badge" [class]="getSizeClass(breed.size)">{{ breed.size }}</span></td>
+                  <td class="text-center">{{ breed.grooms }}</td>
+                  <td class="text-right">{{ breed.avgMinutes }} min</td>
+                  <td class="text-right">${{ breed.avgPrice }}</td>
+                  <td class="text-right"><strong>${{ breed.avgHourlyReturn }}/hr</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (moneyMakerBreeds.length > 0) {
+        <h3 class="subsection-title">Money Makers (Over $90/hr)</h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Breed</th>
+                <th>Size</th>
+                <th class="text-center"># Grooms</th>
+                <th class="text-right">Avg Time</th>
+                <th class="text-right">Avg Price</th>
+                <th class="text-right">$/Hour</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (breed of moneyMakerBreeds; track breed.breed + breed.size) {
+                <tr class="row-good">
+                  <td>{{ breed.breed }}</td>
+                  <td><span class="badge" [class]="getSizeClass(breed.size)">{{ breed.size }}</span></td>
+                  <td class="text-center">{{ breed.grooms }}</td>
+                  <td class="text-right">{{ breed.avgMinutes }} min</td>
+                  <td class="text-right">${{ breed.avgPrice }}</td>
+                  <td class="text-right"><strong>${{ breed.avgHourlyReturn }}/hr</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="insight-box warning">
+        <strong>The Doodle Problem:</strong> Standard Poodles and Doodles take 96-126 min on smaller sizes but pricing doesn't reflect it. However, large/XL Doodles are very profitable at $135-159/hr.
+      </div>
+    </section>
+
+    <!-- Industry Benchmarks -->
+    <section class="section">
+      <h2 class="section-title">Industry Benchmarks Comparison</h2>
+      <p class="section-subtitle">Your grooming times vs professional industry standards.</p>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Coat Type</th>
+              <th>Example Breeds</th>
+              <th class="text-right">Industry Standard</th>
+              <th class="text-right">Your Avg Time</th>
+              <th>Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (bench of industryBenchmarks; track bench.coatType) {
+              <tr>
+                <td>{{ bench.coatType }}</td>
+                <td>{{ bench.examples }}</td>
+                <td class="text-right">{{ bench.industryTime }}</td>
+                <td class="text-right">{{ bench.yourTime }}</td>
+                <td>
+                  <span class="badge" [class]="bench.verdict === 'Way Faster' ? 'badge-green' : bench.verdict === 'Faster' ? 'badge-green' : 'badge-yellow'">
+                    {{ bench.verdict }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="insight-box success">
+        <strong>Key Insight:</strong> You're significantly faster than industry average. Industry charges $80-120 for 2.5-3hr doodle grooms ($32-48/hr). Your 96 min doodle at $95-100 = $60-63/hr - already more profitable!
+      </div>
+    </section>
+
+    <!-- Pricing Recommendations -->
+    <section class="section">
+      <h2 class="section-title">Pricing Recommendations</h2>
+
+      <h3 class="subsection-title">Current vs Target $80/hr Pricing</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Size</th>
+              <th>Package</th>
+              <th class="text-right">Avg Time</th>
+              <th class="text-right">Current Price</th>
+              <th class="text-right">Actual $/hr</th>
+              <th class="text-right">Target Price</th>
+              <th class="text-right">Difference</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of pricingComparison; track item.size + item.package) {
+              <tr>
+                <td>{{ item.size }}</td>
+                <td>{{ item.package }}</td>
+                <td class="text-right">{{ item.avgTime }} min</td>
+                <td class="text-right">${{ item.currentPrice }}</td>
+                <td class="text-right">${{ item.actualHourly }}</td>
+                <td class="text-right">${{ item.targetPrice }}</td>
+                <td class="text-right">
+                  <span class="badge" [class]="item.diff === 'OK' ? 'badge-green' : item.diff === 'Premium' ? 'badge-blue' : 'badge-red'">
+                    {{ item.diff }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="subsection-title">Recommended Surcharges</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Condition</th>
+              <th>Examples</th>
+              <th class="text-right">Added Time</th>
+              <th class="text-right">Suggested Surcharge</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of surcharges; track item.condition) {
+              <tr>
+                <td>{{ item.condition }}</td>
+                <td>{{ item.examples }}</td>
+                <td class="text-right">{{ item.addedTime }}</td>
+                <td class="text-right"><strong>{{ item.surcharge }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="insight-box">
+        <strong>The Bigger Opportunity:</strong> Price increases may not be the biggest lever. A 77-minute small premium groom = $74/hr. A 50-minute small premium groom = $114/hr (same $95 price). Reducing variance through better time management could be worth more than price increases.
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="report-footer">
+      <p>Data period: November 2025 - January 2026</p>
+      <p>{{ validGrooms }} valid grooms analyzed | {{ outlierCount }} outliers excluded</p>
+    </div>
+  }
+</div>
