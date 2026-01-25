@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, firstValueFrom } from 'rxjs';
 import { BookingWithDetails } from '../models/types';
+import { environment } from '../../../environments/environment';
 
 interface BookingEmailData {
   booking: {
@@ -102,10 +103,10 @@ interface ServiceChangeEmailData {
   providedIn: 'root'
 })
 export class EmailService {
-  // Use relative URL in production, localhost in development
-  private emailApiUrl = window.location.hostname === 'localhost'
-    ? 'http://localhost:3001/api'
-    : '/api';
+  // Use environment apiUrl for both dev and prod
+  private emailApiUrl = environment.production
+    ? `${environment.apiUrl}/api`
+    : 'http://localhost:3001/api';
 
   constructor(private http: HttpClient) {}
 
