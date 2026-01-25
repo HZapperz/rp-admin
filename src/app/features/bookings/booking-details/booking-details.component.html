@@ -300,15 +300,25 @@
                   <span class="label">Total:</span>
                   <span class="value">${{ petBooking.total_price }}</span>
                 </div>
-                <!-- Modify Service Button -->
+                <!-- Modify Service Button (available until payment is captured) -->
                 <button
-                  *ngIf="booking.status === 'confirmed' || booking.status === 'pending'"
+                  *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'"
                   (click)="openServiceChangeModal(petBooking)"
                   class="btn-modify-service">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   Modify Service
+                </button>
+                <!-- Remove Pet Button (only for multi-pet bookings, before payment captured) -->
+                <button
+                  *ngIf="(booking.pets?.length || 0) > 1 && !booking.payment_captured_at && booking.status !== 'cancelled'"
+                  (click)="openRemovePetModal(petBooking)"
+                  class="btn-remove-pet">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Remove Pet
                 </button>
               </div>
             </div>
@@ -537,9 +547,9 @@
               </div>
 
               <div class="action-buttons">
-                <!-- Capture Payment Button -->
+                <!-- Capture Payment Button (for card_saved bookings after service completion) -->
                 <button
-                  *ngIf="booking.payment_status === 'authorized' && !booking.payment_captured_at"
+                  *ngIf="booking.payment_status === 'card_saved' && !booking.payment_captured_at && booking.status === 'completed'"
                   (click)="openCaptureModal()"
                   class="btn btn-capture">
                   Capture Payment (${{ booking.total_amount }})
@@ -1493,6 +1503,147 @@
           {{ savingServiceChange ? 'Saving...' : 'Confirm Change & Notify Customer' }}
         </button>
         <button (click)="closeServiceChangeModal()" class="btn-cancel-dialog">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Pet Modal -->
+  <div *ngIf="showRemovePetModal" class="service-change-overlay" (click)="closeRemovePetModal()">
+    <div class="service-change-dialog remove-pet-dialog" (click)="$event.stopPropagation()">
+      <div class="service-change-dialog-header">
+        <h3>Remove {{ petToRemove?.pet?.name }} from Booking</h3>
+        <button (click)="closeRemovePetModal()" class="dialog-close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="service-change-dialog-body">
+        <!-- Warning Banner -->
+        <div class="remove-pet-warning">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p>This will permanently remove <strong>{{ petToRemove?.pet?.name }}</strong> and their services from this booking.</p>
+        </div>
+
+        <!-- Pet Being Removed -->
+        <div class="current-service-box">
+          <h4 class="current-service-title">Pet Being Removed</h4>
+          <div class="current-service-info">
+            <div class="service-detail">
+              <span class="service-label">Pet:</span>
+              <span class="service-value">{{ petToRemove?.pet?.name }} ({{ petToRemove?.pet?.breed }})</span>
+            </div>
+            <div class="service-detail">
+              <span class="service-label">Package:</span>
+              <span class="service-value">{{ getPackageName(petToRemove?.package_type || 'basic') }}</span>
+            </div>
+            <div class="service-detail">
+              <span class="service-label">Pet Total:</span>
+              <span class="service-value">${{ petToRemove?.total_price }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discount Management Section -->
+        <div class="form-group" *ngIf="currentDiscountAmount > 0">
+          <label class="form-label">Discount Management</label>
+          <p class="form-help-text">Current discount: ${{ currentDiscountAmount.toFixed(2) }} ({{ currentDiscountPercentage.toFixed(1) }}%)</p>
+
+          <div class="discount-options-grid">
+            <div
+              (click)="removePetDiscountOption = 'keep'"
+              [class.selected]="removePetDiscountOption === 'keep'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="removePetDiscountOption === 'keep'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Keep Existing</span>
+                <span class="option-desc">Maintain ${{ currentDiscountAmount.toFixed(2) }} discount</span>
+              </div>
+            </div>
+
+            <div
+              (click)="removePetDiscountOption = 'recalculate'"
+              [class.selected]="removePetDiscountOption === 'recalculate'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="removePetDiscountOption === 'recalculate'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Recalculate ({{ currentDiscountPercentage.toFixed(1) }}%)</span>
+                <span class="option-desc">Apply same percentage to new subtotal</span>
+              </div>
+            </div>
+
+            <div
+              (click)="removePetDiscountOption = 'remove'"
+              [class.selected]="removePetDiscountOption === 'remove'"
+              class="discount-option">
+              <div class="option-radio">
+                <span *ngIf="removePetDiscountOption === 'remove'" class="radio-dot"></span>
+              </div>
+              <div class="option-info">
+                <span class="option-name">Remove Discount</span>
+                <span class="option-desc">No discount applied</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Price Summary -->
+        <div class="price-summary-box">
+          <h4 class="price-summary-title">New Booking Total</h4>
+          <div class="price-summary-details">
+            <div class="summary-row">
+              <span class="summary-label">Current Total:</span>
+              <span class="summary-value">${{ booking?.total_amount }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Removing:</span>
+              <span class="summary-value text-red-600">-${{ petToRemove?.total_price }}</span>
+            </div>
+            <div class="summary-row discount-row" *ngIf="calculateRemovePetDiscount() > 0">
+              <span class="summary-label text-green-600">New Discount:</span>
+              <span class="summary-value text-green-600">-${{ calculateRemovePetDiscount().toFixed(2) }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">New Tax (8.25%):</span>
+              <span class="summary-value">${{ calculateRemovePetTax().toFixed(2) }}</span>
+            </div>
+            <div class="summary-row total-row">
+              <span class="summary-label">New Total:</span>
+              <span class="summary-value">${{ calculateRemovePetNewTotal().toFixed(2) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reason (Required) -->
+        <div class="form-group">
+          <label class="form-label">Reason for Removal *</label>
+          <textarea
+            [(ngModel)]="removePetReason"
+            class="reason-textarea"
+            rows="3"
+            placeholder="Explain why this pet is being removed from the booking (e.g., pet was not available, behavior issues, customer request)..."
+            required></textarea>
+          <p class="form-help-text">This reason will be logged for audit purposes.</p>
+        </div>
+      </div>
+
+      <div class="service-change-dialog-footer">
+        <button
+          (click)="confirmRemovePet()"
+          [disabled]="!removePetReason.trim() || isRemovingPet"
+          class="btn-confirm-remove">
+          {{ isRemovingPet ? 'Removing...' : 'Remove Pet & Update Booking' }}
+        </button>
+        <button (click)="closeRemovePetModal()" class="btn-cancel-dialog">
           Cancel
         </button>
       </div>

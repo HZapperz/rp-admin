@@ -604,6 +604,115 @@ export class BookingService {
     }
   }
 
+  /**
+   * Remove a pet from a booking
+   * This will delete the booking_pets record and its addons, then update the booking totals
+   */
+  async removePetFromBooking(
+    bookingId: string,
+    bookingPetId: string,
+    newTotals: {
+      newOriginalSubtotal: number;
+      newDiscountAmount: number;
+      newSubtotalBeforeTax: number;
+      newTaxAmount: number;
+      newTotalAmount: number;
+    },
+    reason: string,
+    modifiedBy: string
+  ): Promise<boolean> {
+    try {
+      // 1. Get the pet info before deleting (for logging)
+      const { data: petInfo, error: petInfoError } = await this.supabase
+        .from('booking_pets')
+        .select(`
+          *,
+          pet:pets(name, breed),
+          addons:booking_addons(addon_name, addon_price)
+        `)
+        .eq('id', bookingPetId)
+        .single();
+
+      if (petInfoError || !petInfo) {
+        console.error('Error fetching pet info:', petInfoError);
+        return false;
+      }
+
+      // 2. Delete booking_addons for this pet
+      const { error: deleteAddonsError } = await this.supabase
+        .from('booking_addons')
+        .delete()
+        .eq('booking_pet_id', bookingPetId);
+
+      if (deleteAddonsError) {
+        console.error('Error deleting booking addons:', deleteAddonsError);
+        return false;
+      }
+
+      // 3. Delete the booking_pets record
+      const { error: deletePetError } = await this.supabase
+        .from('booking_pets')
+        .delete()
+        .eq('id', bookingPetId);
+
+      if (deletePetError) {
+        console.error('Error deleting booking pet:', deletePetError);
+        return false;
+      }
+
+      // 4. Update the booking totals
+      const { error: updateBookingError } = await this.supabase
+        .from('bookings')
+        .update({
+          original_subtotal: newTotals.newOriginalSubtotal,
+          discount_amount: newTotals.newDiscountAmount,
+          subtotal_before_tax: newTotals.newSubtotalBeforeTax,
+          tax_amount: newTotals.newTaxAmount,
+          total_amount: newTotals.newTotalAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (updateBookingError) {
+        console.error('Error updating booking totals:', updateBookingError);
+        return false;
+      }
+
+      // 5. Log modification to booking_modifications table
+      const petTotal = parseFloat(petInfo.total_price || '0');
+      const addonsTotal = (petInfo.addons || []).reduce((sum: number, a: any) => sum + parseFloat(a.addon_price || '0'), 0);
+      const priceChange = -(petTotal + addonsTotal);
+
+      const { error: logError } = await this.supabase
+        .from('booking_modifications')
+        .insert({
+          booking_id: bookingId,
+          modified_by: modifiedBy,
+          modification_type: 'pet_removed',
+          old_value: {
+            pet_name: petInfo.pet?.name,
+            pet_breed: petInfo.pet?.breed,
+            package_type: petInfo.package_type,
+            total_price: petInfo.total_price,
+            addons: petInfo.addons?.map((a: any) => ({ name: a.addon_name, price: a.addon_price })) || []
+          },
+          new_value: null,
+          price_change: priceChange,
+          reason: reason
+        });
+
+      if (logError) {
+        console.error('Error logging pet removal:', logError);
+        // Don't fail the operation for logging error
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Exception while removing pet from booking:', error);
+      return false;
+    }
+  }
+
   async getBookingStats(): Promise<{
     total: number;
     pending: number;

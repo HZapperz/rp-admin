@@ -127,6 +127,13 @@ export class BookingDetailsComponent implements OnInit {
   currentDiscountAmount: number = 0;
   currentDiscountPercentage: number = 0;
 
+  // Remove pet modal
+  showRemovePetModal = false;
+  petToRemove: any = null;
+  removePetReason = '';
+  removePetDiscountOption: 'keep' | 'recalculate' | 'remove' = 'recalculate';
+  isRemovingPet = false;
+
   // Package configuration
   servicePackages = [
     { id: 'basic', name: 'Royal Bath', icon: '🛁' },
@@ -1412,6 +1419,134 @@ export class BookingDetailsComponent implements OnInit {
       console.error('Error changing booking service:', error);
       alert('An unexpected error occurred. Please try again.');
       this.savingServiceChange = false;
+    }
+  }
+
+  // Remove Pet Modal Methods
+  openRemovePetModal(petBooking: any) {
+    this.petToRemove = petBooking;
+    this.removePetReason = '';
+    this.removePetDiscountOption = 'recalculate';
+
+    // Set current discount values for the discount management section
+    const discountVal = this.booking?.discount_amount;
+    this.currentDiscountAmount = typeof discountVal === 'number' ? discountVal : parseFloat(String(discountVal || '0')) || 0;
+    const subtotalVal = this.booking?.original_subtotal;
+    const originalSubtotal = typeof subtotalVal === 'number' ? subtotalVal : parseFloat(String(subtotalVal || '0')) || 0;
+    this.currentDiscountPercentage = originalSubtotal > 0 ? (this.currentDiscountAmount / originalSubtotal) * 100 : 0;
+
+    this.showRemovePetModal = true;
+  }
+
+  closeRemovePetModal() {
+    this.showRemovePetModal = false;
+    this.petToRemove = null;
+    this.removePetReason = '';
+    this.removePetDiscountOption = 'recalculate';
+  }
+
+  // Calculate new subtotal after removing pet (before discount and tax)
+  calculateRemovePetNewSubtotal(): number {
+    if (!this.booking || !this.petToRemove) return 0;
+
+    const subtotalVal = this.booking.original_subtotal;
+    const originalSubtotal = typeof subtotalVal === 'number' ? subtotalVal : parseFloat(String(subtotalVal || '0')) || 0;
+    const petVal = this.petToRemove.total_price;
+    const petTotal = typeof petVal === 'number' ? petVal : parseFloat(String(petVal || '0')) || 0;
+
+    // Also subtract any addons for this pet
+    const petAddonsTotal = (this.petToRemove.addons || []).reduce((sum: number, addon: any) => {
+      return sum + (parseFloat(addon.addon_price) || 0);
+    }, 0);
+
+    return originalSubtotal - petTotal - petAddonsTotal;
+  }
+
+  // Calculate new discount based on option selected
+  calculateRemovePetDiscount(): number {
+    if (!this.booking) return 0;
+
+    const discountVal = this.booking.discount_amount;
+    const currentDiscount = typeof discountVal === 'number' ? discountVal : parseFloat(String(discountVal || '0')) || 0;
+    const newSubtotal = this.calculateRemovePetNewSubtotal();
+
+    switch (this.removePetDiscountOption) {
+      case 'keep':
+        // Keep the same discount amount (but cap at new subtotal)
+        return Math.min(currentDiscount, newSubtotal);
+      case 'recalculate':
+        // Apply same percentage to new subtotal
+        return newSubtotal * (this.currentDiscountPercentage / 100);
+      case 'remove':
+        return 0;
+      default:
+        return 0;
+    }
+  }
+
+  // Calculate new tax
+  calculateRemovePetTax(): number {
+    const newSubtotal = this.calculateRemovePetNewSubtotal();
+    const newDiscount = this.calculateRemovePetDiscount();
+    const taxableAmount = newSubtotal - newDiscount;
+    return taxableAmount * 0.0825; // 8.25% tax
+  }
+
+  // Calculate new total
+  calculateRemovePetNewTotal(): number {
+    const newSubtotal = this.calculateRemovePetNewSubtotal();
+    const newDiscount = this.calculateRemovePetDiscount();
+    const newTax = this.calculateRemovePetTax();
+    return newSubtotal - newDiscount + newTax;
+  }
+
+  async confirmRemovePet() {
+    if (!this.booking || !this.petToRemove || !this.removePetReason.trim()) return;
+
+    this.isRemovingPet = true;
+
+    try {
+      const currentUser = this.supabase.session?.user;
+      if (!currentUser) {
+        alert('You must be logged in to remove a pet');
+        this.isRemovingPet = false;
+        return;
+      }
+
+      // Calculate new values
+      const newOriginalSubtotal = this.calculateRemovePetNewSubtotal();
+      const newDiscountAmount = this.calculateRemovePetDiscount();
+      const newSubtotalBeforeTax = newOriginalSubtotal - newDiscountAmount;
+      const newTaxAmount = this.calculateRemovePetTax();
+      const newTotalAmount = this.calculateRemovePetNewTotal();
+
+      // Call the booking service to remove the pet
+      const result = await this.bookingService.removePetFromBooking(
+        this.booking.id,
+        this.petToRemove.id,
+        {
+          newOriginalSubtotal,
+          newDiscountAmount,
+          newSubtotalBeforeTax,
+          newTaxAmount,
+          newTotalAmount
+        },
+        this.removePetReason,
+        currentUser.id
+      );
+
+      if (result) {
+        alert(`${this.petToRemove.pet?.name} has been removed from the booking. New total: $${newTotalAmount.toFixed(2)}`);
+        this.closeRemovePetModal();
+        await this.loadBookingDetails(this.booking.id);
+      } else {
+        alert('Failed to remove pet from booking. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error removing pet from booking:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      this.isRemovingPet = false;
     }
   }
 

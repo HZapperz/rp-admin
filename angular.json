@@ -40,7 +40,10 @@
               "node_modules/mapbox-gl/dist/mapbox-gl.css",
               "node_modules/rrweb-player/dist/style.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "mapbox-gl"
+            ]
           },
           "configurations": {
             "production": {
@@ -58,8 +61,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "40kB",
-                  "maximumError": "60kB"
+                  "maximumWarning": "50kB",
+                  "maximumError": "70kB"
                 }
               ],
               "outputHashing": "all"
