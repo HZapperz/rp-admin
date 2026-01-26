@@ -3,9 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GroomerService, GroomerEarningsDetail, CommissionHistory } from '../../../core/services/groomer.service';
+import { PayrollExportService } from '../../../core/services/payroll-export.service';
 import { PayPeriodData, AvailablePayrollMonth, WeekData } from '../../../core/models/types';
-import { PayrollPeriodSelectorComponent } from './components/payroll-period-selector.component';
-import { PayrollSummaryCardComponent } from './components/payroll-summary-card.component';
+import { PayrollPeriodSelectorComponent, SelectionMode } from './components/payroll-period-selector.component';
+import { PayrollSummaryTableComponent } from './components/payroll-summary-table.component';
 import { PayrollWeekSectionComponent } from './components/payroll-week-section.component';
 import { MarkPaidDialogComponent, PaymentDetails } from './components/mark-paid-dialog.component';
 
@@ -16,7 +17,7 @@ import { MarkPaidDialogComponent, PaymentDetails } from './components/mark-paid-
     CommonModule,
     FormsModule,
     PayrollPeriodSelectorComponent,
-    PayrollSummaryCardComponent,
+    PayrollSummaryTableComponent,
     PayrollWeekSectionComponent,
     MarkPaidDialogComponent
   ],
@@ -44,10 +45,16 @@ export class GroomerDetailComponent implements OnInit {
   showMarkPaidDialog = false;
   isMarkingPaid = false;
 
+  // Custom date range state
+  selectionMode: SelectionMode = 'monthly';
+  customStartDate: string = '';
+  customEndDate: string = '';
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private groomerService: GroomerService
+    private groomerService: GroomerService,
+    private payrollExportService: PayrollExportService
   ) {}
 
   ngOnInit() {
@@ -123,6 +130,66 @@ export class GroomerDetailComponent implements OnInit {
     this.selectedYear = period.year;
     this.selectedMonth = period.month;
     this.loadMonthlyPayroll();
+  }
+
+  onModeChange(mode: SelectionMode) {
+    this.selectionMode = mode;
+    if (mode === 'monthly' && this.availableMonths.length > 0) {
+      // Reload monthly data when switching back to monthly mode
+      this.loadMonthlyPayroll();
+    }
+  }
+
+  onCustomRangeChange(range: { startDate: string; endDate: string }) {
+    this.customStartDate = range.startDate;
+    this.customEndDate = range.endDate;
+    this.loadCustomRangePayroll();
+  }
+
+  loadCustomRangePayroll() {
+    if (!this.customStartDate || !this.customEndDate) return;
+
+    this.isLoadingPayroll = true;
+    this.groomerService.getGroomerPayrollByDateRange(
+      this.groomerId,
+      this.customStartDate,
+      this.customEndDate
+    ).subscribe({
+      next: (data) => {
+        this.payrollData = data;
+        // Expand the first week by default
+        if (data.weeks.length > 0) {
+          data.weeks[0].is_expanded = true;
+        }
+        this.isLoadingPayroll = false;
+      },
+      error: (err) => {
+        console.error('Error loading custom range payroll:', err);
+        this.isLoadingPayroll = false;
+      }
+    });
+  }
+
+  // Export methods
+  exportToCSV() {
+    if (!this.payrollData || !this.earningsDetail) return;
+    this.payrollExportService.exportToCSV(this.payrollData, this.earningsDetail.groomer.name);
+  }
+
+  exportToExcel() {
+    if (!this.payrollData || !this.earningsDetail) return;
+    this.payrollExportService.exportToExcel(this.payrollData, this.earningsDetail.groomer.name);
+  }
+
+  printPayroll() {
+    // Expand all weeks before printing
+    if (this.payrollData) {
+      this.payrollData.weeks.forEach(week => week.is_expanded = true);
+    }
+    // Small delay to allow UI to update before printing
+    setTimeout(() => {
+      window.print();
+    }, 100);
   }
 
   toggleWeekExpand(weekIndex: number) {

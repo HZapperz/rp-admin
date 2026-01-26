@@ -439,6 +439,9 @@ export interface WeekData {
     tips: number;
     total_payout: number;
     booking_count: number;
+    commission_earnings: number;  // groomer's cut for the week
+    hourly_pay: number;           // placeholder (0 for now)
+    misc_adjustments: number;     // placeholder (0 for now)
   };
   grooms: GroomDetail[];
   is_expanded: boolean;

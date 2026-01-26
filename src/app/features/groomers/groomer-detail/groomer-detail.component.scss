@@ -544,7 +544,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 
     @media (min-width: 640px) {
       flex-direction: row;
@@ -555,6 +555,41 @@
     .section-title {
       margin: 0;
     }
+  }
+
+  .export-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .export-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+
+    &:hover {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+    }
+
+    .material-icons {
+      font-size: 16px;
+    }
+  }
+
+  .period-selector-row {
+    margin-bottom: 1.5rem;
   }
 
   .payroll-loading {
@@ -614,6 +649,193 @@
         margin: 0;
       }
     }
+  }
+}
+
+// ===========================================
+// PRINT STYLES
+// ===========================================
+@media print {
+  // Hide non-essential elements
+  .btn-back,
+  .edit-btn,
+  .save-btn,
+  .cancel-btn,
+  .export-buttons,
+  .mode-toggle,
+  .nav-btn,
+  .apply-btn,
+  .mark-paid-btn,
+  app-mark-paid-dialog {
+    display: none !important;
+  }
+
+  // Reset page layout
+  .groomer-detail-container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  // Page setup
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  // Section styling for print
+  .section {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+
+  // Header styling
+  .detail-header {
+    margin-bottom: 1rem;
+
+    .header-info h1 {
+      font-size: 18pt;
+      margin-bottom: 0.25rem;
+    }
+
+    .email {
+      font-size: 10pt;
+    }
+  }
+
+  // Hide commission section (optional - keep it if needed)
+  .commission-section {
+    display: none;
+  }
+
+  // Payroll section print styling
+  .payroll-section {
+    .section-header {
+      border-bottom: 2px solid #000;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+
+      .section-title {
+        font-size: 14pt;
+      }
+    }
+
+    .period-selector-row {
+      margin-bottom: 0.5rem;
+
+      // Show only the selected period label
+      .month-select,
+      .date-input {
+        border: none;
+        background: transparent;
+        font-weight: 600;
+        font-size: 11pt;
+        padding: 0;
+      }
+    }
+  }
+
+  // Table print styling
+  table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+      border: 1px solid #999;
+      padding: 0.375rem 0.5rem;
+      font-size: 10pt;
+    }
+
+    thead {
+      background: #f0f0f0 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+
+      th {
+        font-weight: 600;
+      }
+    }
+
+    tfoot {
+      background: #e8f5e9 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+
+  // Week sections - expand all for print
+  .weeks-container {
+    app-payroll-week-section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+
+      // Show all content (expanded state)
+      .week-details {
+        display: block !important;
+        max-height: none !important;
+      }
+
+      // Style week headers
+      .week-header {
+        background: #f5f5f5 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border: 1px solid #ccc;
+        margin-bottom: 0.5rem;
+
+        // Hide expand/collapse icon
+        .material-icons {
+          display: none;
+        }
+      }
+    }
+  }
+
+  // Status badges
+  .status-badge {
+    border: 1px solid currentColor;
+    padding: 0.125rem 0.5rem;
+
+    &.paid {
+      background: #e8f5e9 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+
+  // Paid info
+  .paid-info {
+    font-size: 10pt;
+  }
+
+  // Groom count
+  .groom-count {
+    font-size: 10pt;
+
+    .material-icons {
+      display: none;
+    }
+  }
+
+  // Page breaks
+  .section {
+    page-break-before: auto;
+  }
+
+  // Footer with print date
+  .payroll-section::after {
+    content: "Printed on " attr(data-print-date);
+    display: block;
+    font-size: 8pt;
+    color: #666;
+    text-align: right;
+    margin-top: 1rem;
+    border-top: 1px solid #ccc;
+    padding-top: 0.5rem;
   }
 }
 
