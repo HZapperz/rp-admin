@@ -30,6 +30,10 @@ export class GroomerDetailComponent implements OnInit {
   commissionHistory: CommissionHistory[] = [];
   isLoading = true;
 
+  // Tab state
+  activeTab: 'overview' | 'payroll' = 'overview';
+  payrollDataLoaded = false;
+
   editingCommission = false;
   newCommissionPercent = 35;
   commissionNotes = '';
@@ -60,7 +64,15 @@ export class GroomerDetailComponent implements OnInit {
   ngOnInit() {
     this.groomerId = this.route.snapshot.paramMap.get('id') || '';
     this.loadGroomerData();
-    this.loadPayrollData();
+  }
+
+  setTab(tab: 'overview' | 'payroll') {
+    this.activeTab = tab;
+    // Lazy load payroll data when switching to payroll tab
+    if (tab === 'payroll' && !this.payrollDataLoaded) {
+      this.loadPayrollData();
+      this.payrollDataLoaded = true;
+    }
   }
 
   loadGroomerData() {

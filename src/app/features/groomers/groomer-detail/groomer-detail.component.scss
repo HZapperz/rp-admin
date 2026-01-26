@@ -106,6 +106,62 @@
   }
 }
 
+// Tab Navigation
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+
+  .tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(.active) {
+      color: #374151;
+      background: #f9fafb;
+    }
+
+    &.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    .material-icons {
+      font-size: 20px;
+    }
+  }
+}
+
+.tab-content {
+  .tab-panel {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // Section Styles
 .section {
   background: white;
@@ -538,7 +594,123 @@
   }
 }
 
-// Payroll Section
+// Payroll Tab Styles
+.payroll-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+}
+
+.export-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+  }
+
+  .material-icons {
+    font-size: 16px;
+  }
+}
+
+.period-selector-row {
+  margin-bottom: 1.5rem;
+}
+
+// Payroll tab content styles
+.payroll-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  p {
+    color: #64748b;
+    font-size: 0.9375rem;
+    margin: 0;
+  }
+}
+
+.no-payroll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+  color: #9ca3af;
+
+  .material-icons {
+    font-size: 48px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.payroll-content {
+  .weeks-container {
+    margin-top: 1rem;
+  }
+
+  .no-grooms {
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
+
+    p {
+      margin: 0;
+    }
+  }
+}
+
+// Payroll Section (legacy support)
 .payroll-section {
   .section-header {
     display: flex;
@@ -555,41 +727,6 @@
     .section-title {
       margin: 0;
     }
-  }
-
-  .export-buttons {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .export-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 0.875rem;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-
-    &:hover {
-      background: #e5e7eb;
-      border-color: #d1d5db;
-    }
-
-    .material-icons {
-      font-size: 16px;
-    }
-  }
-
-  .period-selector-row {
-    margin-bottom: 1.5rem;
   }
 
   .payroll-loading {
@@ -666,6 +803,7 @@
   .nav-btn,
   .apply-btn,
   .mark-paid-btn,
+  .tab-navigation,
   app-mark-paid-dialog {
     display: none !important;
   }
@@ -707,35 +845,38 @@
     }
   }
 
-  // Hide commission section (optional - keep it if needed)
-  .commission-section {
-    display: none;
+  // Hide overview tab content when printing (only show payroll)
+  .tab-panel:not(#payroll-section) {
+    display: none !important;
   }
 
-  // Payroll section print styling
-  .payroll-section {
-    .section-header {
-      border-bottom: 2px solid #000;
-      padding-bottom: 0.5rem;
-      margin-bottom: 1rem;
+  // Make sure payroll tab is visible
+  #payroll-section {
+    display: block !important;
+  }
 
-      .section-title {
-        font-size: 14pt;
-      }
+  // Payroll header print styling
+  .payroll-header {
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+
+    .section-title {
+      font-size: 14pt;
     }
+  }
 
-    .period-selector-row {
-      margin-bottom: 0.5rem;
+  .period-selector-row {
+    margin-bottom: 0.5rem;
 
-      // Show only the selected period label
-      .month-select,
-      .date-input {
-        border: none;
-        background: transparent;
-        font-weight: 600;
-        font-size: 11pt;
-        padding: 0;
-      }
+    // Show only the selected period label
+    .month-select,
+    .date-input {
+      border: none;
+      background: transparent;
+      font-weight: 600;
+      font-size: 11pt;
+      padding: 0;
     }
   }
 
@@ -824,18 +965,6 @@
   // Page breaks
   .section {
     page-break-before: auto;
-  }
-
-  // Footer with print date
-  .payroll-section::after {
-    content: "Printed on " attr(data-print-date);
-    display: block;
-    font-size: 8pt;
-    color: #666;
-    text-align: right;
-    margin-top: 1rem;
-    border-top: 1px solid #ccc;
-    padding-top: 0.5rem;
   }
 }
 

@@ -28,158 +28,184 @@
       </div>
     </div>
 
-    <!-- Commission Management Card -->
-    <div class="section commission-section">
-      <h2 class="section-title">Commission Management</h2>
-
-      <div class="current-commission">
-        <label>Current Commission Rate:</label>
-        <span class="commission-value">
-          {{ formatCommissionRate(earningsDetail.groomer.commissionRate) }}
-        </span>
-      </div>
-
-      @if (!editingCommission) {
-        <button class="edit-btn" (click)="startEditCommission()">
-          Edit Commission Rate
-        </button>
-      }
-
-      @if (editingCommission) {
-        <div class="edit-form">
-          <div class="form-group">
-            <label for="commission-percent">New Commission Rate (%):</label>
-            <input
-              id="commission-percent"
-              type="number"
-              [(ngModel)]="newCommissionPercent"
-              min="0"
-              max="100"
-              step="1"
-              placeholder="e.g., 35"
-            />
-            <small>Enter percentage (e.g., 35 for 35%)</small>
-          </div>
-
-          <div class="form-group">
-            <label for="commission-notes">Notes (optional):</label>
-            <textarea
-              id="commission-notes"
-              [(ngModel)]="commissionNotes"
-              placeholder="Reason for rate change..."
-              rows="3"
-            ></textarea>
-          </div>
-
-          <div class="form-actions">
-            <button class="save-btn" (click)="saveCommission()" [disabled]="isSaving">
-              {{ isSaving ? 'Saving...' : 'Save Changes' }}
-            </button>
-            <button class="cancel-btn" (click)="cancelEditCommission()">
-              Cancel
-            </button>
-          </div>
-
-          @if (saveError) {
-            <div class="error">{{ saveError }}</div>
-          }
-        </div>
-      }
-
-      <!-- Commission History -->
-      <div class="commission-history">
-        <h3>Commission History</h3>
-        @if (commissionHistory.length === 0) {
-          <p class="no-history">No rate changes yet</p>
-        }
-        <div class="history-list">
-          @for (change of commissionHistory; track change.id) {
-            <div class="history-item">
-              <div class="history-header">
-                <span class="rate-change">
-                  {{ formatCommissionRate(change.old_rate) }} → {{ formatCommissionRate(change.new_rate) }}
-                </span>
-                <span class="date">{{ formatDate(change.created_at) }}</span>
-              </div>
-              <div class="history-details">
-                <span class="admin">By: {{ change.admin?.first_name }} {{ change.admin?.last_name }}</span>
-                @if (change.notes) {
-                  <p class="notes">{{ change.notes }}</p>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      </div>
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'overview'"
+        (click)="setTab('overview')">
+        <span class="material-icons">person</span>
+        Overview
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'payroll'"
+        (click)="setTab('payroll')">
+        <span class="material-icons">payments</span>
+        Payroll
+      </button>
     </div>
 
-    <!-- Payroll Section -->
-    <div class="section payroll-section" id="payroll-section">
-      <div class="section-header">
-        <h2 class="section-title">Payroll</h2>
-        <div class="export-buttons" *ngIf="payrollData && payrollData.totals.booking_count > 0">
-          <button class="export-btn" (click)="exportToCSV()" title="Export to CSV">
-            <span class="material-icons">download</span>
-            CSV
-          </button>
-          <button class="export-btn" (click)="exportToExcel()" title="Export for Excel">
-            <span class="material-icons">table_chart</span>
-            Excel
-          </button>
-          <button class="export-btn" (click)="printPayroll()" title="Print payroll">
-            <span class="material-icons">print</span>
-            Print
-          </button>
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Overview Tab -->
+      <div *ngIf="activeTab === 'overview'" class="tab-panel">
+        <!-- Commission Management Card -->
+        <div class="section commission-section">
+          <h2 class="section-title">Commission Management</h2>
+
+          <div class="current-commission">
+            <label>Current Commission Rate:</label>
+            <span class="commission-value">
+              {{ formatCommissionRate(earningsDetail.groomer.commissionRate) }}
+            </span>
+          </div>
+
+          @if (!editingCommission) {
+            <button class="edit-btn" (click)="startEditCommission()">
+              Edit Commission Rate
+            </button>
+          }
+
+          @if (editingCommission) {
+            <div class="edit-form">
+              <div class="form-group">
+                <label for="commission-percent">New Commission Rate (%):</label>
+                <input
+                  id="commission-percent"
+                  type="number"
+                  [(ngModel)]="newCommissionPercent"
+                  min="0"
+                  max="100"
+                  step="1"
+                  placeholder="e.g., 35"
+                />
+                <small>Enter percentage (e.g., 35 for 35%)</small>
+              </div>
+
+              <div class="form-group">
+                <label for="commission-notes">Notes (optional):</label>
+                <textarea
+                  id="commission-notes"
+                  [(ngModel)]="commissionNotes"
+                  placeholder="Reason for rate change..."
+                  rows="3"
+                ></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button class="save-btn" (click)="saveCommission()" [disabled]="isSaving">
+                  {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                </button>
+                <button class="cancel-btn" (click)="cancelEditCommission()">
+                  Cancel
+                </button>
+              </div>
+
+              @if (saveError) {
+                <div class="error">{{ saveError }}</div>
+              }
+            </div>
+          }
+
+          <!-- Commission History -->
+          <div class="commission-history">
+            <h3>Commission History</h3>
+            @if (commissionHistory.length === 0) {
+              <p class="no-history">No rate changes yet</p>
+            }
+            <div class="history-list">
+              @for (change of commissionHistory; track change.id) {
+                <div class="history-item">
+                  <div class="history-header">
+                    <span class="rate-change">
+                      {{ formatCommissionRate(change.old_rate) }} → {{ formatCommissionRate(change.new_rate) }}
+                    </span>
+                    <span class="date">{{ formatDate(change.created_at) }}</span>
+                  </div>
+                  <div class="history-details">
+                    <span class="admin">By: {{ change.admin?.first_name }} {{ change.admin?.last_name }}</span>
+                    @if (change.notes) {
+                      <p class="notes">{{ change.notes }}</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="period-selector-row">
-        <app-payroll-period-selector
-          *ngIf="availableMonths.length > 0 || selectionMode === 'custom'"
-          [availableMonths]="availableMonths"
-          [selectedYear]="selectedYear"
-          [selectedMonth]="selectedMonth"
-          [selectionMode]="selectionMode"
-          [customStartDate]="customStartDate"
-          [customEndDate]="customEndDate"
-          (periodChange)="onPeriodChange($event)"
-          (modeChange)="onModeChange($event)"
-          (customRangeChange)="onCustomRangeChange($event)">
-        </app-payroll-period-selector>
-      </div>
-
-      <!-- Loading state -->
-      <div *ngIf="isLoadingPayroll" class="payroll-loading">
-        <div class="spinner"></div>
-        <p>Loading payroll data...</p>
-      </div>
-
-      <!-- No data state -->
-      <div *ngIf="!isLoadingPayroll && availableMonths.length === 0 && selectionMode === 'monthly'" class="no-payroll">
-        <span class="material-icons">payments</span>
-        <p>No completed grooms yet</p>
-      </div>
-
-      <!-- Payroll content -->
-      <div *ngIf="!isLoadingPayroll && payrollData" class="payroll-content">
-        <app-payroll-summary-table
-          [periodData]="payrollData"
-          [commissionRate]="earningsDetail?.groomer?.commissionRate || 0.35"
-          [isCustomRange]="selectionMode === 'custom'"
-          (markAsPaid)="openMarkPaidDialog()">
-        </app-payroll-summary-table>
-
-        <div class="weeks-container">
-          <app-payroll-week-section
-            *ngFor="let week of payrollData.weeks; let i = index"
-            [weekData]="week"
-            [isExpanded]="week.is_expanded"
-            (toggleExpandEvent)="toggleWeekExpand(i)">
-          </app-payroll-week-section>
+      <!-- Payroll Tab -->
+      <div *ngIf="activeTab === 'payroll'" class="tab-panel" id="payroll-section">
+        <!-- Payroll Header with Export Buttons -->
+        <div class="payroll-header">
+          <h2 class="section-title">Payroll</h2>
+          <div class="export-buttons" *ngIf="payrollData && payrollData.totals.booking_count > 0">
+            <button class="export-btn" (click)="exportToCSV()" title="Export to CSV">
+              <span class="material-icons">download</span>
+              CSV
+            </button>
+            <button class="export-btn" (click)="exportToExcel()" title="Export for Excel">
+              <span class="material-icons">table_chart</span>
+              Excel
+            </button>
+            <button class="export-btn" (click)="printPayroll()" title="Print payroll">
+              <span class="material-icons">print</span>
+              Print
+            </button>
+          </div>
         </div>
 
-        <div *ngIf="payrollData.weeks.length === 0" class="no-grooms">
-          <p>No completed grooms in this period</p>
+        <!-- Period Selector -->
+        <div class="period-selector-row">
+          <app-payroll-period-selector
+            *ngIf="availableMonths.length > 0 || selectionMode === 'custom'"
+            [availableMonths]="availableMonths"
+            [selectedYear]="selectedYear"
+            [selectedMonth]="selectedMonth"
+            [selectionMode]="selectionMode"
+            [customStartDate]="customStartDate"
+            [customEndDate]="customEndDate"
+            (periodChange)="onPeriodChange($event)"
+            (modeChange)="onModeChange($event)"
+            (customRangeChange)="onCustomRangeChange($event)">
+          </app-payroll-period-selector>
+        </div>
+
+        <!-- Loading state -->
+        <div *ngIf="isLoadingPayroll" class="payroll-loading">
+          <div class="spinner"></div>
+          <p>Loading payroll data...</p>
+        </div>
+
+        <!-- No data state -->
+        <div *ngIf="!isLoadingPayroll && availableMonths.length === 0 && selectionMode === 'monthly'" class="no-payroll">
+          <span class="material-icons">payments</span>
+          <p>No completed grooms yet</p>
+        </div>
+
+        <!-- Payroll content -->
+        <div *ngIf="!isLoadingPayroll && payrollData" class="payroll-content">
+          <app-payroll-summary-table
+            [periodData]="payrollData"
+            [commissionRate]="earningsDetail?.groomer?.commissionRate || 0.35"
+            [isCustomRange]="selectionMode === 'custom'"
+            (markAsPaid)="openMarkPaidDialog()">
+          </app-payroll-summary-table>
+
+          <div class="weeks-container">
+            <app-payroll-week-section
+              *ngFor="let week of payrollData.weeks; let i = index"
+              [weekData]="week"
+              [isExpanded]="week.is_expanded"
+              (toggleExpandEvent)="toggleWeekExpand(i)">
+            </app-payroll-week-section>
+          </div>
+
+          <div *ngIf="payrollData.weeks.length === 0" class="no-grooms">
+            <p>No completed grooms in this period</p>
+          </div>
         </div>
       </div>
     </div>
@@ -195,4 +221,3 @@
     </app-mark-paid-dialog>
   </div>
 </div>
-
