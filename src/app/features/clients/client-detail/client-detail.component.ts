@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
@@ -61,6 +61,7 @@ export class ClientDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
+    private location: Location,
     private clientService: ClientService,
     private authService: AuthService,
     private supabaseService: SupabaseService
@@ -130,7 +131,7 @@ export class ClientDetailComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/clients']);
+    this.location.back();
   }
 
   // Pet Modal methods (Add/Edit)
