@@ -385,7 +385,13 @@ export class ClientService {
   async getClientBookings(clientId: string) {
     const { data, error } = await this.supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        groomer:groomer_id (
+          first_name,
+          last_name
+        )
+      `)
       .eq('client_id', clientId)
       .order('scheduled_date', { ascending: false });
 
@@ -394,7 +400,13 @@ export class ClientService {
       return [];
     }
 
-    return data;
+    // Map groomer name for template
+    return (data || []).map(booking => ({
+      ...booking,
+      groomer_name: booking.groomer
+        ? `${booking.groomer.first_name} ${booking.groomer.last_name}`
+        : null
+    }));
   }
 
   async blockClient(clientId: string): Promise<boolean> {
