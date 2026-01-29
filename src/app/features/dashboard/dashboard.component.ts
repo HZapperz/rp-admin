@@ -126,7 +126,13 @@ export class DashboardComponent implements OnInit {
     } else if (this.currentView === 'week') {
       this.currentDate = new Date(this.currentDate.setDate(this.currentDate.getDate() - 7));
     } else {
-      this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() - 1));
+      // Construct new date directly to avoid setMonth overflow
+      // e.g., Jan 31 + setMonth(Feb) would overflow to March 3
+      this.currentDate = new Date(
+        this.currentDate.getFullYear(),
+        this.currentDate.getMonth() - 1,
+        1
+      );
     }
     this.generateScheduleSlots();
   }
@@ -137,7 +143,13 @@ export class DashboardComponent implements OnInit {
     } else if (this.currentView === 'week') {
       this.currentDate = new Date(this.currentDate.setDate(this.currentDate.getDate() + 7));
     } else {
-      this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + 1));
+      // Construct new date directly to avoid setMonth overflow
+      // e.g., Jan 31 + setMonth(Feb) would overflow to March 3
+      this.currentDate = new Date(
+        this.currentDate.getFullYear(),
+        this.currentDate.getMonth() + 1,
+        1
+      );
     }
     this.generateScheduleSlots();
   }
