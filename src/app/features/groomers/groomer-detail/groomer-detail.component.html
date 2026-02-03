@@ -189,7 +189,7 @@
         <div *ngIf="!isLoadingPayroll && payrollData" class="payroll-content">
           <app-payroll-summary-table
             [periodData]="payrollData"
-            [commissionRate]="earningsDetail?.groomer?.commissionRate || 0.35"
+            [commissionRate]="earningsDetail.groomer ? earningsDetail.groomer.commissionRate : 0.35"
             [isCustomRange]="selectionMode === 'custom'"
             (markAsPaid)="openMarkPaidDialog()">
           </app-payroll-summary-table>
@@ -214,7 +214,7 @@
     <app-mark-paid-dialog
       [isOpen]="showMarkPaidDialog"
       [periodData]="payrollData"
-      [groomerName]="earningsDetail?.groomer?.name || ''"
+      [groomerName]="earningsDetail.groomer ? earningsDetail.groomer.name : ''"
       [isSubmitting]="isMarkingPaid"
       (close)="closeMarkPaidDialog()"
       (confirm)="confirmMarkPaid($event)">
