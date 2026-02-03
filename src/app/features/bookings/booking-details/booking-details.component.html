@@ -16,21 +16,50 @@
 
   <!-- Booking Details -->
   <div *ngIf="booking && !loading" class="booking-content">
-    <!-- Header -->
+    <!-- Compact Header -->
     <div class="page-header">
       <button (click)="goBack()" class="btn-back-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
-        Back
       </button>
-      <div class="header-title">
-        <h1>Booking Details</h1>
-        <p class="booking-id">ID: {{ booking.id }}</p>
+      <div class="header-center">
+        <span class="booking-id-label">Booking</span>
+        <span class="booking-id-value">#{{ booking.id.substring(0, 8) }}</span>
       </div>
+      <span class="status-badge header-status" [ngClass]="getStatusBadgeClass(booking.status)">
+        {{ booking.status | titlecase }}
+      </span>
       <button (click)="toggleEditMode()" class="btn-edit" [class.active]="editMode">
         {{ editMode ? 'Cancel' : 'Edit' }}
       </button>
+    </div>
+
+    <!-- Quick Info Bar -->
+    <div class="quick-info-bar">
+      <div class="info-chip">
+        <span class="chip-icon">📅</span>
+        <span class="chip-value">{{ formatDateShort(booking.scheduled_date) }}</span>
+        <span class="chip-sub" *ngIf="booking.scheduled_time_start">{{ formatTime(booking.scheduled_time_start) }}</span>
+      </div>
+      <div class="info-chip">
+        <span class="chip-icon">👤</span>
+        <span class="chip-value">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</span>
+      </div>
+      <div class="info-chip">
+        <span class="chip-icon">🐕</span>
+        <span class="chip-value">{{ booking.pets?.length }} pet{{ (booking.pets?.length || 0) > 1 ? 's' : '' }}</span>
+      </div>
+      <div class="info-chip highlight">
+        <span class="chip-value">${{ booking.total_amount }}</span>
+        <span class="chip-sub payment-status" [ngClass]="booking.payment_status === 'captured' ? 'captured' : 'pending'">
+          {{ booking.payment_status | titlecase }}
+        </span>
+      </div>
+      <div class="info-chip" *ngIf="booking.groomer">
+        <span class="chip-icon">✂️</span>
+        <span class="chip-value">{{ booking.groomer?.first_name }}</span>
+      </div>
     </div>
 
     <!-- Pending Change Request Alert -->
@@ -68,7 +97,7 @@
           </div>
         </div>
 
-        <div class="reason-box">
+        <div class="reason-box" *ngIf="pendingChangeRequest.reason">
           <span class="reason-label">Reason:</span>
           <p class="reason-text">{{ pendingChangeRequest.reason }}</p>
         </div>
@@ -78,829 +107,156 @@
         <button
           class="btn btn-approve"
           (click)="approveChangeRequest()"
-          [disabled]="processingChangeRequest"
-        >
+          [disabled]="processingChangeRequest">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          {{ processingChangeRequest ? 'Processing...' : 'Approve Change' }}
+          {{ processingChangeRequest ? 'Processing...' : 'Approve' }}
         </button>
         <button
           class="btn btn-reject"
           (click)="openChangeRequestRejectModal()"
-          [disabled]="processingChangeRequest"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          [disabled]="processingChangeRequest">
           Reject
         </button>
       </div>
     </div>
 
-    <div class="content-grid">
-      <!-- Main Content Column -->
+    <!-- Main Content Grid -->
+    <div class="main-grid">
+      <!-- Left Column: Main Details -->
       <div class="main-column">
-        <!-- Status & Timeline Section -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Status & Timeline</h2>
-            <span class="status-badge" [ngClass]="getStatusBadgeClass(booking.status)">
-              {{ booking.status | titlecase }}
-            </span>
-          </div>
-
-          <!-- Status Actions -->
-          <div class="status-actions" *ngIf="booking.status !== 'cancelled'">
-            <button
-              *ngIf="booking.status === 'pending'"
-              (click)="updateBookingStatus('confirmed')"
-              class="btn btn-status btn-confirm"
-              [disabled]="isUpdatingStatus">
-              {{ isUpdatingStatus ? 'Updating...' : 'Confirm Booking' }}
-            </button>
-            <button
-              *ngIf="booking.status === 'confirmed'"
-              (click)="updateBookingStatus('in_progress')"
-              class="btn btn-status btn-start"
-              [disabled]="isUpdatingStatus">
-              {{ isUpdatingStatus ? 'Updating...' : 'Start Service' }}
-            </button>
-            <button
-              *ngIf="booking.status === 'in_progress'"
-              (click)="updateBookingStatus('completed')"
-              class="btn btn-status btn-complete"
-              [disabled]="isUpdatingStatus">
-              {{ isUpdatingStatus ? 'Updating...' : 'Mark as Completed' }}
-            </button>
-            <button
-              *ngIf="canCancelBooking()"
-              (click)="updateBookingStatus('cancelled')"
-              class="btn btn-status btn-cancel"
-              [disabled]="isUpdatingStatus">
-              Cancel Booking
-            </button>
-          </div>
-
-          <div class="timeline">
-            <div *ngFor="let event of timelineEvents" class="timeline-event">
-              <div class="timeline-icon" [ngClass]="'timeline-' + event.type">
-                {{ event.icon }}
+        <!-- Row 1: Client & Location + Schedule & Status -->
+        <div class="details-grid two-col">
+          <!-- Client & Location -->
+          <div class="compact-card">
+            <div class="compact-header">
+              <h3>Client & Location</h3>
+            </div>
+            <div class="compact-body" *ngIf="booking.client">
+              <div class="client-row">
+                <div class="avatar-small" *ngIf="!booking.client.avatar_url">
+                  {{ booking.client.first_name[0] }}{{ booking.client.last_name[0] }}
+                </div>
+                <img *ngIf="booking.client.avatar_url" [src]="booking.client.avatar_url" alt="Client" class="avatar-img-small">
+                <div class="client-details">
+                  <span class="client-name">{{ booking.client.first_name }} {{ booking.client.last_name }}</span>
+                  <div class="contact-icons">
+                    <a [href]="'mailto:' + booking.client.email" class="contact-link" title="Email">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </a>
+                    <a [href]="'tel:' + booking.client.phone" class="contact-link" title="Phone">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
               </div>
-              <div class="timeline-content">
-                <h4>{{ event.label }}</h4>
-                <p>{{ formatDateTime(event.timestamp) }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Scheduled Time Info -->
-          <div class="scheduled-info" *ngIf="booking.scheduled_date">
-            <div class="info-row">
-              <span class="label">Scheduled Date:</span>
-              <span class="value">{{ formatDate(booking.scheduled_date) }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.shift_preference">
-              <span class="label">Shift Preference:</span>
-              <span class="value">{{ booking.shift_preference | titlecase }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.scheduled_time_start">
-              <span class="label">Scheduled Time:</span>
-              <span class="value">
-                {{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end || '') }}
-              </span>
-            </div>
-            <div class="info-row" *ngIf="booking.assigned_time_slot">
-              <span class="label">Assigned Slot:</span>
-              <span class="value">{{ booking.assigned_time_slot }}</span>
-            </div>
-
-            <!-- Change Time Button (only for confirmed bookings) -->
-            <button
-              *ngIf="booking.status === 'confirmed'"
-              (click)="openTimeChangeModal()"
-              class="btn-change-time">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Change Date/Time
-            </button>
-          </div>
-
-          <!-- Actual Service Time -->
-          <div class="service-time" *ngIf="booking.actual_start_time || booking.actual_end_time">
-            <h3 class="section-subtitle">Actual Service Time</h3>
-            <div class="info-row" *ngIf="booking.actual_start_time">
-              <span class="label">Started:</span>
-              <span class="value">{{ formatDateTime(booking.actual_start_time) }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.actual_end_time">
-              <span class="label">Ended:</span>
-              <span class="value">{{ formatDateTime(booking.actual_end_time) }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.actual_start_time && booking.actual_end_time">
-              <span class="label">Duration:</span>
-              <span class="value">
-                {{ calculateDuration(booking.actual_start_time, booking.actual_end_time) }} minutes
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Client Information -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Client Information</h2>
-          </div>
-          <div class="client-info" *ngIf="booking.client">
-            <div class="avatar-section">
-              <div class="avatar" *ngIf="!booking.client.avatar_url">
-                {{ booking.client.first_name[0] }}{{ booking.client.last_name[0] }}
-              </div>
-              <img *ngIf="booking.client.avatar_url" [src]="booking.client.avatar_url" alt="Client avatar" class="avatar-img">
-              <div>
-                <h3>{{ booking.client.first_name }} {{ booking.client.last_name }}</h3>
-                <p class="text-sm text-gray-600">Client ID: {{ booking.client.id }}</p>
-              </div>
-            </div>
-            <div class="contact-info">
-              <div class="info-row">
-                <span class="label">Email:</span>
-                <a [href]="'mailto:' + booking.client.email" class="value link">{{ booking.client.email }}</a>
-              </div>
-              <div class="info-row">
-                <span class="label">Phone:</span>
-                <a [href]="'tel:' + booking.client.phone" class="value link">{{ booking.client.phone }}</a>
-              </div>
-            </div>
-            <div class="address-info">
-              <h4 class="section-subtitle">Service Address</h4>
-              <p class="address">
-                {{ booking.address }}<br>
-                {{ booking.city }}, {{ booking.state }} {{ booking.zip_code }}
-              </p>
-              <p class="distance" *ngIf="booking.distance_miles">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="address-compact">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {{ booking.distance_miles }} miles from business
-              </p>
+                <span>{{ booking.address }}, {{ booking.city }}</span>
+              </div>
+              <div class="notes-inline" *ngIf="booking.notes && !editMode">
+                <strong>Note:</strong> {{ booking.notes }}
+              </div>
+              <textarea
+                *ngIf="editMode"
+                [(ngModel)]="editingFields.notes"
+                class="notes-textarea-compact"
+                rows="2"
+                placeholder="Booking notes..."></textarea>
             </div>
           </div>
 
-          <!-- Booking Notes (Editable) -->
-          <div class="notes-section">
-            <h4 class="section-subtitle">Booking Notes</h4>
-            <textarea
-              *ngIf="editMode"
-              [(ngModel)]="editingFields.notes"
-              class="notes-textarea"
-              rows="3"
-              placeholder="Add notes about this booking..."></textarea>
-            <p *ngIf="!editMode" class="notes-text">{{ booking.notes || 'No notes provided' }}</p>
-          </div>
-        </div>
-
-        <!-- Pet Information -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Pet Information</h2>
-          </div>
-          <div *ngFor="let petBooking of booking.pets" class="pet-card">
-            <div class="pet-header">
-              <img
-                *ngIf="petBooking.pet?.photo_url"
-                [src]="getPetPhotoUrl(petBooking.pet?.photo_url)"
-                alt="Pet photo"
-                class="pet-photo">
-              <div class="pet-basic-info">
-                <h3>{{ petBooking.pet?.name }}</h3>
-                <p class="pet-breed">{{ petBooking.pet?.breed }}</p>
-                <div class="pet-badges">
-                  <span class="badge" [ngClass]="getSizeBadgeClass(petBooking.service_size)">
-                    {{ petBooking.service_size | uppercase }}
-                  </span>
-                  <span class="badge package-badge" [ngClass]="'package-' + petBooking.package_type">
-                    {{ petBooking.package_type | titlecase }}
-                  </span>
-                </div>
-              </div>
-              <div class="pet-pricing">
-                <div class="price-row">
-                  <span class="label">Package:</span>
-                  <span class="value">${{ petBooking.package_price }}</span>
-                </div>
-                <div class="price-row" *ngIf="petBooking.base_price !== petBooking.package_price">
-                  <span class="label">Base Price:</span>
-                  <span class="value">${{ petBooking.base_price }}</span>
-                </div>
-                <div class="price-row total-price">
-                  <span class="label">Total:</span>
-                  <span class="value">${{ petBooking.total_price }}</span>
-                </div>
-                <!-- Modify Service Button (available until payment is captured) -->
-                <button
-                  *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'"
-                  (click)="openServiceChangeModal(petBooking)"
-                  class="btn-modify-service">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Modify Service
-                </button>
-                <!-- Remove Pet Button (only for multi-pet bookings, before payment captured) -->
-                <button
-                  *ngIf="(booking.pets?.length || 0) > 1 && !booking.payment_captured_at && booking.status !== 'cancelled'"
-                  (click)="openRemovePetModal(petBooking)"
-                  class="btn-remove-pet">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Remove Pet
-                </button>
-              </div>
+          <!-- Schedule & Status -->
+          <div class="compact-card">
+            <div class="compact-header">
+              <h3>Schedule & Status</h3>
+              <span class="status-badge" [ngClass]="getStatusBadgeClass(booking.status)">
+                {{ booking.status | titlecase }}
+              </span>
             </div>
-
-            <!-- Add-ons -->
-            <div *ngIf="petBooking.addons && petBooking.addons.length > 0" class="addons-section">
-              <h4 class="section-subtitle">Add-ons</h4>
-              <div class="addons-list">
-                <div *ngFor="let addon of petBooking.addons" class="addon-item">
-                  <span class="addon-name">{{ addon.addon_name }}</span>
-                  <span class="addon-price">${{ addon.addon_price }}</span>
+            <div class="compact-body">
+              <!-- Horizontal Timeline -->
+              <div class="timeline-horizontal" *ngIf="booking.status !== 'cancelled'">
+                <div class="timeline-step" [class.completed]="isTimelineStepCompleted(0)" [class.current]="isTimelineStepCurrent(0)">
+                  <div class="step-dot">{{ isTimelineStepCompleted(0) ? '✓' : '1' }}</div>
+                  <span class="step-label">Pending</span>
                 </div>
-              </div>
-            </div>
-
-            <!-- Enhanced Pet Health Information -->
-            <div class="pet-health-info">
-              <h4 class="section-subtitle">Health & Behavior</h4>
-
-              <div class="health-grid">
-                <!-- Age -->
-                <div class="health-item" *ngIf="petBooking.pet?.age">
-                  <span class="health-label">Age:</span>
-                  <span class="health-value">{{ petBooking.pet?.age }}</span>
+                <div class="timeline-step" [class.completed]="isTimelineStepCompleted(1)" [class.current]="isTimelineStepCurrent(1)">
+                  <div class="step-dot">{{ isTimelineStepCompleted(1) ? '✓' : '2' }}</div>
+                  <span class="step-label">Confirmed</span>
                 </div>
-
-                <!-- Friendly Status -->
-                <div class="health-item">
-                  <span class="health-label">Friendly:</span>
-                  <span class="health-value" [ngClass]="petBooking.pet?.is_friendly ? 'text-green-600' : 'text-red-600'">
-                    {{ petBooking.pet?.is_friendly ? 'Yes ✓' : 'No ✗' }}
-                  </span>
+                <div class="timeline-step" [class.completed]="isTimelineStepCompleted(2)" [class.current]="isTimelineStepCurrent(2)">
+                  <div class="step-dot">{{ isTimelineStepCompleted(2) ? '✓' : '3' }}</div>
+                  <span class="step-label">In Progress</span>
                 </div>
-
-                <!-- Allergies -->
-                <div class="health-item">
-                  <span class="health-label">Allergies:</span>
-                  <span class="health-value" [ngClass]="petBooking.pet?.has_allergies ? 'text-orange-600' : 'text-green-600'">
-                    {{ petBooking.pet?.has_allergies ? 'Yes' : 'None' }}
-                  </span>
-                </div>
-                <div class="health-detail" *ngIf="petBooking.pet?.has_allergies && petBooking.pet?.allergy_details">
-                  <p class="detail-text">{{ petBooking.pet?.allergy_details }}</p>
-                </div>
-
-                <!-- Skin Conditions -->
-                <div class="health-item">
-                  <span class="health-label">Skin Conditions:</span>
-                  <span class="health-value" [ngClass]="petBooking.pet?.has_skin_conditions ? 'text-orange-600' : 'text-green-600'">
-                    {{ petBooking.pet?.has_skin_conditions ? 'Yes' : 'None' }}
-                  </span>
-                </div>
-                <div class="health-detail" *ngIf="petBooking.pet?.has_skin_conditions && petBooking.pet?.skin_condition_details">
-                  <p class="detail-text">{{ petBooking.pet?.skin_condition_details }}</p>
-                </div>
-
-                <!-- Behavioral Issues -->
-                <div class="health-item">
-                  <span class="health-label">Behavioral Issues:</span>
-                  <span class="health-value" [ngClass]="petBooking.pet?.has_behavioral_issues ? 'text-orange-600' : 'text-green-600'">
-                    {{ petBooking.pet?.has_behavioral_issues ? 'Yes' : 'None' }}
-                  </span>
-                </div>
-                <div class="health-detail" *ngIf="petBooking.pet?.has_behavioral_issues && petBooking.pet?.behavioral_issue_details">
-                  <p class="detail-text">{{ petBooking.pet?.behavioral_issue_details }}</p>
-                </div>
-
-                <!-- Reactions -->
-                <div class="health-item" *ngIf="petBooking.pet?.blow_dryer_reaction">
-                  <span class="health-label">Blow Dryer Reaction:</span>
-                  <span class="health-value">{{ petBooking.pet?.blow_dryer_reaction | titlecase }}</span>
-                </div>
-
-                <div class="health-item" *ngIf="petBooking.pet?.water_reaction">
-                  <span class="health-label">Water Reaction:</span>
-                  <span class="health-value">{{ petBooking.pet?.water_reaction | titlecase }}</span>
+                <div class="timeline-step" [class.completed]="isTimelineStepCompleted(3)" [class.current]="isTimelineStepCurrent(3)">
+                  <div class="step-dot">{{ isTimelineStepCompleted(3) ? '✓' : '4' }}</div>
+                  <span class="step-label">Complete</span>
                 </div>
               </div>
 
-              <!-- Additional Notes -->
-              <div class="pet-notes" *ngIf="petBooking.pet?.additional_notes || petBooking.pet?.special_notes">
-                <h5 class="notes-label">Additional Notes:</h5>
-                <p class="notes-text">{{ petBooking.pet?.additional_notes || petBooking.pet?.special_notes }}</p>
-              </div>
-
-              <!-- Pet-specific booking notes -->
-              <div class="pet-notes" *ngIf="petBooking.notes">
-                <h5 class="notes-label">Booking-specific Notes:</h5>
-                <p class="notes-text">{{ petBooking.notes }}</p>
-              </div>
-
-              <!-- Rabies Certificate -->
-              <div class="certificate-section" *ngIf="petBooking.pet?.rabies_certificate_url">
-                <button
-                  (click)="viewRabiesCertificate(petBooking.pet?.rabies_certificate_url!)"
-                  class="certificate-link">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  View Rabies Certificate
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Service Details -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Service Details</h2>
-          </div>
-          <div class="service-details">
-            <div class="info-row">
-              <span class="label">Service Name:</span>
-              <span class="value">{{ booking.service_name || 'Grooming Service' }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.service_description">
-              <span class="label">Description:</span>
-              <span class="value">{{ booking.service_description }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.service_duration">
-              <span class="label">Estimated Duration:</span>
-              <span class="value">{{ booking.service_duration }} minutes</span>
-            </div>
-            <div class="info-row" *ngIf="booking.rush_service">
-              <span class="label">Rush Service:</span>
-              <span class="value text-orange-600">Yes (+${{ booking.rush_fee }})</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payment Information -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Payment Information</h2>
-            <span class="status-badge" [ngClass]="booking.payment_status === 'authorized' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'">
-              {{ booking.payment_status | titlecase }}
-            </span>
-          </div>
-
-          <div class="payment-details">
-            <!-- Pricing Breakdown -->
-            <div class="price-breakdown">
-              <div class="price-row">
-                <span class="label">Original Subtotal:</span>
-                <span class="value">${{ booking.original_subtotal }}</span>
-              </div>
-              <div class="price-row" *ngIf="booking.discount_amount && booking.discount_amount > 0">
-                <span class="label text-green-600">Discount:</span>
-                <span class="value text-green-600">-${{ booking.discount_amount }}</span>
-              </div>
-              <div class="price-row">
-                <span class="label">Subtotal Before Tax:</span>
-                <span class="value">${{ booking.subtotal_before_tax }}</span>
-              </div>
-              <div class="price-row">
-                <span class="label">Tax ({{ booking.tax_rate ? (booking.tax_rate * 100).toFixed(2) + '%' : 'Tax' }}):</span>
-                <span class="value">${{ booking.tax_amount }}</span>
-              </div>
-              <div class="price-row">
-                <span class="label">Service Fee:</span>
-                <span class="value">${{ booking.service_fee }}</span>
-              </div>
-              <div class="price-row">
-                <span class="label">Processing Fee:</span>
-                <span class="value">${{ booking.processing_fee }}</span>
-              </div>
-              <div class="price-row total">
-                <span class="label">Total Amount:</span>
-                <span class="value">${{ booking.total_amount }}</span>
-              </div>
-              <div class="price-row" *ngIf="booking.tip_amount && booking.tip_amount > 0">
-                <span class="label">Tip:</span>
-                <span class="value">${{ booking.tip_amount }}</span>
-              </div>
-            </div>
-
-            <!-- Payment Method -->
-            <div class="payment-method" *ngIf="booking.payment_method_type">
-              <h4 class="section-subtitle">Payment Method</h4>
-              <div class="info-row">
-                <span class="label">Type:</span>
-                <span class="value">{{ booking.payment_method_type | titlecase }}</span>
-              </div>
-              <div class="info-row" *ngIf="booking.payment_method_last4">
-                <span class="label">Last 4 Digits:</span>
-                <span class="value">•••• {{ booking.payment_method_last4 }}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">Currency:</span>
-                <span class="value">{{ booking.currency?.toUpperCase() || 'USD' }}</span>
-              </div>
-            </div>
-
-            <!-- Transaction IDs -->
-            <div class="transaction-ids">
-              <h4 class="section-subtitle">Transaction Details</h4>
-              <div class="info-row" *ngIf="booking.payment_intent_id">
-                <span class="label">Payment Intent:</span>
-                <span class="value code">{{ booking.payment_intent_id }}</span>
-              </div>
-              <div class="info-row" *ngIf="booking.stripe_charge_id">
-                <span class="label">Charge ID:</span>
-                <span class="value code">{{ booking.stripe_charge_id }}</span>
-              </div>
-              <div class="info-row" *ngIf="booking.stripe_customer_id">
-                <span class="label">Customer ID:</span>
-                <span class="value code">{{ booking.stripe_customer_id }}</span>
-              </div>
-              <div class="info-row" *ngIf="booking.tip_payment_intent_id">
-                <span class="label">Tip Payment Intent:</span>
-                <span class="value code">{{ booking.tip_payment_intent_id }}</span>
-              </div>
-            </div>
-
-            <!-- Payment Status Section -->
-            <div class="payment-status-section">
-              <h4 class="section-subtitle">Payment Status</h4>
-
-              <!-- Success/Error Messages -->
-              <div *ngIf="paymentSuccess" class="alert alert-success">
-                {{ paymentSuccess }}
-              </div>
-              <div *ngIf="paymentError" class="alert alert-error">
-                {{ paymentError }}
-              </div>
-
-              <!-- Payment Captured -->
-              <div *ngIf="booking.payment_captured_at" class="payment-status-card captured">
-                <div class="status-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="status-details">
-                  <span class="status-label">Payment Captured</span>
-                  <span class="status-date">{{ booking.payment_captured_at | date:'medium' }}</span>
-                  <span class="status-amount">${{ booking.total_amount }}</span>
-                </div>
-                <!-- Add Tip Button -->
-                <button
-                  *ngIf="!booking.tip_amount && booking.payment_method_id"
-                  (click)="openTipModal()"
-                  class="btn btn-add-tip">
-                  Add Tip
-                </button>
-              </div>
-
-              <!-- Payment NOT Captured -->
-              <div *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'" class="payment-status-card pending">
-                <div class="status-icon warning">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="status-details">
-                  <span class="status-label">Payment Pending</span>
-                  <span class="status-info" *ngIf="booking.payment_status === 'card_saved'">Card on file - ready to charge</span>
-                  <span class="status-info" *ngIf="booking.payment_status !== 'card_saved'">Status: {{ booking.payment_status }}</span>
-                  <span class="status-amount">${{ booking.total_amount }}</span>
-                </div>
-                <!-- Capture Payment Button -->
-                <button
-                  *ngIf="booking.payment_status === 'card_saved' && booking.status === 'completed'"
-                  (click)="openCaptureModal()"
-                  class="btn btn-capture-payment"
-                  [disabled]="isCapturingPayment">
-                  {{ isCapturingPayment ? 'Processing...' : 'Capture Payment' }}
-                </button>
-                <span *ngIf="booking.status !== 'completed' && booking.payment_status === 'card_saved'" class="status-note">
-                  Complete the booking to capture payment
-                </span>
-              </div>
-
-              <!-- Cancelled Booking -->
-              <div *ngIf="booking.status === 'cancelled' && !booking.payment_captured_at" class="payment-status-card cancelled">
-                <div class="status-icon cancelled">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="status-details">
-                  <span class="status-label">Booking Cancelled</span>
-                  <span class="status-info">No payment captured</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Groomer Earnings Breakdown -->
-            <div class="earnings-breakdown" *ngIf="earningsBreakdown">
-              <h4 class="section-subtitle">Groomer Earnings Breakdown</h4>
-
-              <div class="earnings-grid">
-                <div class="earnings-row">
-                  <span class="label">Service Gross:</span>
-                  <span class="value">${{ earningsBreakdown.service_amount_gross?.toFixed(2) }}</span>
-                </div>
-                <div class="earnings-row">
-                  <span class="label">Stripe Fee:</span>
-                  <span class="value text-red">-${{ earningsBreakdown.service_stripe_fee?.toFixed(2) }}</span>
-                </div>
-                <div class="earnings-row">
-                  <span class="label">Commission ({{ (earningsBreakdown.commission_rate * 100).toFixed(0) }}%):</span>
-                  <span class="value">${{ earningsBreakdown.service_commission?.toFixed(2) }}</span>
-                </div>
-                <div class="earnings-row" *ngIf="earningsBreakdown.tip_amount > 0">
-                  <span class="label">Tip (Net of fees):</span>
-                  <span class="value text-green">${{ earningsBreakdown.tip_amount_net?.toFixed(2) }}</span>
-                </div>
-                <div class="earnings-row total">
-                  <span class="label">Total Groomer Payout:</span>
-                  <span class="value">${{ earningsBreakdown.groomer_amount?.toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Capture Payment Modal -->
-        <div class="modal-overlay" *ngIf="showCaptureModal" (click)="closeCaptureModal()">
-          <div class="capture-modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h3>Capture Payment</h3>
-              <button class="modal-close" (click)="closeCaptureModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
+              <!-- Cancelled status -->
+              <div *ngIf="booking.status === 'cancelled'" class="cancelled-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
-            </div>
+                Cancelled {{ booking.cancelled_at ? 'on ' + formatDate(booking.cancelled_at) : '' }}
+              </div>
 
-            <div class="modal-body">
-              <p class="modal-description">Capture the payment for this completed service. You can optionally add a tip amount.</p>
-
-              <div class="payment-summary">
-                <div class="summary-row">
-                  <span class="summary-label">Service Amount:</span>
-                  <span class="summary-value">${{ captureAmount.toFixed(2) }}</span>
+              <!-- Schedule Info -->
+              <div class="schedule-info">
+                <div class="schedule-row">
+                  <span class="schedule-label">Date:</span>
+                  <span class="schedule-value">{{ formatDate(booking.scheduled_date) }}</span>
                 </div>
-                <div class="summary-row tip-row">
-                  <span class="summary-label">Tip Amount:</span>
-                  <div class="tip-input-wrapper">
-                    <span class="currency-prefix">$</span>
-                    <input
-                      type="number"
-                      [(ngModel)]="captureTipAmount"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      class="tip-input">
-                  </div>
-                </div>
-                <div class="summary-row total-row">
-                  <span class="summary-label">Total to Capture:</span>
-                  <span class="summary-value total">${{ (captureAmount + (captureTipAmount || 0)).toFixed(2) }}</span>
+                <div class="schedule-row" *ngIf="booking.scheduled_time_start">
+                  <span class="schedule-label">Time:</span>
+                  <span class="schedule-value">{{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end || '') }}</span>
                 </div>
               </div>
 
-              <div *ngIf="paymentError" class="alert alert-error">
-                {{ paymentError }}
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button (click)="closeCaptureModal()" class="btn btn-secondary">Cancel</button>
-              <button
-                (click)="capturePayment()"
-                [disabled]="isCapturingPayment"
-                class="btn btn-capture-confirm">
-                {{ isCapturingPayment ? 'Processing...' : 'Capture $' + (captureAmount + (captureTipAmount || 0)).toFixed(2) }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tip Modal -->
-        <div class="modal-overlay" *ngIf="showTipModal" (click)="closeTipModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <h3>Add Tip</h3>
-            <p>Enter the tip amount to charge to the client's card.</p>
-
-            <div class="form-group">
-              <label>Tip Amount ($)</label>
-              <input
-                type="number"
-                [(ngModel)]="tipAmount"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                class="form-input">
-            </div>
-
-            <div *ngIf="paymentError" class="alert alert-error">
-              {{ paymentError }}
-            </div>
-
-            <div class="modal-actions">
-              <button (click)="closeTipModal()" class="btn btn-secondary">Cancel</button>
-              <button
-                (click)="processTip()"
-                [disabled]="isProcessingTip || tipAmount <= 0"
-                class="btn btn-primary">
-                {{ isProcessingTip ? 'Processing...' : 'Charge Tip' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Groomer Assignment (for pending bookings without groomer) -->
-        <div class="card groomer-assignment-card" *ngIf="booking.status === 'pending' && !booking.groomer">
-          <div class="card-header">
-            <h2>Assign Groomer</h2>
-            <span class="status-badge bg-yellow-100 text-yellow-800">Needs Assignment</span>
-          </div>
-
-          <div class="assignment-container">
-            <p class="assignment-description">
-              This booking is pending groomer assignment. Select a date, groomer, and time slot to approve and confirm the booking.
-            </p>
-
-            <button
-              *ngIf="!showAssignmentForm"
-              (click)="showGroomerAssignment()"
-              class="btn-assign">
-              Assign Groomer & Approve Booking
-            </button>
-
-            <!-- Assignment Form -->
-            <div *ngIf="showAssignmentForm" class="assignment-form">
-              <!-- Date Selection -->
-              <div class="form-group">
-                <label class="form-label">Scheduled Date</label>
-                <input
-                  type="date"
-                  [(ngModel)]="selectedDate"
-                  [min]="minDate"
-                  [max]="maxDate"
-                  (change)="onDateChange()"
-                  class="form-input"
-                  required>
-              </div>
-
-              <!-- Groomer Selection -->
-              <div class="form-group">
-                <label class="form-label">Select Groomer</label>
-                <select
-                  [(ngModel)]="selectedGroomerId"
-                  class="form-select"
-                  [disabled]="!selectedDate || availableGroomers.length === 0"
-                  required>
-                  <option value="">-- Choose a groomer --</option>
-                  <option *ngFor="let groomer of availableGroomers" [value]="groomer.id">
-                    {{ groomer.first_name }} {{ groomer.last_name }}
-                  </option>
-                </select>
-                <p *ngIf="selectedDate && availableGroomers.length === 0" class="form-help-text text-red-600">
-                  No groomers available for this date
-                </p>
-              </div>
-
-              <!-- Time Slot Selection -->
-              <div class="form-group">
-                <div class="time-slot-header">
-                  <label class="form-label">Select Time Slot</label>
-                  <button
-                    type="button"
-                    (click)="toggleCustomTimeSlot()"
-                    class="custom-time-toggle"
-                    [disabled]="!selectedGroomerId">
-                    {{ useCustomTimeSlot ? 'Use Predefined Slots' : 'Enter Custom Time' }}
-                  </button>
-                </div>
-
-                <!-- Predefined Time Slots (shown when NOT in custom mode) -->
-                <div *ngIf="!useCustomTimeSlot">
-                  <div class="time-slots-section">
-                    <h4 class="shift-title">Morning Shift (8:30 AM - 12:15 PM)</h4>
-                    <div class="time-slots-grid">
-                      <button
-                        *ngFor="let slot of morningSlots"
-                        (click)="selectTimeSlot(slot)"
-                        [class.selected]="selectedTimeSlot?.start === slot.start"
-                        [disabled]="!selectedGroomerId"
-                        class="time-slot-btn">
-                        {{ slot.label }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="time-slots-section">
-                    <h4 class="shift-title">Afternoon Shift (1:00 PM - 5:00 PM)</h4>
-                    <div class="time-slots-grid">
-                      <button
-                        *ngFor="let slot of afternoonSlots"
-                        (click)="selectTimeSlot(slot)"
-                        [class.selected]="selectedTimeSlot?.start === slot.start"
-                        [disabled]="!selectedGroomerId"
-                        class="time-slot-btn">
-                        {{ slot.label }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Custom Time Input (shown when in custom mode) -->
-                <div *ngIf="useCustomTimeSlot" class="custom-time-section">
-                  <div class="custom-time-header">
-                    <p class="custom-time-description">Enter a custom time range for this booking.</p>
-                    <button
-                      type="button"
-                      (click)="toggleTimeHelp()"
-                      class="time-help-btn">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Accepted Formats
-                    </button>
-                  </div>
-
-                  <!-- Help Modal -->
-                  <div *ngIf="showTimeHelp" class="time-help-modal">
-                    <div class="time-help-content">
-                      <h4>Accepted Time Formats</h4>
-                      <ul>
-                        <li><code>930am</code> or <code>9:30am</code> or <code>9:30 AM</code></li>
-                        <li><code>1230pm</code> or <code>12:30pm</code> or <code>12:30 PM</code></li>
-                        <li><code>930</code> (will auto-detect AM/PM based on business hours)</li>
-                        <li><code>12.30pm</code> (dots work too)</li>
-                      </ul>
-                      <button type="button" (click)="toggleTimeHelp()" class="time-help-close">Got it</button>
-                    </div>
-                  </div>
-
-                  <div class="custom-time-inputs">
-                    <div class="time-input-group">
-                      <label>Start Time</label>
-                      <input
-                        type="text"
-                        [(ngModel)]="customStartTime"
-                        (blur)="onCustomStartTimeBlur()"
-                        placeholder="e.g., 930am"
-                        class="form-input time-input"
-                        [disabled]="!selectedGroomerId">
-                    </div>
-                    <div class="time-input-group">
-                      <label>End Time</label>
-                      <input
-                        type="text"
-                        [(ngModel)]="customEndTime"
-                        (blur)="onCustomEndTimeBlur()"
-                        placeholder="e.g., 1100am"
-                        class="form-input time-input"
-                        [disabled]="!selectedGroomerId">
-                    </div>
-                  </div>
-
-                  <!-- Show formatted time when valid -->
-                  <div *ngIf="isCustomTimeValid()" class="custom-time-display">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{{ customStartTime }} - {{ customEndTime }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Action Buttons -->
-              <div class="form-actions">
+              <!-- Status Actions -->
+              <div class="status-actions-compact" *ngIf="booking.status !== 'cancelled'">
                 <button
-                  (click)="assignGroomerAndApprove()"
-                  [disabled]="!selectedDate || !selectedGroomerId || (!selectedTimeSlot && (!useCustomTimeSlot || !isCustomTimeValid())) || assigningGroomer"
-                  class="btn-approve">
-                  {{ assigningGroomer ? 'Approving...' : 'Approve Booking' }}
+                  *ngIf="booking.status === 'pending'"
+                  (click)="updateBookingStatus('confirmed')"
+                  class="btn-action btn-confirm"
+                  [disabled]="isUpdatingStatus">
+                  {{ isUpdatingStatus ? '...' : 'Confirm' }}
                 </button>
                 <button
-                  (click)="openRejectDialog()"
-                  class="btn-reject">
-                  Reject Booking
+                  *ngIf="booking.status === 'confirmed'"
+                  (click)="updateBookingStatus('in_progress')"
+                  class="btn-action btn-start"
+                  [disabled]="isUpdatingStatus">
+                  {{ isUpdatingStatus ? '...' : 'Start' }}
                 </button>
                 <button
-                  (click)="hideAssignmentForm()"
-                  class="btn-cancel-assignment">
+                  *ngIf="booking.status === 'in_progress'"
+                  (click)="updateBookingStatus('completed')"
+                  class="btn-action btn-complete"
+                  [disabled]="isUpdatingStatus">
+                  {{ isUpdatingStatus ? '...' : 'Complete' }}
+                </button>
+                <button
+                  *ngIf="booking.status === 'confirmed'"
+                  (click)="openTimeChangeModal()"
+                  class="btn-action btn-change-time-small">
+                  Change Time
+                </button>
+                <button
+                  *ngIf="canCancelBooking()"
+                  (click)="updateBookingStatus('cancelled')"
+                  class="btn-action btn-cancel-small"
+                  [disabled]="isUpdatingStatus">
                   Cancel
                 </button>
               </div>
@@ -908,73 +264,310 @@
           </div>
         </div>
 
-        <!-- Groomer Information -->
-        <div class="card" *ngIf="booking.groomer">
-          <div class="card-header">
-            <h2>Groomer Information</h2>
+        <!-- Row 2: Pets & Services -->
+        <div class="pets-section">
+          <div class="section-header-compact">
+            <h3>Pets & Services</h3>
+            <span class="pet-count">{{ booking.pets?.length }} pet{{ (booking.pets?.length || 0) > 1 ? 's' : '' }}</span>
           </div>
-          <div class="groomer-info">
-            <div class="avatar-section">
-              <div class="avatar" *ngIf="!booking.groomer.avatar_url">
-                {{ booking.groomer.first_name[0] }}{{ booking.groomer.last_name[0] }}
+          <div class="pets-grid">
+            <div class="pet-card-compact" *ngFor="let petBooking of booking.pets">
+              <!-- Pet Top Row -->
+              <div class="pet-top">
+                <img
+                  *ngIf="petBooking.pet?.photo_url"
+                  [src]="getPetPhotoUrl(petBooking.pet?.photo_url)"
+                  alt="Pet photo"
+                  class="pet-photo-small">
+                <div class="pet-placeholder" *ngIf="!petBooking.pet?.photo_url">
+                  🐾
+                </div>
+                <div class="pet-info-compact">
+                  <span class="pet-name">{{ petBooking.pet?.name }}</span>
+                  <span class="pet-breed">{{ petBooking.pet?.breed }}</span>
+                  <div class="pet-badges-compact">
+                    <span class="badge-small" [ngClass]="getSizeBadgeClass(petBooking.service_size)">
+                      {{ petBooking.service_size | uppercase }}
+                    </span>
+                    <span class="badge-small package-badge" [ngClass]="'package-' + petBooking.package_type">
+                      {{ petBooking.package_type | titlecase }}
+                    </span>
+                  </div>
+                </div>
+                <div class="pet-price-compact">
+                  <span class="price-amount">${{ petBooking.total_price }}</span>
+                </div>
               </div>
-              <img *ngIf="booking.groomer.avatar_url" [src]="booking.groomer.avatar_url" alt="Groomer avatar" class="avatar-img">
-              <div>
-                <h3>{{ booking.groomer.first_name }} {{ booking.groomer.last_name }}</h3>
-                <p class="text-sm text-gray-600">Groomer ID: {{ booking.groomer.id }}</p>
-              </div>
-            </div>
-            <div class="contact-info">
-              <div class="info-row">
-                <span class="label">Email:</span>
-                <a [href]="'mailto:' + booking.groomer.email" class="value link">{{ booking.groomer.email }}</a>
-              </div>
-              <div class="info-row">
-                <span class="label">Phone:</span>
-                <a [href]="'tel:' + booking.groomer.phone" class="value link">{{ booking.groomer.phone }}</a>
-              </div>
-            </div>
-          </div>
 
-          <!-- Groomer Notes (Editable) -->
-          <div class="notes-section">
-            <h4 class="section-subtitle">Groomer Notes</h4>
-            <textarea
-              *ngIf="editMode"
-              [(ngModel)]="editingFields.groomer_notes"
-              class="notes-textarea"
-              rows="3"
-              placeholder="Add groomer notes..."></textarea>
-            <p *ngIf="!editMode" class="notes-text">{{ booking.groomer_notes || 'No groomer notes' }}</p>
+              <!-- Add-ons inline -->
+              <div class="addons-inline" *ngIf="petBooking.addons && petBooking.addons.length > 0">
+                <span class="addon-tag" *ngFor="let addon of petBooking.addons">
+                  {{ addon.addon_name }} +${{ addon.addon_price }}
+                </span>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="pet-actions" *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'">
+                <button (click)="openServiceChangeModal(petBooking)" class="btn-pet-action">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Modify
+                </button>
+                <button
+                  *ngIf="(booking.pets?.length || 0) > 1"
+                  (click)="openRemovePetModal(petBooking)"
+                  class="btn-pet-action btn-remove">
+                  Remove
+                </button>
+              </div>
+
+              <!-- Expand/Collapse Health Details -->
+              <button class="expand-btn" (click)="togglePetExpansion(petBooking.id)">
+                {{ isPetExpanded(petBooking.id) ? 'Hide Details ▲' : 'Health & Details ▼' }}
+              </button>
+
+              <!-- Collapsible Health Details -->
+              <div class="pet-health-collapsed" [class.expanded]="isPetExpanded(petBooking.id)">
+                <div class="health-grid-compact">
+                  <div class="health-item-compact" *ngIf="petBooking.pet?.age">
+                    <span class="hl">Age:</span>
+                    <span class="hv">{{ petBooking.pet?.age }}</span>
+                  </div>
+                  <div class="health-item-compact">
+                    <span class="hl">Friendly:</span>
+                    <span class="hv" [class.positive]="petBooking.pet?.is_friendly" [class.negative]="!petBooking.pet?.is_friendly">
+                      {{ petBooking.pet?.is_friendly ? 'Yes' : 'No' }}
+                    </span>
+                  </div>
+                  <div class="health-item-compact">
+                    <span class="hl">Allergies:</span>
+                    <span class="hv" [class.warning]="petBooking.pet?.has_allergies">
+                      {{ petBooking.pet?.has_allergies ? 'Yes' : 'None' }}
+                    </span>
+                  </div>
+                  <div class="health-item-compact">
+                    <span class="hl">Skin Issues:</span>
+                    <span class="hv" [class.warning]="petBooking.pet?.has_skin_conditions">
+                      {{ petBooking.pet?.has_skin_conditions ? 'Yes' : 'None' }}
+                    </span>
+                  </div>
+                  <div class="health-item-compact">
+                    <span class="hl">Behavioral:</span>
+                    <span class="hv" [class.warning]="petBooking.pet?.has_behavioral_issues">
+                      {{ petBooking.pet?.has_behavioral_issues ? 'Yes' : 'None' }}
+                    </span>
+                  </div>
+                  <div class="health-item-compact" *ngIf="petBooking.pet?.blow_dryer_reaction">
+                    <span class="hl">Dryer:</span>
+                    <span class="hv">{{ petBooking.pet?.blow_dryer_reaction }}</span>
+                  </div>
+                </div>
+
+                <!-- Detail notes -->
+                <div class="health-notes" *ngIf="petBooking.pet?.allergy_details">
+                  <strong>Allergies:</strong> {{ petBooking.pet?.allergy_details }}
+                </div>
+                <div class="health-notes" *ngIf="petBooking.pet?.skin_condition_details">
+                  <strong>Skin:</strong> {{ petBooking.pet?.skin_condition_details }}
+                </div>
+                <div class="health-notes" *ngIf="petBooking.pet?.behavioral_issue_details">
+                  <strong>Behavior:</strong> {{ petBooking.pet?.behavioral_issue_details }}
+                </div>
+                <div class="health-notes" *ngIf="petBooking.pet?.additional_notes || petBooking.pet?.special_notes">
+                  <strong>Notes:</strong> {{ petBooking.pet?.additional_notes || petBooking.pet?.special_notes }}
+                </div>
+
+                <!-- Rabies Certificate -->
+                <button
+                  *ngIf="petBooking.pet?.rabies_certificate_url"
+                  (click)="viewRabiesCertificate(petBooking.pet?.rabies_certificate_url!)"
+                  class="certificate-link-compact">
+                  📄 View Rabies Certificate
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Before/After Photos (per pet) -->
-        <div class="card" *ngIf="hasAnyPetPhotos()">
-          <div class="card-header">
-            <h2>Service Photos</h2>
+        <!-- Row 3: Payment + Groomer -->
+        <div class="details-grid two-col">
+          <!-- Payment -->
+          <div class="compact-card">
+            <div class="compact-header">
+              <h3>Payment</h3>
+              <span class="status-badge payment-badge" [ngClass]="booking.payment_captured_at ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                {{ booking.payment_captured_at ? 'Captured' : booking.payment_status | titlecase }}
+              </span>
+            </div>
+            <div class="compact-body">
+              <!-- Price Breakdown Compact -->
+              <div class="price-breakdown-compact">
+                <div class="price-row-compact">
+                  <span>Subtotal</span>
+                  <span>${{ booking.original_subtotal }}</span>
+                </div>
+                <div class="price-row-compact" *ngIf="booking.discount_amount && booking.discount_amount > 0">
+                  <span class="text-green-600">Discount</span>
+                  <span class="text-green-600">-${{ booking.discount_amount }}</span>
+                </div>
+                <div class="price-row-compact">
+                  <span>Tax</span>
+                  <span>${{ booking.tax_amount }}</span>
+                </div>
+                <div class="price-row-compact">
+                  <span>Fees</span>
+                  <span>${{ (booking.service_fee || 0) + (booking.processing_fee || 0) }}</span>
+                </div>
+                <div class="price-row-compact total">
+                  <span>Total</span>
+                  <span>${{ booking.total_amount }}</span>
+                </div>
+                <div class="price-row-compact" *ngIf="booking.tip_amount && booking.tip_amount > 0">
+                  <span>Tip</span>
+                  <span class="text-purple-600">${{ booking.tip_amount }}</span>
+                </div>
+              </div>
+
+              <!-- Success/Error Messages -->
+              <div *ngIf="paymentSuccess" class="alert alert-success">{{ paymentSuccess }}</div>
+              <div *ngIf="paymentError" class="alert alert-error">{{ paymentError }}</div>
+
+              <!-- Payment Actions -->
+              <div class="payment-actions-compact">
+                <button
+                  *ngIf="!booking.payment_captured_at && booking.payment_status === 'card_saved' && booking.status === 'completed'"
+                  (click)="openCaptureModal()"
+                  class="btn-capture-compact"
+                  [disabled]="isCapturingPayment">
+                  {{ isCapturingPayment ? 'Processing...' : 'Capture Payment' }}
+                </button>
+                <button
+                  *ngIf="booking.payment_captured_at && !booking.tip_amount && booking.payment_method_id"
+                  (click)="openTipModal()"
+                  class="btn-tip-compact">
+                  Add Tip
+                </button>
+                <span *ngIf="booking.payment_captured_at" class="captured-at">
+                  Captured {{ booking.payment_captured_at | date:'short' }}
+                </span>
+              </div>
+
+              <!-- Earnings Breakdown (if captured) -->
+              <div *ngIf="earningsBreakdown" class="earnings-compact">
+                <div class="earnings-title">Groomer Payout</div>
+                <div class="earnings-amount">${{ earningsBreakdown.groomer_amount?.toFixed(2) }}</div>
+              </div>
+            </div>
           </div>
 
-          <div class="photos-section">
-            <div *ngFor="let petBooking of booking.pets" class="pet-photos-group">
-              <div *ngIf="petBooking.before_photo_url || petBooking.after_photo_url">
-                <h4 class="section-subtitle pet-photo-title">{{ petBooking.pet?.name || 'Pet' }}</h4>
-                <div class="photo-grid before-after-grid">
-                  <div *ngIf="petBooking.before_photo_url" class="photo-item">
-                    <span class="photo-label">Before</span>
-                    <img
-                      [src]="petBooking.before_photo_url"
-                      alt="Before photo"
-                      class="photo-thumbnail"
-                      (click)="openPhotoGallery(petBooking.before_photo_url!)">
+          <!-- Groomer or Assignment -->
+          <div class="compact-card">
+            <div class="compact-header">
+              <h3>{{ booking.groomer ? 'Groomer' : 'Assignment' }}</h3>
+              <span *ngIf="!booking.groomer && booking.status === 'pending'" class="status-badge bg-yellow-100 text-yellow-800">
+                Needs Assignment
+              </span>
+            </div>
+            <div class="compact-body">
+              <!-- Groomer Info -->
+              <div *ngIf="booking.groomer" class="groomer-info-compact">
+                <div class="groomer-row">
+                  <div class="avatar-small" *ngIf="!booking.groomer.avatar_url">
+                    {{ booking.groomer.first_name[0] }}{{ booking.groomer.last_name[0] }}
                   </div>
-                  <div *ngIf="petBooking.after_photo_url" class="photo-item">
-                    <span class="photo-label">After</span>
-                    <img
-                      [src]="petBooking.after_photo_url"
-                      alt="After photo"
-                      class="photo-thumbnail"
-                      (click)="openPhotoGallery(petBooking.after_photo_url!)">
+                  <img *ngIf="booking.groomer.avatar_url" [src]="booking.groomer.avatar_url" alt="Groomer" class="avatar-img-small">
+                  <div class="groomer-details">
+                    <span class="groomer-name">{{ booking.groomer.first_name }} {{ booking.groomer.last_name }}</span>
+                    <div class="contact-icons">
+                      <a [href]="'mailto:' + booking.groomer.email" class="contact-link" title="Email">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </a>
+                      <a [href]="'tel:' + booking.groomer.phone" class="contact-link" title="Phone">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                <!-- Groomer Notes -->
+                <div class="groomer-notes" *ngIf="booking.groomer_notes && !editMode">
+                  <strong>Notes:</strong> {{ booking.groomer_notes }}
+                </div>
+                <textarea
+                  *ngIf="editMode"
+                  [(ngModel)]="editingFields.groomer_notes"
+                  class="notes-textarea-compact"
+                  rows="2"
+                  placeholder="Groomer notes..."></textarea>
+              </div>
+
+              <!-- Assignment Button (no groomer) -->
+              <div *ngIf="!booking.groomer && booking.status === 'pending' && !showAssignmentForm" class="no-groomer">
+                <p>This booking needs a groomer assigned.</p>
+                <button (click)="showGroomerAssignment()" class="btn-assign-compact">
+                  Assign Groomer
+                </button>
+              </div>
+
+              <!-- Assignment Form (inline compact version) -->
+              <div *ngIf="showAssignmentForm" class="assignment-form-compact">
+                <div class="form-row">
+                  <label>Date</label>
+                  <input type="date" [(ngModel)]="selectedDate" [min]="minDate" [max]="maxDate" (change)="onDateChange()" class="form-input-compact">
+                </div>
+                <div class="form-row">
+                  <label>Groomer</label>
+                  <select [(ngModel)]="selectedGroomerId" class="form-select-compact" [disabled]="!selectedDate || availableGroomers.length === 0">
+                    <option value="">Select...</option>
+                    <option *ngFor="let g of availableGroomers" [value]="g.id">{{ g.first_name }} {{ g.last_name }}</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label>Time Slot</label>
+                  <div class="time-slots-compact">
+                    <button *ngFor="let slot of morningSlots" (click)="selectTimeSlot(slot)" [class.selected]="selectedTimeSlot?.start === slot.start" [disabled]="!selectedGroomerId" class="slot-btn-compact">
+                      {{ slot.label.split(' - ')[0] }}
+                    </button>
+                    <button *ngFor="let slot of afternoonSlots" (click)="selectTimeSlot(slot)" [class.selected]="selectedTimeSlot?.start === slot.start" [disabled]="!selectedGroomerId" class="slot-btn-compact">
+                      {{ slot.label.split(' - ')[0] }}
+                    </button>
+                  </div>
+                </div>
+                <div class="assignment-actions">
+                  <button (click)="assignGroomerAndApprove()" [disabled]="!selectedDate || !selectedGroomerId || !selectedTimeSlot || assigningGroomer" class="btn-approve-compact">
+                    {{ assigningGroomer ? 'Approving...' : 'Approve' }}
+                  </button>
+                  <button (click)="openRejectDialog()" class="btn-reject-compact">Reject</button>
+                  <button (click)="hideAssignmentForm()" class="btn-cancel-compact">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Photos (if any) -->
+        <div class="compact-card" *ngIf="hasAnyPetPhotos()">
+          <div class="compact-header">
+            <h3>Service Photos</h3>
+          </div>
+          <div class="compact-body">
+            <div class="photos-grid-compact">
+              <div *ngFor="let petBooking of booking.pets" class="pet-photos-inline">
+                <div *ngIf="petBooking.before_photo_url || petBooking.after_photo_url" class="photo-pair">
+                  <span class="photo-pet-name">{{ petBooking.pet?.name }}</span>
+                  <div class="photo-thumbnails">
+                    <div *ngIf="petBooking.before_photo_url" class="photo-thumb" (click)="openPhotoGallery(petBooking.before_photo_url!)">
+                      <img [src]="petBooking.before_photo_url" alt="Before">
+                      <span class="photo-label">Before</span>
+                    </div>
+                    <div *ngIf="petBooking.after_photo_url" class="photo-thumb" (click)="openPhotoGallery(petBooking.after_photo_url!)">
+                      <img [src]="petBooking.after_photo_url" alt="After">
+                      <span class="photo-label">After</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -983,24 +576,20 @@
         </div>
 
         <!-- Cancellation Info -->
-        <div class="card alert-card" *ngIf="booking.cancelled_at">
-          <div class="card-header">
-            <h2>Cancellation Information</h2>
+        <div class="compact-card alert-card" *ngIf="booking.cancelled_at">
+          <div class="compact-header">
+            <h3>Cancellation</h3>
           </div>
-          <div class="cancellation-info">
-            <div class="info-row">
-              <span class="label">Cancelled At:</span>
-              <span class="value">{{ formatDateTime(booking.cancelled_at) }}</span>
-            </div>
-            <div class="info-row" *ngIf="booking.cancellation_reason">
-              <span class="label">Reason:</span>
-              <span class="value">{{ booking.cancellation_reason }}</span>
+          <div class="compact-body">
+            <div class="cancellation-info-compact">
+              <p><strong>Cancelled:</strong> {{ formatDateTime(booking.cancelled_at) }}</p>
+              <p *ngIf="booking.cancellation_reason"><strong>Reason:</strong> {{ booking.cancellation_reason }}</p>
             </div>
           </div>
         </div>
 
         <!-- Save Changes Button (Edit Mode) -->
-        <div *ngIf="editMode" class="edit-actions">
+        <div *ngIf="editMode" class="edit-actions-compact">
           <button (click)="saveChanges()" class="btn-save">Save Changes</button>
           <button (click)="toggleEditMode()" class="btn-cancel">Cancel</button>
         </div>
@@ -1009,73 +598,63 @@
       <!-- Sidebar Column -->
       <div class="sidebar-column">
         <!-- Admin Notes -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Admin Notes</h2>
+        <div class="compact-card sidebar-card">
+          <div class="compact-header">
+            <h3>Admin Notes</h3>
           </div>
-
-          <!-- Add Note Form -->
-          <div class="add-note-form">
-            <textarea
-              [(ngModel)]="newNote"
-              placeholder="Add an internal note..."
-              class="note-input"
-              rows="3"></textarea>
-            <div class="note-form-footer">
-              <select [(ngModel)]="newNotePriority" class="priority-select">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <button
-                (click)="saveNote()"
-                [disabled]="!newNote.trim() || savingNote"
-                class="btn-add-note">
-                {{ savingNote ? 'Saving...' : 'Add Note' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Notes List -->
-          <div class="notes-list">
-            <div *ngFor="let note of adminNotes" class="note-item">
-              <div class="note-header">
-                <span class="note-author">
-                  {{ note.admin?.first_name }} {{ note.admin?.last_name }}
-                </span>
-                <span class="note-priority" [ngClass]="getPriorityBadgeClass(note.priority || 'medium')">
-                  {{ note.priority || 'medium' }}
-                </span>
-              </div>
-              <p class="note-content">{{ note.note }}</p>
-              <div class="note-footer">
-                <span class="note-date">{{ formatDateTime(note.created_at) }}</span>
-                <button (click)="deleteNote(note.id)" class="btn-delete-note">Delete</button>
+          <div class="compact-body">
+            <!-- Add Note Form -->
+            <div class="add-note-compact">
+              <textarea
+                [(ngModel)]="newNote"
+                placeholder="Add note..."
+                class="note-input-compact"
+                rows="2"></textarea>
+              <div class="note-form-footer-compact">
+                <select [(ngModel)]="newNotePriority" class="priority-select-compact">
+                  <option value="low">Low</option>
+                  <option value="medium">Med</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <button (click)="saveNote()" [disabled]="!newNote.trim() || savingNote" class="btn-add-note-compact">
+                  {{ savingNote ? '...' : 'Add' }}
+                </button>
               </div>
             </div>
-            <p *ngIf="adminNotes.length === 0" class="no-notes">No admin notes yet</p>
+
+            <!-- Notes List -->
+            <div class="notes-list-compact">
+              <div *ngFor="let note of adminNotes" class="note-item-compact">
+                <div class="note-header-compact">
+                  <span class="note-author-compact">{{ note.admin?.first_name }}</span>
+                  <span class="note-priority-compact" [ngClass]="getPriorityBadgeClass(note.priority || 'medium')">
+                    {{ note.priority }}
+                  </span>
+                </div>
+                <p class="note-content-compact">{{ note.note }}</p>
+                <div class="note-footer-compact">
+                  <span class="note-date-compact">{{ formatDateTime(note.created_at) }}</span>
+                  <button (click)="deleteNote(note.id)" class="btn-delete-note-compact">×</button>
+                </div>
+              </div>
+              <p *ngIf="adminNotes.length === 0" class="no-notes-compact">No notes yet</p>
+            </div>
           </div>
         </div>
 
         <!-- Activity Log -->
-        <div class="card" *ngIf="modifications.length > 0">
-          <div class="card-header">
-            <h2>Activity Log</h2>
+        <div class="compact-card sidebar-card" *ngIf="modifications.length > 0">
+          <div class="compact-header">
+            <h3>Activity</h3>
           </div>
-          <div class="activity-list">
-            <div *ngFor="let mod of modifications" class="activity-item">
-              <div class="activity-header">
-                <span class="activity-type">{{ mod.modification_type | titlecase }}</span>
-                <span class="activity-date">{{ formatDateTime(mod.created_at) }}</span>
-              </div>
-              <p *ngIf="mod.modified_by" class="activity-user">
-                By: {{ mod.modified_by.first_name }} {{ mod.modified_by.last_name }}
-              </p>
-              <p *ngIf="mod.reason" class="activity-reason">{{ mod.reason }}</p>
-              <div *ngIf="mod.price_change !== 0" class="activity-price">
-                Price Change: <span [ngClass]="mod.price_change > 0 ? 'text-green-600' : 'text-red-600'">
-                  {{ mod.price_change > 0 ? '+' : '' }}${{ mod.price_change }}
+          <div class="compact-body">
+            <div class="activity-list-compact">
+              <div *ngFor="let mod of modifications" class="activity-item-compact">
+                <span class="activity-type-compact">{{ mod.modification_type | titlecase }}</span>
+                <span class="activity-date-compact">{{ formatDateTime(mod.created_at) }}</span>
+                <span *ngIf="mod.modified_by" class="activity-user-compact">
+                  by {{ mod.modified_by.first_name }}
                 </span>
               </div>
             </div>
@@ -1097,25 +676,20 @@
         </button>
       </div>
       <div class="reject-dialog-body">
-        <p class="reject-warning">Are you sure you want to reject this booking? This action cannot be undone.</p>
+        <p class="reject-warning">Are you sure you want to reject this booking?</p>
         <label class="form-label">Rejection Reason (required)</label>
         <textarea
           [(ngModel)]="rejectionReason"
           class="rejection-textarea"
-          rows="4"
-          placeholder="Please provide a reason for rejecting this booking..."
+          rows="3"
+          placeholder="Please provide a reason..."
           required></textarea>
       </div>
       <div class="reject-dialog-footer">
-        <button
-          (click)="confirmReject()"
-          [disabled]="!rejectionReason.trim()"
-          class="btn-confirm-reject">
+        <button (click)="confirmReject()" [disabled]="!rejectionReason.trim()" class="btn-confirm-reject">
           Confirm Rejection
         </button>
-        <button (click)="closeRejectDialog()" class="btn-cancel-dialog">
-          Cancel
-        </button>
+        <button (click)="closeRejectDialog()" class="btn-cancel-dialog">Cancel</button>
       </div>
     </div>
   </div>
@@ -1146,7 +720,7 @@
   <div *ngIf="showChangeRequestRejectModal" class="reject-dialog-overlay" (click)="closeChangeRequestRejectModal()">
     <div class="reject-dialog" (click)="$event.stopPropagation()">
       <div class="reject-dialog-header">
-        <h3>Reject Time Change Request</h3>
+        <h3>Reject Time Change</h3>
         <button (click)="closeChangeRequestRejectModal()" class="dialog-close">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1154,23 +728,78 @@
         </button>
       </div>
       <div class="reject-dialog-body">
-        <p class="reject-warning">Are you sure you want to reject this time change request? The customer will be notified of your decision.</p>
-        <label class="form-label">Reason for Rejection (optional)</label>
+        <p class="reject-warning">Reject this time change request?</p>
+        <label class="form-label">Reason (optional)</label>
         <textarea
           [(ngModel)]="changeRequestRejectReason"
           class="rejection-textarea"
-          rows="4"
-          placeholder="Provide a reason for rejecting this request (e.g., groomer unavailable, time slot conflicts)..."></textarea>
+          rows="3"
+          placeholder="Provide a reason..."></textarea>
       </div>
       <div class="reject-dialog-footer">
-        <button
-          (click)="confirmRejectChangeRequest()"
-          [disabled]="processingChangeRequest"
-          class="btn-confirm-reject">
+        <button (click)="confirmRejectChangeRequest()" [disabled]="processingChangeRequest" class="btn-confirm-reject">
           {{ processingChangeRequest ? 'Processing...' : 'Confirm Rejection' }}
         </button>
-        <button (click)="closeChangeRequestRejectModal()" class="btn-cancel-dialog">
-          Cancel
+        <button (click)="closeChangeRequestRejectModal()" class="btn-cancel-dialog">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Capture Payment Modal -->
+  <div class="modal-overlay" *ngIf="showCaptureModal" (click)="closeCaptureModal()">
+    <div class="capture-modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Capture Payment</h3>
+        <button class="modal-close" (click)="closeCaptureModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="payment-summary">
+          <div class="summary-row">
+            <span class="summary-label">Service Amount:</span>
+            <span class="summary-value">${{ captureAmount.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row tip-row">
+            <span class="summary-label">Tip (optional):</span>
+            <div class="tip-input-wrapper">
+              <span class="currency-prefix">$</span>
+              <input type="number" [(ngModel)]="captureTipAmount" min="0" step="0.01" placeholder="0.00" class="tip-input">
+            </div>
+          </div>
+          <div class="summary-row total-row">
+            <span class="summary-label">Total:</span>
+            <span class="summary-value total">${{ (captureAmount + (captureTipAmount || 0)).toFixed(2) }}</span>
+          </div>
+        </div>
+        <div *ngIf="paymentError" class="alert alert-error">{{ paymentError }}</div>
+      </div>
+      <div class="modal-footer">
+        <button (click)="closeCaptureModal()" class="btn btn-secondary">Cancel</button>
+        <button (click)="capturePayment()" [disabled]="isCapturingPayment" class="btn btn-capture-confirm">
+          {{ isCapturingPayment ? 'Processing...' : 'Capture $' + (captureAmount + (captureTipAmount || 0)).toFixed(2) }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tip Modal -->
+  <div class="modal-overlay" *ngIf="showTipModal" (click)="closeTipModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>Add Tip</h3>
+      <p>Enter the tip amount to charge.</p>
+      <div class="form-group">
+        <label>Tip Amount ($)</label>
+        <input type="number" [(ngModel)]="tipAmount" min="0" step="0.01" placeholder="0.00" class="form-input">
+      </div>
+      <div *ngIf="paymentError" class="alert alert-error">{{ paymentError }}</div>
+      <div class="modal-actions">
+        <button (click)="closeTipModal()" class="btn btn-secondary">Cancel</button>
+        <button (click)="processTip()" [disabled]="isProcessingTip || tipAmount <= 0" class="btn btn-primary">
+          {{ isProcessingTip ? 'Processing...' : 'Charge Tip' }}
         </button>
       </div>
     </div>
@@ -1180,168 +809,43 @@
   <div *ngIf="showTimeChangeModal" class="time-change-overlay" (click)="closeTimeChangeModal()">
     <div class="time-change-dialog" (click)="$event.stopPropagation()">
       <div class="time-change-dialog-header">
-        <h3>Change Booking Date/Time</h3>
+        <h3>Change Booking Time</h3>
         <button (click)="closeTimeChangeModal()" class="dialog-close">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-
       <div class="time-change-dialog-body">
-        <!-- Current Schedule Display -->
         <div class="current-schedule-box">
-          <h4 class="current-schedule-title">Current Schedule</h4>
-          <div class="current-schedule-info">
-            <div class="schedule-detail">
-              <span class="schedule-label">Date:</span>
-              <span class="schedule-value">{{ formatDate(booking?.scheduled_date || '') }}</span>
-            </div>
-            <div class="schedule-detail">
-              <span class="schedule-label">Time:</span>
-              <span class="schedule-value">
-                {{ formatTime(booking?.scheduled_time_start || '') }} - {{ formatTime(booking?.scheduled_time_end || '') }}
-              </span>
-            </div>
-          </div>
+          <h4 class="current-schedule-title">Current</h4>
+          <p>{{ formatDate(booking?.scheduled_date || '') }}, {{ formatTime(booking?.scheduled_time_start || '') }}</p>
         </div>
-
-        <!-- New Date Selection -->
         <div class="form-group">
-          <label class="form-label">New Date *</label>
-          <input
-            type="date"
-            [(ngModel)]="newScheduledDate"
-            [min]="minDate"
-            [max]="maxDate"
-            class="form-input"
-            required>
+          <label class="form-label">New Date</label>
+          <input type="date" [(ngModel)]="newScheduledDate" [min]="minDate" [max]="maxDate" class="form-input">
         </div>
-
-        <!-- Time Slot Selection -->
         <div class="form-group" *ngIf="newScheduledDate">
-          <div class="time-slot-header">
-            <label class="form-label">New Time Slot *</label>
-            <button
-              type="button"
-              (click)="toggleCustomTimeSlotForChange()"
-              class="custom-time-toggle">
-              {{ useCustomTimeSlotForChange ? 'Use Predefined Slots' : 'Enter Custom Time' }}
+          <label class="form-label">New Time</label>
+          <div class="time-slots-grid">
+            <button *ngFor="let slot of morningSlots" (click)="selectNewTimeSlot(slot)" [class.selected]="newTimeSlot?.start === slot.start" class="time-slot-btn">
+              {{ slot.label }}
+            </button>
+            <button *ngFor="let slot of afternoonSlots" (click)="selectNewTimeSlot(slot)" [class.selected]="newTimeSlot?.start === slot.start" class="time-slot-btn">
+              {{ slot.label }}
             </button>
           </div>
-
-          <!-- Predefined Time Slots (shown when NOT in custom mode) -->
-          <div *ngIf="!useCustomTimeSlotForChange">
-            <div class="time-slots-section">
-              <h4 class="shift-title">Morning Shift</h4>
-              <div class="time-slots-grid">
-                <button
-                  *ngFor="let slot of morningSlots"
-                  (click)="selectNewTimeSlot(slot)"
-                  [class.selected]="newTimeSlot?.start === slot.start"
-                  class="time-slot-btn">
-                  {{ slot.label }}
-                </button>
-              </div>
-            </div>
-
-            <div class="time-slots-section">
-              <h4 class="shift-title">Afternoon Shift</h4>
-              <div class="time-slots-grid">
-                <button
-                  *ngFor="let slot of afternoonSlots"
-                  (click)="selectNewTimeSlot(slot)"
-                  [class.selected]="newTimeSlot?.start === slot.start"
-                  class="time-slot-btn">
-                  {{ slot.label }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Custom Time Input (shown when in custom mode) -->
-          <div *ngIf="useCustomTimeSlotForChange" class="custom-time-section">
-            <div class="custom-time-header">
-              <p class="custom-time-description">Enter a custom time range for this booking.</p>
-              <button
-                type="button"
-                (click)="toggleTimeHelpForChange()"
-                class="time-help-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Accepted Formats
-              </button>
-            </div>
-
-            <!-- Help Modal -->
-            <div *ngIf="showTimeHelpForChange" class="time-help-modal">
-              <div class="time-help-content">
-                <h4>Accepted Time Formats</h4>
-                <ul>
-                  <li><code>930am</code> or <code>9:30am</code> or <code>9:30 AM</code></li>
-                  <li><code>1230pm</code> or <code>12:30pm</code> or <code>12:30 PM</code></li>
-                  <li><code>930</code> (will auto-detect AM/PM based on business hours)</li>
-                  <li><code>12.30pm</code> (dots work too)</li>
-                </ul>
-                <button type="button" (click)="toggleTimeHelpForChange()" class="time-help-close">Got it</button>
-              </div>
-            </div>
-
-            <div class="custom-time-inputs">
-              <div class="time-input-group">
-                <label>Start Time</label>
-                <input
-                  type="text"
-                  [(ngModel)]="customStartTimeForChange"
-                  (blur)="onCustomStartTimeForChangeBlur()"
-                  placeholder="e.g., 930am"
-                  class="form-input time-input">
-              </div>
-              <div class="time-input-group">
-                <label>End Time</label>
-                <input
-                  type="text"
-                  [(ngModel)]="customEndTimeForChange"
-                  (blur)="onCustomEndTimeForChangeBlur()"
-                  placeholder="e.g., 1100am"
-                  class="form-input time-input">
-              </div>
-            </div>
-
-            <!-- Show formatted time when valid -->
-            <div *ngIf="isCustomTimeForChangeValid()" class="custom-time-display">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{{ customStartTimeForChange }} - {{ customEndTimeForChange }}</span>
-            </div>
-          </div>
         </div>
-
-        <!-- Reason (Required) -->
         <div class="form-group">
-          <label class="form-label">Reason for Change *</label>
-          <textarea
-            [(ngModel)]="timeChangeReason"
-            class="reason-textarea"
-            rows="3"
-            placeholder="Explain why the booking time is being changed (e.g., customer requested change, scheduling conflict)..."
-            required></textarea>
-          <p class="form-help-text">This reason will be included in the notification emails sent to the customer and groomer.</p>
+          <label class="form-label">Reason</label>
+          <textarea [(ngModel)]="timeChangeReason" class="reason-textarea" rows="2" placeholder="Reason for change..." required></textarea>
         </div>
       </div>
-
       <div class="time-change-dialog-footer">
-        <button
-          (click)="confirmTimeChange()"
-          [disabled]="!newScheduledDate || (!newTimeSlot && (!useCustomTimeSlotForChange || !isCustomTimeForChangeValid())) || !timeChangeReason.trim() || savingTimeChange"
-          class="btn-confirm-change">
-          {{ savingTimeChange ? 'Saving...' : 'Confirm Change & Notify' }}
+        <button (click)="confirmTimeChange()" [disabled]="!newScheduledDate || !newTimeSlot || !timeChangeReason.trim() || savingTimeChange" class="btn-confirm-change">
+          {{ savingTimeChange ? 'Saving...' : 'Save & Notify' }}
         </button>
-        <button (click)="closeTimeChangeModal()" class="btn-cancel-dialog">
-          Cancel
-        </button>
+        <button (click)="closeTimeChangeModal()" class="btn-cancel-dialog">Cancel</button>
       </div>
     </div>
   </div>
@@ -1350,198 +854,62 @@
   <div *ngIf="showServiceChangeModal" class="service-change-overlay" (click)="closeServiceChangeModal()">
     <div class="service-change-dialog" (click)="$event.stopPropagation()">
       <div class="service-change-dialog-header">
-        <h3>Modify Service for {{ selectedPetForServiceChange?.pet?.name }}</h3>
+        <h3>Modify {{ selectedPetForServiceChange?.pet?.name }}'s Service</h3>
         <button (click)="closeServiceChangeModal()" class="dialog-close">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-
       <div class="service-change-dialog-body">
-        <!-- Current Service Display -->
         <div class="current-service-box">
-          <h4 class="current-service-title">Current Service</h4>
-          <div class="current-service-info">
-            <div class="service-detail">
-              <span class="service-label">Package:</span>
-              <span class="service-value">{{ getPackageName(selectedPetForServiceChange?.package_type || 'basic') }}</span>
-            </div>
-            <div class="service-detail">
-              <span class="service-label">Size:</span>
-              <span class="service-value">{{ selectedPetForServiceChange?.service_size | uppercase }}</span>
-            </div>
-            <div class="service-detail">
-              <span class="service-label">Current Total:</span>
-              <span class="service-value">${{ selectedPetForServiceChange?.total_price }}</span>
-            </div>
-          </div>
+          <h4 class="current-service-title">Current</h4>
+          <p>{{ getPackageName(selectedPetForServiceChange?.package_type || 'basic') }} - ${{ selectedPetForServiceChange?.total_price }}</p>
         </div>
-
-        <!-- Package Selection -->
         <div class="form-group">
-          <label class="form-label">Select New Package *</label>
+          <label class="form-label">Package</label>
           <div class="package-selection-grid">
-            <button
-              *ngFor="let pkg of servicePackages"
-              (click)="selectPackage(pkg.id)"
-              [class.selected]="newPackageType === pkg.id"
-              class="package-option-btn">
+            <button *ngFor="let pkg of servicePackages" (click)="selectPackage(pkg.id)" [class.selected]="newPackageType === pkg.id" class="package-option-btn">
               <span class="package-icon">{{ pkg.icon }}</span>
               <span class="package-name">{{ pkg.name }}</span>
               <span class="package-price">${{ packagePrices[pkg.id][selectedPetForServiceChange?.service_size || 'medium'] }}</span>
             </button>
           </div>
         </div>
-
-        <!-- Add-ons Selection -->
         <div class="form-group">
           <label class="form-label">Add-ons</label>
-          <p class="form-help-text" *ngIf="newPackageType === 'basic'">Some add-ons are only available with Royal Groom or Royal Spa packages.</p>
           <div class="addons-selection-grid">
-            <div
-              *ngFor="let addon of getFilteredAddons()"
-              (click)="toggleAddon(addon)"
-              [class.selected]="isAddonSelected(addon)"
-              class="addon-option">
+            <div *ngFor="let addon of getFilteredAddons()" (click)="toggleAddon(addon)" [class.selected]="isAddonSelected(addon)" class="addon-option">
               <div class="addon-checkbox">
                 <svg *ngIf="isAddonSelected(addon)" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                 </svg>
               </div>
-              <div class="addon-info">
-                <span class="addon-name">{{ addon.name }}</span>
-                <span class="addon-price" *ngIf="!addon.is_percentage">${{ getAddonPriceForSize(addon) }}</span>
-                <span class="addon-price" *ngIf="addon.is_percentage">+{{ addon.percentage }}%</span>
-              </div>
+              <span class="addon-name">{{ addon.name }}</span>
+              <span class="addon-price">${{ getAddonPriceForSize(addon) }}</span>
             </div>
           </div>
         </div>
-
-        <!-- Discount Management Section -->
-        <div class="form-group" *ngIf="currentDiscountAmount > 0 || discountOption !== 'keep'">
-          <label class="form-label">Discount Management</label>
-          <p class="form-help-text">Current discount: ${{ currentDiscountAmount.toFixed(2) }} ({{ currentDiscountPercentage.toFixed(1) }}%)</p>
-
-          <div class="discount-options-grid">
-            <div
-              (click)="discountOption = 'keep'"
-              [class.selected]="discountOption === 'keep'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="discountOption === 'keep'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Keep Existing</span>
-                <span class="option-desc">Maintain ${{ currentDiscountAmount.toFixed(2) }} discount</span>
-              </div>
-            </div>
-
-            <div
-              (click)="discountOption = 'recalculate'"
-              [class.selected]="discountOption === 'recalculate'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="discountOption === 'recalculate'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Recalculate ({{ currentDiscountPercentage.toFixed(1) }}%)</span>
-                <span class="option-desc">Apply same percentage to new subtotal</span>
-              </div>
-            </div>
-
-            <div
-              (click)="discountOption = 'custom'"
-              [class.selected]="discountOption === 'custom'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="discountOption === 'custom'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Custom Amount</span>
-                <div class="custom-input" *ngIf="discountOption === 'custom'">
-                  <span class="currency-prefix">$</span>
-                  <input
-                    type="number"
-                    [(ngModel)]="customDiscountAmount"
-                    min="0"
-                    step="0.01"
-                    class="discount-input">
-                </div>
-              </div>
-            </div>
-
-            <div
-              (click)="discountOption = 'remove'"
-              [class.selected]="discountOption === 'remove'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="discountOption === 'remove'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Remove Discount</span>
-                <span class="option-desc">No discount applied</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Price Summary -->
         <div class="price-summary-box">
-          <h4 class="price-summary-title">Price Summary</h4>
-          <div class="price-summary-details">
-            <div class="summary-row">
-              <span class="summary-label">Package Price:</span>
-              <span class="summary-value">${{ calculateNewPackagePrice() }}</span>
-            </div>
-            <div class="summary-row" *ngIf="selectedAddons.length > 0">
-              <span class="summary-label">Add-ons:</span>
-              <span class="summary-value">${{ calculateNewAddonsTotal() }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="summary-label">New Pet Total:</span>
-              <span class="summary-value">${{ calculateNewPetTotal() }}</span>
-            </div>
-            <div class="summary-row discount-row" *ngIf="getCalculatedDiscount() > 0">
-              <span class="summary-label text-green-600">Discount:</span>
-              <span class="summary-value text-green-600">-${{ getCalculatedDiscount().toFixed(2) }}</span>
-            </div>
-            <div class="summary-row total-row">
-              <span class="summary-label">New Booking Total:</span>
-              <span class="summary-value">${{ calculateNewBookingTotal().toFixed(2) }}</span>
-            </div>
-            <div class="summary-row difference-row" [ngClass]="calculateBookingTotalDifference() >= 0 ? 'increase' : 'decrease'">
-              <span class="summary-label">Total Difference:</span>
-              <span class="summary-value">
-                {{ calculateBookingTotalDifference() >= 0 ? '+' : '' }}${{ calculateBookingTotalDifference().toFixed(2) }}
-              </span>
-            </div>
+          <div class="summary-row">
+            <span>New Pet Total:</span>
+            <span>${{ calculateNewPetTotal() }}</span>
+          </div>
+          <div class="summary-row total-row" [ngClass]="calculatePriceDifference() >= 0 ? 'increase' : 'decrease'">
+            <span>Difference:</span>
+            <span>{{ calculatePriceDifference() >= 0 ? '+' : '' }}${{ calculatePriceDifference().toFixed(2) }}</span>
           </div>
         </div>
-
-        <!-- Reason (Required) -->
         <div class="form-group">
-          <label class="form-label">Reason for Change *</label>
-          <textarea
-            [(ngModel)]="serviceChangeReason"
-            class="reason-textarea"
-            rows="3"
-            placeholder="Explain why the service is being changed (e.g., customer requested upgrade, adding treatment)..."
-            required></textarea>
-          <p class="form-help-text">This reason will be included in the notification email sent to the customer.</p>
+          <label class="form-label">Reason</label>
+          <textarea [(ngModel)]="serviceChangeReason" class="reason-textarea" rows="2" placeholder="Reason for change..." required></textarea>
         </div>
       </div>
-
       <div class="service-change-dialog-footer">
-        <button
-          (click)="confirmServiceChange()"
-          [disabled]="!serviceChangeReason.trim() || savingServiceChange"
-          class="btn-confirm-change">
-          {{ savingServiceChange ? 'Saving...' : 'Confirm Change & Notify Customer' }}
+        <button (click)="confirmServiceChange()" [disabled]="!serviceChangeReason.trim() || savingServiceChange" class="btn-confirm-change">
+          {{ savingServiceChange ? 'Saving...' : 'Save & Notify' }}
         </button>
-        <button (click)="closeServiceChangeModal()" class="btn-cancel-dialog">
-          Cancel
-        </button>
+        <button (click)="closeServiceChangeModal()" class="btn-cancel-dialog">Cancel</button>
       </div>
     </div>
   </div>
@@ -1550,139 +918,44 @@
   <div *ngIf="showRemovePetModal" class="service-change-overlay" (click)="closeRemovePetModal()">
     <div class="service-change-dialog remove-pet-dialog" (click)="$event.stopPropagation()">
       <div class="service-change-dialog-header">
-        <h3>Remove {{ petToRemove?.pet?.name }} from Booking</h3>
+        <h3>Remove {{ petToRemove?.pet?.name }}</h3>
         <button (click)="closeRemovePetModal()" class="dialog-close">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-
       <div class="service-change-dialog-body">
-        <!-- Warning Banner -->
         <div class="remove-pet-warning">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <p>This will permanently remove <strong>{{ petToRemove?.pet?.name }}</strong> and their services from this booking.</p>
+          <p>This will remove <strong>{{ petToRemove?.pet?.name }}</strong> from the booking.</p>
         </div>
-
-        <!-- Pet Being Removed -->
-        <div class="current-service-box">
-          <h4 class="current-service-title">Pet Being Removed</h4>
-          <div class="current-service-info">
-            <div class="service-detail">
-              <span class="service-label">Pet:</span>
-              <span class="service-value">{{ petToRemove?.pet?.name }} ({{ petToRemove?.pet?.breed }})</span>
-            </div>
-            <div class="service-detail">
-              <span class="service-label">Package:</span>
-              <span class="service-value">{{ getPackageName(petToRemove?.package_type || 'basic') }}</span>
-            </div>
-            <div class="service-detail">
-              <span class="service-label">Pet Total:</span>
-              <span class="service-value">${{ petToRemove?.total_price }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Discount Management Section -->
-        <div class="form-group" *ngIf="currentDiscountAmount > 0">
-          <label class="form-label">Discount Management</label>
-          <p class="form-help-text">Current discount: ${{ currentDiscountAmount.toFixed(2) }} ({{ currentDiscountPercentage.toFixed(1) }}%)</p>
-
-          <div class="discount-options-grid">
-            <div
-              (click)="removePetDiscountOption = 'keep'"
-              [class.selected]="removePetDiscountOption === 'keep'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="removePetDiscountOption === 'keep'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Keep Existing</span>
-                <span class="option-desc">Maintain ${{ currentDiscountAmount.toFixed(2) }} discount</span>
-              </div>
-            </div>
-
-            <div
-              (click)="removePetDiscountOption = 'recalculate'"
-              [class.selected]="removePetDiscountOption === 'recalculate'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="removePetDiscountOption === 'recalculate'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Recalculate ({{ currentDiscountPercentage.toFixed(1) }}%)</span>
-                <span class="option-desc">Apply same percentage to new subtotal</span>
-              </div>
-            </div>
-
-            <div
-              (click)="removePetDiscountOption = 'remove'"
-              [class.selected]="removePetDiscountOption === 'remove'"
-              class="discount-option">
-              <div class="option-radio">
-                <span *ngIf="removePetDiscountOption === 'remove'" class="radio-dot"></span>
-              </div>
-              <div class="option-info">
-                <span class="option-name">Remove Discount</span>
-                <span class="option-desc">No discount applied</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Price Summary -->
         <div class="price-summary-box">
-          <h4 class="price-summary-title">New Booking Total</h4>
-          <div class="price-summary-details">
-            <div class="summary-row">
-              <span class="summary-label">Current Total:</span>
-              <span class="summary-value">${{ booking?.total_amount }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="summary-label">Removing:</span>
-              <span class="summary-value text-red-600">-${{ petToRemove?.total_price }}</span>
-            </div>
-            <div class="summary-row discount-row" *ngIf="calculateRemovePetDiscount() > 0">
-              <span class="summary-label text-green-600">New Discount:</span>
-              <span class="summary-value text-green-600">-${{ calculateRemovePetDiscount().toFixed(2) }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="summary-label">New Tax (8.25%):</span>
-              <span class="summary-value">${{ calculateRemovePetTax().toFixed(2) }}</span>
-            </div>
-            <div class="summary-row total-row">
-              <span class="summary-label">New Total:</span>
-              <span class="summary-value">${{ calculateRemovePetNewTotal().toFixed(2) }}</span>
-            </div>
+          <div class="summary-row">
+            <span>Current Total:</span>
+            <span>${{ booking?.total_amount }}</span>
+          </div>
+          <div class="summary-row">
+            <span>Removing:</span>
+            <span class="text-red-600">-${{ petToRemove?.total_price }}</span>
+          </div>
+          <div class="summary-row total-row">
+            <span>New Total:</span>
+            <span>${{ calculateRemovePetNewTotal().toFixed(2) }}</span>
           </div>
         </div>
-
-        <!-- Reason (Required) -->
         <div class="form-group">
-          <label class="form-label">Reason for Removal *</label>
-          <textarea
-            [(ngModel)]="removePetReason"
-            class="reason-textarea"
-            rows="3"
-            placeholder="Explain why this pet is being removed from the booking (e.g., pet was not available, behavior issues, customer request)..."
-            required></textarea>
-          <p class="form-help-text">This reason will be logged for audit purposes.</p>
+          <label class="form-label">Reason</label>
+          <textarea [(ngModel)]="removePetReason" class="reason-textarea" rows="2" placeholder="Reason for removal..." required></textarea>
         </div>
       </div>
-
       <div class="service-change-dialog-footer">
-        <button
-          (click)="confirmRemovePet()"
-          [disabled]="!removePetReason.trim() || isRemovingPet"
-          class="btn-confirm-remove">
-          {{ isRemovingPet ? 'Removing...' : 'Remove Pet & Update Booking' }}
+        <button (click)="confirmRemovePet()" [disabled]="!removePetReason.trim() || isRemovingPet" class="btn-confirm-remove">
+          {{ isRemovingPet ? 'Removing...' : 'Remove Pet' }}
         </button>
-        <button (click)="closeRemovePetModal()" class="btn-cancel-dialog">
-          Cancel
-        </button>
+        <button (click)="closeRemovePetModal()" class="btn-cancel-dialog">Cancel</button>
       </div>
     </div>
   </div>

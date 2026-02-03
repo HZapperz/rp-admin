@@ -163,6 +163,9 @@ export class BookingDetailsComponent implements OnInit {
   // Status management
   isUpdatingStatus = false;
 
+  // Pet expansion state for collapsible health details
+  expandedPets: Set<string> = new Set();
+
   // Payment management
   isCapturingPayment = false;
   isProcessingTip = false;
@@ -453,6 +456,46 @@ export class BookingDetailsComponent implements OnInit {
   hasAnyPetPhotos(): boolean {
     if (!this.booking?.pets) return false;
     return this.booking.pets.some(pet => pet.before_photo_url || pet.after_photo_url);
+  }
+
+  // Toggle pet health details expansion
+  togglePetExpansion(petId: string) {
+    if (this.expandedPets.has(petId)) {
+      this.expandedPets.delete(petId);
+    } else {
+      this.expandedPets.add(petId);
+    }
+  }
+
+  isPetExpanded(petId: string): boolean {
+    return this.expandedPets.has(petId);
+  }
+
+  // Format date for quick info bar (shorter format)
+  formatDateShort(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString + 'T00:00:00Z');
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC'
+    });
+  }
+
+  // Get status step number for horizontal timeline
+  getStatusStepNumber(): number {
+    const statusOrder = ['pending', 'confirmed', 'in_progress', 'completed'];
+    const index = statusOrder.indexOf(this.booking?.status || 'pending');
+    return index >= 0 ? index : 0;
+  }
+
+  isTimelineStepCompleted(stepIndex: number): boolean {
+    return stepIndex < this.getStatusStepNumber() ||
+           (stepIndex === this.getStatusStepNumber() && this.booking?.status === 'completed');
+  }
+
+  isTimelineStepCurrent(stepIndex: number): boolean {
+    return stepIndex === this.getStatusStepNumber() && this.booking?.status !== 'completed';
   }
 
   toggleEditMode() {
