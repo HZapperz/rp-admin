@@ -136,36 +136,29 @@
   }
 
   .card-input-wrapper {
-    display: flex;
-    align-items: center;
-    background: #f9fafb;
-    border: 2px solid #e5e7eb;
+    background: white;
+    border: 2px solid #d1d5db;
     border-radius: 12px;
-    padding: 1rem;
+    padding: 1rem 1rem 1rem 1rem;
     transition: all 0.2s;
+    min-height: 50px;
 
     &:focus-within {
       border-color: #667eea;
-      background: white;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    .card-icon {
-      flex-shrink: 0;
-      margin-right: 0.75rem;
-      color: #9ca3af;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
     }
 
     #payment-element-container {
-      flex: 1;
+      width: 100%;
       min-height: 24px;
     }
   }
 
   .card-hint {
-    margin: 0.5rem 0 0 0;
-    font-size: 0.75rem;
-    color: #9ca3af;
+    margin: 0.75rem 0 0 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    font-weight: 500;
   }
 }
 
