@@ -886,20 +886,36 @@ export class ClientService {
    * Create a MOTO SetupIntent for adding a payment method on behalf of a client
    */
   async createSetupIntentForClient(clientId: string): Promise<{ clientSecret: string; stripeCustomerId: string }> {
+    const url = `${environment.apiUrl}/api/admin/clients/${clientId}/setup-intent`;
+    console.log('createSetupIntentForClient: Calling URL:', url);
+    console.log('createSetupIntentForClient: Headers:', this.getAuthHeaders());
+
     try {
-      const response = await fetch(`${environment.apiUrl}/api/admin/clients/${clientId}/setup-intent`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: this.getAuthHeaders(),
       });
 
+      console.log('createSetupIntentForClient: Response status:', response.status);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create setup intent');
+        const errorText = await response.text();
+        console.error('createSetupIntentForClient: Error response:', errorText);
+        let errorMessage = 'Failed to create setup intent';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || errorMessage;
+        } catch {
+          // Response was not JSON
+        }
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('createSetupIntentForClient: Success, got client secret');
+      return data;
     } catch (error) {
-      console.error('Error creating setup intent:', error);
+      console.error('createSetupIntentForClient: Error:', error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientService } from '../../../core/services/client.service';
@@ -12,7 +12,7 @@ import { loadStripe, Stripe, StripeElements, StripePaymentElement } from '@strip
   templateUrl: './payment-method-modal.component.html',
   styleUrls: ['./payment-method-modal.component.scss']
 })
-export class PaymentMethodModalComponent implements OnInit, AfterViewInit, OnDestroy {
+export class PaymentMethodModalComponent implements OnInit, OnDestroy {
   @Input() clientId!: string;
   @Output() close = new EventEmitter<void>();
   @Output() paymentMethodAdded = new EventEmitter<void>();
@@ -33,6 +33,7 @@ export class PaymentMethodModalComponent implements OnInit, AfterViewInit, OnDes
 
   async ngOnInit(): Promise<void> {
     try {
+      console.log('Payment modal: Loading Stripe...');
       // Load Stripe
       this.stripe = await loadStripe(environment.stripePublishableKey);
 
@@ -41,24 +42,27 @@ export class PaymentMethodModalComponent implements OnInit, AfterViewInit, OnDes
         this.loading = false;
         return;
       }
+      console.log('Payment modal: Stripe loaded successfully');
 
       // Get MOTO SetupIntent from API
+      console.log('Payment modal: Creating SetupIntent for client:', this.clientId);
+      console.log('Payment modal: API URL:', environment.apiUrl);
       const setupData = await this.clientService.createSetupIntentForClient(this.clientId);
+      console.log('Payment modal: SetupIntent created successfully');
       this.clientSecret = setupData.clientSecret;
       this.stripeCustomerId = setupData.stripeCustomerId;
 
+      // Now mount the payment element after we have the client secret
+      // Use setTimeout to ensure the DOM is ready
+      setTimeout(() => {
+        this.mountPaymentElement();
+      }, 0);
+
     } catch (err: any) {
-      console.error('Error initializing payment form:', err);
+      console.error('Payment modal: Error initializing payment form:', err);
       this.error = err.message || 'Failed to initialize payment form';
       this.loading = false;
     }
-  }
-
-  async ngAfterViewInit(): Promise<void> {
-    // Wait a tick for the view to be ready
-    setTimeout(async () => {
-      await this.mountPaymentElement();
-    }, 100);
   }
 
   private async mountPaymentElement(): Promise<void> {
