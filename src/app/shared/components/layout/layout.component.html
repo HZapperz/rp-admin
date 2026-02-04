@@ -47,6 +47,9 @@
         @if (item.route === '/change-requests' && pendingChangeRequests > 0) {
         <span class="nav-badge">{{ pendingChangeRequests }}</span>
         }
+        @if (item.route === '/sms-inbox' && unreadSmsCount > 0) {
+        <span class="nav-badge sms-badge">{{ unreadSmsCount }}</span>
+        }
       </a>
       }
     </nav>

@@ -1,0 +1,119 @@
+<div class="conversations-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>SMS Inbox</h1>
+      <p class="subtitle">Manage customer conversations and support requests</p>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid" *ngIf="stats">
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.active_conversations }}</div>
+      <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-card escalated">
+      <div class="stat-value">{{ stats.escalated_conversations }}</div>
+      <div class="stat-label">Escalated</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.unread_conversations }}</div>
+      <div class="stat-label">Unread</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.messages_sent_today }}</div>
+      <div class="stat-label">Sent Today</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-input">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.3-4.3"></path>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by name, phone, or message..."
+        [value]="searchTerm"
+        (input)="onSearchChange($event)"
+      />
+    </div>
+
+    <div class="filter-select">
+      <select [value]="selectedStatus" (change)="onStatusFilterChange($event)">
+        <option value="all">All Conversations</option>
+        <option value="active">Active</option>
+        <option value="escalated">Escalated</option>
+        <option value="resolved">Resolved</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Loading conversations...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state" *ngIf="error && !isLoading">
+    <p>{{ error }}</p>
+    <button (click)="loadConversations()">Try Again</button>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && !error && getFilteredConversations().length === 0">
+    <div class="empty-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </div>
+    <h3>No conversations</h3>
+    <p>No SMS conversations match your filters</p>
+  </div>
+
+  <!-- Conversations List -->
+  <div class="conversations-list" *ngIf="!isLoading && !error && getFilteredConversations().length > 0">
+    <div
+      class="conversation-card"
+      *ngFor="let conversation of getFilteredConversations()"
+      (click)="openConversation(conversation)"
+      [class.has-unread]="conversation.unread_count > 0"
+    >
+      <div class="conversation-avatar">
+        <span class="avatar-letter">{{ conversation.user_name?.charAt(0) || '?' }}</span>
+      </div>
+
+      <div class="conversation-content">
+        <div class="conversation-header">
+          <span class="user-name">{{ conversation.user_name || 'Unknown' }}</span>
+          <span class="timestamp">{{ formatTimeAgo(conversation.last_message_at) }}</span>
+        </div>
+
+        <div class="conversation-preview">
+          {{ conversation.last_message || 'No messages yet' }}
+        </div>
+
+        <div class="conversation-meta">
+          <span class="phone">{{ conversation.phone_number }}</span>
+          <span class="user-type badge">{{ getUserTypeLabel(conversation.user_type) }}</span>
+          <span class="status badge" [ngClass]="getStatusClass(conversation.status)">
+            {{ getStatusLabel(conversation.status) }}
+          </span>
+        </div>
+      </div>
+
+      <div class="conversation-indicators">
+        <span class="unread-badge" *ngIf="conversation.unread_count > 0">
+          {{ conversation.unread_count }}
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron">
+          <path d="m9 18 6-6-6-6"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>

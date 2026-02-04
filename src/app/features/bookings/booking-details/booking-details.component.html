@@ -513,32 +513,100 @@
                 </button>
               </div>
 
-              <!-- Assignment Form (inline compact version) -->
+              <!-- Assignment Form (inline compact version) - Flow: Groomer → Date → Time -->
               <div *ngIf="showAssignmentForm" class="assignment-form-compact">
+                <!-- Step 1: Select Groomer First -->
                 <div class="form-row">
-                  <label>Date</label>
-                  <input type="date" [(ngModel)]="selectedDate" [min]="minDate" [max]="maxDate" (change)="onDateChange()" class="form-input-compact">
-                </div>
-                <div class="form-row">
-                  <label>Groomer</label>
-                  <select [(ngModel)]="selectedGroomerId" class="form-select-compact" [disabled]="!selectedDate || availableGroomers.length === 0">
-                    <option value="">Select...</option>
+                  <label>1. Groomer</label>
+                  <select [(ngModel)]="selectedGroomerId" (ngModelChange)="onGroomerChange()" class="form-select-compact">
+                    <option value="">Select groomer...</option>
                     <option *ngFor="let g of availableGroomers" [value]="g.id">{{ g.first_name }} {{ g.last_name }}</option>
                   </select>
                 </div>
+
+                <!-- Step 2: Select Date (only enabled after groomer is selected) -->
                 <div class="form-row">
-                  <label>Time Slot</label>
-                  <div class="time-slots-compact">
-                    <button *ngFor="let slot of morningSlots" (click)="selectTimeSlot(slot)" [class.selected]="selectedTimeSlot?.start === slot.start" [disabled]="!selectedGroomerId" class="slot-btn-compact">
-                      {{ slot.label.split(' - ')[0] }}
-                    </button>
-                    <button *ngFor="let slot of afternoonSlots" (click)="selectTimeSlot(slot)" [class.selected]="selectedTimeSlot?.start === slot.start" [disabled]="!selectedGroomerId" class="slot-btn-compact">
-                      {{ slot.label.split(' - ')[0] }}
+                  <label>2. Date</label>
+                  <input
+                    type="date"
+                    [(ngModel)]="selectedDate"
+                    [min]="minDate"
+                    [max]="maxDate"
+                    (change)="onDateChange()"
+                    class="form-input-compact"
+                    [disabled]="!selectedGroomerId">
+                </div>
+
+                <!-- Step 3: Select Time Slot (dynamic based on groomer availability) -->
+                <div class="form-row" *ngIf="selectedGroomerId && selectedDate">
+                  <label>3. Time Slot</label>
+
+                  <!-- Loading state -->
+                  <div *ngIf="isLoadingSlots" class="slots-loading">
+                    <span class="spinner-small"></span> Loading available slots...
+                  </div>
+
+                  <!-- Groomer unavailable message -->
+                  <div *ngIf="!isLoadingSlots && groomerUnavailableReason" class="groomer-unavailable-msg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {{ groomerUnavailableReason }}
+                  </div>
+
+                  <!-- Dynamic time slots -->
+                  <div *ngIf="!isLoadingSlots && !groomerUnavailableReason && dynamicAvailableSlots.length > 0" class="time-slots-compact">
+                    <button
+                      *ngFor="let slot of dynamicAvailableSlots"
+                      (click)="selectDynamicTimeSlot(slot)"
+                      [class.selected]="selectedTimeSlot?.start === slot.start_time + ':00'"
+                      [class.unavailable]="!slot.is_available"
+                      [disabled]="!slot.is_available"
+                      [title]="slot.conflict_reason || ''"
+                      class="slot-btn-compact">
+                      {{ slot.label }}
+                      <span *ngIf="!slot.is_available" class="slot-conflict-icon">✕</span>
                     </button>
                   </div>
+
+                  <!-- No slots available message -->
+                  <div *ngIf="!isLoadingSlots && !groomerUnavailableReason && dynamicAvailableSlots.length > 0 && !hasAvailableSlots()" class="no-slots-msg">
+                    All time slots are booked for this date.
+                  </div>
+
+                  <!-- Custom time option -->
+                  <div class="custom-time-toggle" *ngIf="!isLoadingSlots && !groomerUnavailableReason">
+                    <button (click)="toggleCustomTimeSlot()" class="btn-custom-time-toggle">
+                      {{ useCustomTimeSlot ? 'Use Standard Slots' : 'Use Custom Time' }}
+                    </button>
+                  </div>
+
+                  <!-- Custom time inputs -->
+                  <div *ngIf="useCustomTimeSlot" class="custom-time-inputs">
+                    <div class="custom-time-row">
+                      <input
+                        type="text"
+                        [(ngModel)]="customStartTime"
+                        (blur)="onCustomStartTimeBlur()"
+                        placeholder="Start (e.g., 9:30 AM)"
+                        class="time-input-compact">
+                      <span class="time-separator">to</span>
+                      <input
+                        type="text"
+                        [(ngModel)]="customEndTime"
+                        (blur)="onCustomEndTimeBlur()"
+                        placeholder="End (e.g., 11:00 AM)"
+                        class="time-input-compact">
+                    </div>
+                    <button (click)="toggleTimeHelp()" class="btn-time-help">{{ showTimeHelp ? 'Hide format help' : 'Time format help' }}</button>
+                    <div *ngIf="showTimeHelp" class="time-help-text">
+                      Formats: "9:30 AM", "930am", "1:00 PM", "130pm"
+                    </div>
+                  </div>
                 </div>
+
                 <div class="assignment-actions">
-                  <button (click)="assignGroomerAndApprove()" [disabled]="!selectedDate || !selectedGroomerId || !selectedTimeSlot || assigningGroomer" class="btn-approve-compact">
+                  <button (click)="assignGroomerAndApprove()" [disabled]="!selectedDate || !selectedGroomerId || (!selectedTimeSlot && !isCustomTimeValid()) || assigningGroomer" class="btn-approve-compact">
                     {{ assigningGroomer ? 'Approving...' : 'Approve' }}
                   </button>
                   <button (click)="openRejectDialog()" class="btn-reject-compact">Reject</button>

@@ -24,12 +24,12 @@ interface DaySlot {
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
-  kpis = [
-    { label: 'Total Bookings', value: '0', icon: '📅', color: '#6366f1' },
-    { label: 'Total Revenue', value: '$0', icon: '💰', color: '#10b981' },
-    { label: 'Active Groomers', value: '0', icon: '✂️', color: '#f59e0b' },
-    { label: 'Average Rating', value: '0.0', icon: '⭐', color: '#ec4899' }
-  ];
+  // New KPI data structure
+  kpiCards = {
+    bookings: { completed: 0, pending: 0 },
+    pets: { completed: 0, pending: 0 },
+    revenue: { collected: 0, pending: 0 }
+  };
 
   isLoading = true;
   error: string | null = null;
@@ -44,6 +44,11 @@ export class DashboardComponent implements OnInit {
   showBusinessSettingsModal = false;
   operatingDaysSummary = 'Loading...';
 
+  // Time grid settings
+  dayStartHour = 8;  // 8 AM
+  dayEndHour = 18;   // 6 PM
+  timeSlots: string[] = [];
+
   constructor(
     private analyticsService: AnalyticsService,
     private bookingService: BookingService,
@@ -52,6 +57,7 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    this.generateTimeSlots();
     await Promise.all([
       this.loadKPIs(),
       this.loadSchedule()
@@ -59,36 +65,73 @@ export class DashboardComponent implements OnInit {
     this.loadBusinessSettingsSummary();
   }
 
+  private generateTimeSlots(): void {
+    this.timeSlots = [];
+    for (let hour = this.dayStartHour; hour <= this.dayEndHour; hour++) {
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      this.timeSlots.push(`${displayHour}:00 ${ampm}`);
+    }
+  }
+
   private async loadKPIs(): Promise<void> {
     try {
-      const kpiData: KPIData = await this.analyticsService.getDashboardKPIs();
+      // Get all bookings and calculate KPIs
+      this.bookingService.getAllBookings().subscribe({
+        next: (bookings) => {
+          // Get current month boundaries as YYYY-MM strings for comparison
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+          const monthPrefix = `${currentYear}-${currentMonth}`;
 
-      this.kpis = [
-        {
-          label: 'Total Bookings',
-          value: kpiData.totalBookings.toString(),
-          icon: '📅',
-          color: '#6366f1'
+          // Filter bookings for current month (excluding cancelled)
+          // Using string comparison to avoid timezone issues
+          const monthlyBookings = bookings.filter(b => {
+            if (b.status === 'cancelled') return false;
+            const bookingDateStr = b.scheduled_date.split('T')[0]; // Get YYYY-MM-DD
+            return bookingDateStr.startsWith(monthPrefix);
+          });
+
+          // Separate completed vs pending/upcoming bookings
+          const completedBookings = monthlyBookings.filter(b => b.status === 'completed');
+          const pendingBookings = monthlyBookings.filter(b =>
+            b.status === 'confirmed' || b.status === 'in_progress' || b.status === 'pending'
+          );
+
+          // Count pets for completed bookings
+          const petsCompleted = completedBookings.reduce((sum, b) => {
+            return sum + (b.pets?.length || 0);
+          }, 0);
+
+          // Count pets for pending/upcoming bookings
+          const petsPending = pendingBookings.reduce((sum, b) => {
+            return sum + (b.pets?.length || 0);
+          }, 0);
+
+          // Calculate revenue - collected (completed) vs pending (confirmed + in_progress)
+          const revenueCollected = completedBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+          const revenuePending = pendingBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+          this.kpiCards = {
+            bookings: {
+              completed: completedBookings.length,
+              pending: pendingBookings.length
+            },
+            pets: {
+              completed: petsCompleted,
+              pending: petsPending
+            },
+            revenue: {
+              collected: revenueCollected,
+              pending: revenuePending
+            }
+          };
         },
-        {
-          label: 'Total Revenue',
-          value: `$${kpiData.totalRevenue.toFixed(2)}`,
-          icon: '💰',
-          color: '#10b981'
-        },
-        {
-          label: 'Active Groomers',
-          value: kpiData.activeGroomers.toString(),
-          icon: '✂️',
-          color: '#f59e0b'
-        },
-        {
-          label: 'Average Rating',
-          value: kpiData.averageRating.toFixed(1),
-          icon: '⭐',
-          color: '#ec4899'
+        error: (err) => {
+          console.error('Error loading KPIs:', err);
         }
-      ];
+      });
 
       this.error = null;
     } catch (err: any) {
@@ -195,11 +238,13 @@ export class DashboardComponent implements OnInit {
   private createDaySlot(date: Date, today: Date, isCurrentMonth: boolean = true): DaySlot {
     // Use local date methods to avoid UTC timezone shift
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    const bookings = this.allBookings.filter(b => {
-      // Direct string comparison - both are already in YYYY-MM-DD format
-      const bookingDateStr = b.scheduled_date.split('T')[0];
-      return bookingDateStr === dateStr;
-    });
+    const bookings = this.allBookings
+      .filter(b => {
+        // Direct string comparison - both are already in YYYY-MM-DD format
+        const bookingDateStr = b.scheduled_date.split('T')[0];
+        return bookingDateStr === dateStr;
+      })
+      .sort((a, b) => (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || ''));
 
     return {
       date: new Date(date),
@@ -245,6 +290,24 @@ export class DashboardComponent implements OnInit {
     return classes[status] || '';
   }
 
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'pending': 'Pending',
+      'confirmed': 'Confirmed',
+      'in_progress': 'In Progress',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled'
+    };
+    return labels[status] || status;
+  }
+
+  getGroomerInitials(groomer: any): string {
+    if (!groomer) return '';
+    const first = groomer.first_name?.[0] || '';
+    const last = groomer.last_name?.[0] || '';
+    return (first + last).toUpperCase();
+  }
+
   formatTime(time: string): string {
     if (!time) return '';
     const [hours, minutes] = time.split(':');
@@ -252,6 +315,39 @@ export class DashboardComponent implements OnInit {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
+  }
+
+  // Calculate top position as percentage based on start time
+  getBookingTop(startTime: string): number {
+    if (!startTime) return 0;
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = (hours - this.dayStartHour) * 60 + minutes;
+    const totalDayMinutes = (this.dayEndHour - this.dayStartHour) * 60;
+    return (totalMinutes / totalDayMinutes) * 100;
+  }
+
+  // Calculate height as percentage based on duration
+  getBookingHeight(startTime: string, endTime: string): number {
+    if (!startTime || !endTime) return 8; // Default minimum height
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    const durationMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+    const totalDayMinutes = (this.dayEndHour - this.dayStartHour) * 60;
+    const heightPercent = (durationMinutes / totalDayMinutes) * 100;
+    return Math.max(heightPercent, 5); // Minimum 5% height for visibility
+  }
+
+  // Get duration in readable format
+  getBookingDuration(startTime: string, endTime: string): string {
+    if (!startTime || !endTime) return '';
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    const durationMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+    const hours = Math.floor(durationMinutes / 60);
+    const mins = durationMinutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}m`;
   }
 
   openBookingDetail(booking: BookingWithDetails): void {

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChange
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../../../../core/services/groomer.service';
 
 export interface DateTimeSelection {
   date: string;
@@ -38,6 +39,16 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   // Help modal state
   showTimeHelp = false;
 
+  // Dynamic availability state
+  availableSlots: AvailableSlot[] = [];
+  isLoadingSlots = false;
+  groomerAvailabilityInfo: GroomerAvailableSlotsData | null = null;
+  groomerUnavailableReason: string = '';
+  selectedSlot: AvailableSlot | null = null;
+  useCustomTime = false;
+
+  constructor(private groomerService: GroomerService) {}
+
   ngOnInit(): void {
     this.generateCalendar();
   }
@@ -48,6 +59,11 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
       this.selectedDate = null;
       this.startTime = '';
       this.endTime = '';
+      this.availableSlots = [];
+      this.groomerAvailabilityInfo = null;
+      this.groomerUnavailableReason = '';
+      this.selectedSlot = null;
+      this.useCustomTime = false;
     }
   }
 
@@ -101,7 +117,76 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
     }
 
     this.selectedDate = date;
+    // Reset time selections when date changes
+    this.selectedSlot = null;
+    this.startTime = '';
+    this.endTime = '';
+    this.availableSlots = [];
+    this.groomerUnavailableReason = '';
+
+    // Load available slots for the selected groomer and date
+    if (this.selectedGroomer) {
+      this.loadAvailableSlots();
+    }
+  }
+
+  async loadAvailableSlots(): Promise<void> {
+    if (!this.selectedGroomer || !this.selectedDate) return;
+
+    this.isLoadingSlots = true;
+    this.availableSlots = [];
+    this.groomerUnavailableReason = '';
+
+    const dateStr = this.formatDateForAPI(this.selectedDate);
+
+    this.groomerService.getGroomerAvailableSlots(this.selectedGroomer.id, dateStr).subscribe({
+      next: (data) => {
+        this.groomerAvailabilityInfo = data;
+
+        if (!data.is_available) {
+          this.groomerUnavailableReason = data.reason || 'Groomer is not available on this date';
+          this.availableSlots = [];
+        } else {
+          this.availableSlots = data.business_slots;
+        }
+
+        this.isLoadingSlots = false;
+      },
+      error: (err) => {
+        console.error('Error loading available slots:', err);
+        this.groomerUnavailableReason = 'Failed to load available time slots';
+        this.isLoadingSlots = false;
+      }
+    });
+  }
+
+  selectSlot(slot: AvailableSlot): void {
+    if (!slot.is_available) return;
+
+    this.selectedSlot = slot;
+    this.useCustomTime = false;
+    // Set the time inputs from the slot for consistency
+    this.startTime = this.groomerService.formatTime(slot.start_time);
+    this.endTime = this.groomerService.formatTime(slot.end_time);
     this.emitSelection();
+  }
+
+  toggleCustomTime(): void {
+    this.useCustomTime = !this.useCustomTime;
+    if (this.useCustomTime) {
+      this.selectedSlot = null;
+      this.startTime = '';
+      this.endTime = '';
+    }
+    this.emitSelection();
+  }
+
+  hasAvailableSlots(): boolean {
+    return this.availableSlots.some(slot => slot.is_available);
+  }
+
+  isSlotSelected(slot: AvailableSlot): boolean {
+    return this.selectedSlot?.start_time === slot.start_time && this.selectedSlot?.end_time === slot.end_time;
   }
 
   onTimeChange(): void {
@@ -211,6 +296,11 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
    * Check if both times are valid and properly formatted
    */
   isTimeValid(): boolean {
+    // If using a selected slot, it's valid
+    if (this.selectedSlot && !this.useCustomTime) {
+      return true;
+    }
+    // For custom time, check the inputs
     const start24 = this.convertTo24Hour(this.startTime);
     const end24 = this.convertTo24Hour(this.endTime);
     return start24 !== '' && end24 !== '';
@@ -238,8 +328,24 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   }
 
   emitSelection(): void {
-    const start24 = this.convertTo24Hour(this.startTime);
-    const end24 = this.convertTo24Hour(this.endTime);
+    let start24 = '';
+    let end24 = '';
+    let timeSlotLabel = '';
+
+    // Get time values based on selection mode
+    if (this.selectedSlot && !this.useCustomTime) {
+      // Using selected slot
+      start24 = this.selectedSlot.start_time + ':00'; // Add seconds
+      end24 = this.selectedSlot.end_time + ':00';
+      timeSlotLabel = this.selectedSlot.display_time;
+    } else {
+      // Using custom time input
+      start24 = this.convertTo24Hour(this.startTime);
+      end24 = this.convertTo24Hour(this.endTime);
+      if (this.startTime && this.endTime) {
+        timeSlotLabel = `${this.startTime.trim()} - ${this.endTime.trim()}`;
+      }
+    }
 
     if (this.selectedDate && start24 && end24) {
       const dateString = this.formatDateForAPI(this.selectedDate);
@@ -247,9 +353,6 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
       // Determine shift preference based on start hour (morning = before 12:00)
       const startHour = parseInt(start24.split(':')[0], 10);
       const shiftPreference = startHour < 12 ? 'morning' : 'afternoon';
-
-      // Create display label from the entered times
-      const timeSlotLabel = `${this.startTime.trim()} - ${this.endTime.trim()}`;
 
       this.dateTimeSelected.emit({
         date: dateString,

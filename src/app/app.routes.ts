@@ -84,6 +84,11 @@ export const routes: Routes = [
           import('./features/sessions/sessions.routes').then(m => m.routes)
       },
       {
+        path: 'sms-inbox',
+        loadChildren: () =>
+          import('./features/sms-inbox/sms-inbox.routes').then(m => m.routes)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

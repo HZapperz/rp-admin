@@ -76,6 +76,70 @@ export interface GroomerEarningsDetail {
   earnings: any[];
 }
 
+export interface GroomerAvailabilitySlot {
+  id: string;
+  groomer_id: string;
+  day_of_week: number;
+  day_name: string;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GroomerDateException {
+  id: string;
+  groomer_id: string;
+  exception_date: string;
+  exception_type: 'blocked' | 'vacation' | 'sick' | 'custom';
+  start_time: string | null;
+  end_time: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface GroomerAvailabilityData {
+  groomer: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  weekly_availability: GroomerAvailabilitySlot[];
+  weekly_by_day: { [key: number]: GroomerAvailabilitySlot[] };
+  exceptions: GroomerDateException[];
+  date_range: {
+    from: string;
+    to: string;
+  };
+}
+
+export interface AvailableSlot {
+  start_time: string;
+  end_time: string;
+  label: string;
+  display_time: string;
+  is_available: boolean;
+  conflict_reason?: string;
+}
+
+export interface GroomerAvailableSlotsData {
+  groomer: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  date: string;
+  day_of_week: number;
+  is_available: boolean;
+  reason?: string;
+  weekly_availability: GroomerAvailabilitySlot[];
+  business_slots: AvailableSlot[];
+  granular_slots: AvailableSlot[];
+  existing_bookings: { id: string; start_time: string; end_time: string; status: string }[];
+  blocked_times: GroomerDateException[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -1236,5 +1300,345 @@ export class GroomerService {
     }
 
     return data || [];
+  }
+
+  // ==========================================
+  // AVAILABILITY METHODS
+  // ==========================================
+
+  /**
+   * Get groomer's full availability schedule (weekly + exceptions)
+   */
+  getGroomerAvailability(groomerId: string, days: number = 60): Observable<GroomerAvailabilityData> {
+    return from(this.fetchGroomerAvailability(groomerId, days));
+  }
+
+  private async fetchGroomerAvailability(groomerId: string, days: number = 60): Promise<GroomerAvailabilityData> {
+    const DAY_NUMBER_TO_NAME: { [key: number]: string } = {
+      0: 'Sunday',
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+      6: 'Saturday',
+    };
+
+    // Verify groomer exists
+    const { data: groomer, error: groomerError } = await this.supabase
+      .from('users')
+      .select('id, first_name, last_name, role')
+      .eq('id', groomerId)
+      .single();
+
+    if (groomerError || !groomer) {
+      throw new Error('Groomer not found');
+    }
+
+    if (groomer.role !== 'GROOMER') {
+      throw new Error('User is not a groomer');
+    }
+
+    // Fetch weekly availability
+    const { data: weeklyAvailability, error: availError } = await this.supabase
+      .from('groomer_availability')
+      .select('*')
+      .eq('groomer_id', groomerId)
+      .eq('is_available', true)
+      .order('day_of_week', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (availError) {
+      console.error('Error fetching availability:', availError);
+      throw availError;
+    }
+
+    // Calculate date range for exceptions
+    const fromDate = new Date().toISOString().split('T')[0];
+    const toDate = new Date();
+    toDate.setDate(toDate.getDate() + days);
+    const toDateStr = toDate.toISOString().split('T')[0];
+
+    // Fetch date exceptions
+    const { data: exceptions, error: excError } = await this.supabase
+      .from('groomer_date_exceptions')
+      .select('*')
+      .eq('groomer_id', groomerId)
+      .gte('exception_date', fromDate)
+      .lte('exception_date', toDateStr)
+      .order('exception_date', { ascending: true });
+
+    if (excError) {
+      console.error('Error fetching exceptions:', excError);
+      throw excError;
+    }
+
+    // Transform weekly availability with day names
+    const transformedWeekly: GroomerAvailabilitySlot[] = (weeklyAvailability || []).map((slot) => ({
+      ...slot,
+      day_name: DAY_NUMBER_TO_NAME[slot.day_of_week],
+    }));
+
+    // Group weekly availability by day
+    const weeklyByDay: { [key: number]: GroomerAvailabilitySlot[] } = {};
+    for (let i = 0; i <= 6; i++) {
+      weeklyByDay[i] = transformedWeekly.filter((s) => s.day_of_week === i);
+    }
+
+    return {
+      groomer: {
+        id: groomer.id,
+        first_name: groomer.first_name,
+        last_name: groomer.last_name,
+      },
+      weekly_availability: transformedWeekly,
+      weekly_by_day: weeklyByDay,
+      exceptions: exceptions || [],
+      date_range: {
+        from: fromDate,
+        to: toDateStr,
+      },
+    };
+  }
+
+  /**
+   * Get available time slots for a groomer on a specific date
+   */
+  getGroomerAvailableSlots(groomerId: string, date: string): Observable<GroomerAvailableSlotsData> {
+    return from(this.fetchGroomerAvailableSlots(groomerId, date));
+  }
+
+  private async fetchGroomerAvailableSlots(groomerId: string, date: string): Promise<GroomerAvailableSlotsData> {
+    // Get day of week
+    const dateObj = new Date(date + 'T00:00:00');
+    const dayOfWeek = dateObj.getDay();
+
+    // Verify groomer exists
+    const { data: groomer, error: groomerError } = await this.supabase
+      .from('users')
+      .select('id, first_name, last_name, role')
+      .eq('id', groomerId)
+      .single();
+
+    if (groomerError || !groomer) {
+      throw new Error('Groomer not found');
+    }
+
+    if (groomer.role !== 'GROOMER') {
+      throw new Error('User is not a groomer');
+    }
+
+    // Get groomer's weekly availability for this day
+    const { data: weeklySlots, error: weeklyError } = await this.supabase
+      .from('groomer_availability')
+      .select('*')
+      .eq('groomer_id', groomerId)
+      .eq('day_of_week', dayOfWeek)
+      .eq('is_available', true)
+      .order('start_time', { ascending: true });
+
+    if (weeklyError) {
+      console.error('Error fetching weekly availability:', weeklyError);
+      throw weeklyError;
+    }
+
+    // Check for date exceptions
+    const { data: exceptions, error: excError } = await this.supabase
+      .from('groomer_date_exceptions')
+      .select('*')
+      .eq('groomer_id', groomerId)
+      .eq('exception_date', date);
+
+    if (excError) {
+      console.error('Error fetching exceptions:', excError);
+      throw excError;
+    }
+
+    // Check for all-day exception
+    const allDayException = (exceptions || []).find(
+      (e) => e.start_time === null && e.end_time === null
+    );
+
+    if (allDayException) {
+      return {
+        groomer: {
+          id: groomer.id,
+          first_name: groomer.first_name,
+          last_name: groomer.last_name,
+        },
+        date,
+        day_of_week: dayOfWeek,
+        is_available: false,
+        reason: `Groomer is unavailable (${allDayException.exception_type}${
+          allDayException.reason ? `: ${allDayException.reason}` : ''
+        })`,
+        weekly_availability: [],
+        business_slots: [],
+        granular_slots: [],
+        existing_bookings: [],
+        blocked_times: exceptions || [],
+      };
+    }
+
+    // If no weekly availability set for this day
+    if (!weeklySlots || weeklySlots.length === 0) {
+      return {
+        groomer: {
+          id: groomer.id,
+          first_name: groomer.first_name,
+          last_name: groomer.last_name,
+        },
+        date,
+        day_of_week: dayOfWeek,
+        is_available: false,
+        reason: 'No availability set for this day of week',
+        weekly_availability: [],
+        business_slots: [],
+        granular_slots: [],
+        existing_bookings: [],
+        blocked_times: exceptions || [],
+      };
+    }
+
+    // Get existing bookings
+    const { data: existingBookings, error: bookingsError } = await this.supabase
+      .from('bookings')
+      .select('id, scheduled_time_start, scheduled_time_end, status')
+      .eq('groomer_id', groomerId)
+      .eq('scheduled_date', date)
+      .in('status', ['pending', 'confirmed', 'in_progress']);
+
+    if (bookingsError) {
+      console.error('Error fetching bookings:', bookingsError);
+      throw bookingsError;
+    }
+
+    // Get business time slots
+    const { data: businessSlots } = await this.supabase
+      .from('booking_time_slots')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    // Calculate available slots
+    const availablePeriods = weeklySlots.map((slot: any) => ({
+      start: slot.start_time,
+      end: slot.end_time,
+    }));
+
+    const blockedPeriods: { start: string; end: string; reason: string }[] = [];
+
+    // Add partial exceptions
+    for (const exc of exceptions || []) {
+      if (exc.start_time && exc.end_time) {
+        blockedPeriods.push({
+          start: exc.start_time,
+          end: exc.end_time,
+          reason: `${exc.exception_type}${exc.reason ? `: ${exc.reason}` : ''}`,
+        });
+      }
+    }
+
+    // Add existing bookings
+    for (const booking of existingBookings || []) {
+      blockedPeriods.push({
+        start: booking.scheduled_time_start,
+        end: booking.scheduled_time_end,
+        reason: `Existing booking (${booking.status})`,
+      });
+    }
+
+    // Helper function to check time overlap
+    const timesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
+      return start1 < end2 && end1 > start2;
+    };
+
+    // Generate slots based on business time slots
+    const calculatedBusinessSlots: AvailableSlot[] = [];
+
+    for (const bizSlot of businessSlots || []) {
+      const slotStart = bizSlot.start_time.substring(0, 5);
+      const slotEnd = bizSlot.end_time.substring(0, 5);
+
+      let isInAvailablePeriod = false;
+      for (const period of availablePeriods) {
+        if (slotStart >= period.start && slotEnd <= period.end) {
+          isInAvailablePeriod = true;
+          break;
+        }
+      }
+
+      if (!isInAvailablePeriod) {
+        calculatedBusinessSlots.push({
+          start_time: slotStart,
+          end_time: slotEnd,
+          label: bizSlot.label,
+          display_time: bizSlot.display_time,
+          is_available: false,
+          conflict_reason: 'Outside groomer working hours',
+        });
+        continue;
+      }
+
+      let conflictReason: string | undefined;
+      for (const blocked of blockedPeriods) {
+        if (timesOverlap(slotStart, slotEnd, blocked.start, blocked.end)) {
+          conflictReason = blocked.reason;
+          break;
+        }
+      }
+
+      calculatedBusinessSlots.push({
+        start_time: slotStart,
+        end_time: slotEnd,
+        label: bizSlot.label,
+        display_time: bizSlot.display_time,
+        is_available: !conflictReason,
+        conflict_reason: conflictReason,
+      });
+    }
+
+    const hasAvailability = calculatedBusinessSlots.some((s) => s.is_available);
+
+    return {
+      groomer: {
+        id: groomer.id,
+        first_name: groomer.first_name,
+        last_name: groomer.last_name,
+      },
+      date,
+      day_of_week: dayOfWeek,
+      is_available: hasAvailability,
+      weekly_availability: weeklySlots,
+      business_slots: calculatedBusinessSlots,
+      granular_slots: [], // Can implement granular slots later if needed
+      existing_bookings: (existingBookings || []).map((b) => ({
+        id: b.id,
+        start_time: b.scheduled_time_start,
+        end_time: b.scheduled_time_end,
+        status: b.status,
+      })),
+      blocked_times: exceptions || [],
+    };
+  }
+
+  /**
+   * Format time for display (HH:MM to H:MM AM/PM)
+   */
+  formatTime(time: string): string {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  }
+
+  /**
+   * Get day name from number
+   */
+  getDayName(dayOfWeek: number): string {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[dayOfWeek] || '';
   }
 }

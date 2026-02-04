@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthUser } from '../../../core/models/types';
 import { ChangeRequestService } from '../../../core/services/change-request.service';
+import { SMSService } from '../../../core/services/sms.service';
 import { Subscription } from 'rxjs';
 
 interface NavItem {
@@ -22,16 +23,20 @@ interface NavItem {
 })
 export class LayoutComponent implements OnInit, OnDestroy {
   private changeRequestService = inject(ChangeRequestService);
+  private smsService = inject(SMSService);
   private pendingCountSub?: Subscription;
+  private smsStatsSub?: Subscription;
 
   currentUser: AuthUser | null = null;
   isSidebarOpen = false; // Start closed on mobile, will be set based on screen size
   pendingChangeRequests = 0;
+  unreadSmsCount = 0;
 
   navItems: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
     { label: 'Bookings', route: '/bookings', icon: 'event' },
     { label: 'Change Requests', route: '/change-requests', icon: 'schedule' },
+    { label: 'SMS Inbox', route: '/sms-inbox', icon: 'sms' },
     { label: 'Clients', route: '/clients', icon: 'people' },
     { label: 'Warm Leads', route: '/warm-leads', icon: 'whatshot' },
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },
@@ -42,7 +47,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Promotions', route: '/promotions', icon: 'card_giftcard' },
     { label: 'Complaints', route: '/complaints', icon: 'feedback' },
     { label: 'Service Areas', route: '/service-areas', icon: 'map' },
-    { label: 'Profile', route: '/profile', icon: 'settings' },
+    { label: 'Settings', route: '/profile', icon: 'settings' },
   ];
 
   constructor(private authService: AuthService) {}
@@ -57,6 +62,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
       this.pendingChangeRequests = count;
     });
 
+    // Load SMS stats for unread count
+    this.loadSmsStats();
+
     // Set initial sidebar state based on screen size
     this.updateSidebarState();
 
@@ -66,6 +74,18 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pendingCountSub?.unsubscribe();
+    this.smsStatsSub?.unsubscribe();
+  }
+
+  private loadSmsStats(): void {
+    this.smsStatsSub = this.smsService.getStats().subscribe({
+      next: (stats) => {
+        this.unreadSmsCount = stats.unread_conversations + stats.escalated_conversations;
+      },
+      error: (err) => {
+        console.error('Error loading SMS stats:', err);
+      }
+    });
   }
 
   private updateSidebarState(): void {

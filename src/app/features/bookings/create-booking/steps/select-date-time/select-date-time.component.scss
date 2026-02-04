@@ -527,12 +527,227 @@
         font-size: 1.25rem;
       }
     }
+
+    // Dynamic Availability Styles
+    .slots-loading {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 2rem;
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      color: #64748b;
+
+      .spinner-small {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #e2e8f0;
+        border-top-color: #667eea;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .groomer-unavailable-msg {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem;
+      background: #fef2f2;
+      border: 2px solid #fecaca;
+      border-radius: 12px;
+      color: #991b1b;
+
+      mat-icon {
+        font-size: 1.5rem;
+        color: #dc2626;
+      }
+    }
+
+    .available-slots {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .slot-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 1rem;
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+
+      .slot-label {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.95rem;
+      }
+
+      .slot-time {
+        font-size: 0.8125rem;
+        color: #64748b;
+      }
+
+      .conflict-icon {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        font-size: 1rem;
+        color: #dc2626;
+      }
+
+      &:hover:not(:disabled) {
+        border-color: #667eea;
+        background: #f1f5f9;
+      }
+
+      &.selected {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+
+        .slot-label {
+          color: #667eea;
+        }
+      }
+
+      &.unavailable {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #fef2f2;
+        border-color: #fecaca;
+
+        .slot-label {
+          text-decoration: line-through;
+          color: #991b1b;
+        }
+
+        .slot-time {
+          color: #991b1b;
+        }
+      }
+    }
+
+    .no-slots-warning {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      color: #92400e;
+      font-size: 0.875rem;
+
+      mat-icon {
+        font-size: 1.25rem;
+      }
+    }
+
+    .custom-time-toggle {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+
+      .toggle-custom-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: transparent;
+        border: 1px dashed #94a3b8;
+        border-radius: 6px;
+        color: #64748b;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        mat-icon {
+          font-size: 1rem;
+          width: 16px;
+          height: 16px;
+        }
+
+        &:hover {
+          border-color: #667eea;
+          color: #667eea;
+        }
+      }
+    }
+
+    .custom-time-section {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+
+      .custom-time-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+
+        h5 {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #475569;
+          margin: 0;
+        }
+
+        .help-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          background: #f1f5f9;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          color: #64748b;
+          transition: all 0.2s;
+
+          mat-icon {
+            font-size: 1rem;
+            width: 16px;
+            height: 16px;
+          }
+
+          &:hover {
+            background: #667eea;
+            color: white;
+          }
+        }
+      }
+    }
   }
 
   // Responsive
   @media (max-width: 968px) {
     .datetime-grid {
       grid-template-columns: 1fr !important;
+    }
+
+    .slots-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
     }
   }
 }

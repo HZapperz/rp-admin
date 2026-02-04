@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { GroomerService, GroomerEarningsDetail, CommissionHistory } from '../../../core/services/groomer.service';
+import { GroomerService, GroomerEarningsDetail, CommissionHistory, GroomerAvailabilityData, GroomerDateException } from '../../../core/services/groomer.service';
 import { PayrollExportService } from '../../../core/services/payroll-export.service';
 import { PayPeriodData, AvailablePayrollMonth, WeekData } from '../../../core/models/types';
 import { PayrollPeriodSelectorComponent, SelectionMode } from './components/payroll-period-selector.component';
@@ -31,8 +31,9 @@ export class GroomerDetailComponent implements OnInit {
   isLoading = true;
 
   // Tab state
-  activeTab: 'overview' | 'payroll' = 'overview';
+  activeTab: 'overview' | 'payroll' | 'availability' = 'overview';
   payrollDataLoaded = false;
+  availabilityDataLoaded = false;
 
   editingCommission = false;
   newCommissionPercent = 35;
@@ -54,6 +55,11 @@ export class GroomerDetailComponent implements OnInit {
   customStartDate: string = '';
   customEndDate: string = '';
 
+  // Availability state
+  availabilityData: GroomerAvailabilityData | null = null;
+  isLoadingAvailability = false;
+  DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -66,12 +72,17 @@ export class GroomerDetailComponent implements OnInit {
     this.loadGroomerData();
   }
 
-  setTab(tab: 'overview' | 'payroll') {
+  setTab(tab: 'overview' | 'payroll' | 'availability') {
     this.activeTab = tab;
     // Lazy load payroll data when switching to payroll tab
     if (tab === 'payroll' && !this.payrollDataLoaded) {
       this.loadPayrollData();
       this.payrollDataLoaded = true;
+    }
+    // Lazy load availability data when switching to availability tab
+    if (tab === 'availability' && !this.availabilityDataLoaded) {
+      this.loadAvailabilityData();
+      this.availabilityDataLoaded = true;
     }
   }
 
@@ -297,6 +308,61 @@ export class GroomerDetailComponent implements OnInit {
 
         this.isSaving = false;
       }
+    });
+  }
+
+  // Availability methods
+  loadAvailabilityData() {
+    this.isLoadingAvailability = true;
+    this.groomerService.getGroomerAvailability(this.groomerId).subscribe({
+      next: (data) => {
+        this.availabilityData = data;
+        this.isLoadingAvailability = false;
+      },
+      error: (err) => {
+        console.error('Error loading availability:', err);
+        this.isLoadingAvailability = false;
+      }
+    });
+  }
+
+  getAvailabilityForDay(dayIndex: number): any[] {
+    if (!this.availabilityData?.weekly_by_day) return [];
+    return this.availabilityData.weekly_by_day[dayIndex] || [];
+  }
+
+  formatTimeDisplay(time: string): string {
+    return this.groomerService.formatTime(time);
+  }
+
+  getExceptionTypeLabel(type: string): string {
+    const labels: { [key: string]: string } = {
+      'vacation': 'Vacation',
+      'sick': 'Sick Day',
+      'blocked': 'Personal',
+      'custom': 'Other'
+    };
+    return labels[type] || type;
+  }
+
+  getExceptionTypeClass(type: string): string {
+    const classes: { [key: string]: string } = {
+      'vacation': 'badge-vacation',
+      'sick': 'badge-sick',
+      'blocked': 'badge-blocked',
+      'custom': 'badge-custom'
+    };
+    return classes[type] || 'badge-custom';
+  }
+
+  formatExceptionDate(dateString: string): string {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     });
   }
 

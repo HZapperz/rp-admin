@@ -1,6 +1,4 @@
 <div class="dashboard">
-  <h1 class="page-title">Dashboard</h1>
-
   @if (isLoading) {
     <div class="loading">
       <div class="spinner"></div>
@@ -15,35 +13,86 @@
   }
 
   @if (!isLoading && !error) {
-    <!-- KPI Cards -->
-    <div class="kpi-grid">
-      @for (kpi of kpis; track kpi.label) {
-        <div class="kpi-card" [style.border-left-color]="kpi.color">
-          <div class="kpi-icon">{{ kpi.icon }}</div>
-          <div class="kpi-content">
-            <div class="kpi-label">{{ kpi.label }}</div>
-            <div class="kpi-value">{{ kpi.value }}</div>
+    <!-- Stats Overview -->
+    <div class="stats-overview">
+      <!-- Appointments Card -->
+      <div class="stat-card appointments">
+        <div class="stat-header">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div class="stat-title">Appointments</div>
+        </div>
+        <div class="stat-values">
+          <div class="stat-value-group">
+            <div class="stat-number">{{ kpiCards.bookings.completed }}</div>
+            <div class="stat-label">Completed</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-value-group pending-value">
+            <div class="stat-number">{{ kpiCards.bookings.pending }}</div>
+            <div class="stat-label">Upcoming</div>
           </div>
         </div>
-      }
-    </div>
-
-    <!-- Business Settings Card -->
-    <div class="business-settings-card">
-      <div class="settings-header">
-        <div class="settings-icon">⚙️</div>
-        <div class="settings-content">
-          <h3>Business Hours & Days</h3>
-          <p class="settings-summary">{{ operatingDaysSummary }}</p>
-        </div>
+        <div class="stat-period">This month</div>
       </div>
-      <button class="btn-configure" (click)="openBusinessSettings()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Configure
-      </button>
+
+      <!-- Pets Card -->
+      <div class="stat-card pets">
+        <div class="stat-header">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="8" cy="8" rx="2.5" ry="3"/>
+              <ellipse cx="16" cy="8" rx="2.5" ry="3"/>
+              <ellipse cx="5" cy="14" rx="2" ry="2.5"/>
+              <ellipse cx="19" cy="14" rx="2" ry="2.5"/>
+              <path d="M12 11c-3 0-5.5 2.5-5.5 5.5 0 2 1.5 3.5 3 4s3 .5 5 0 3-2 3-4c0-3-2.5-5.5-5.5-5.5z"/>
+            </svg>
+          </div>
+          <div class="stat-title">Pets</div>
+        </div>
+        <div class="stat-values">
+          <div class="stat-value-group">
+            <div class="stat-number">{{ kpiCards.pets.completed }}</div>
+            <div class="stat-label">Groomed</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-value-group pending-value">
+            <div class="stat-number">{{ kpiCards.pets.pending }}</div>
+            <div class="stat-label">Scheduled</div>
+          </div>
+        </div>
+        <div class="stat-period">This month</div>
+      </div>
+
+      <!-- Revenue Card -->
+      <div class="stat-card revenue">
+        <div class="stat-header">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="stat-title">Revenue</div>
+        </div>
+        <div class="stat-values">
+          <div class="stat-value-group">
+            <div class="stat-number">${{ kpiCards.revenue.collected | number:'1.0-0' }}</div>
+            <div class="stat-label">Collected</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-value-group pending-value">
+            <div class="stat-number">${{ kpiCards.revenue.pending | number:'1.0-0' }}</div>
+            <div class="stat-label">Pending</div>
+          </div>
+        </div>
+        <div class="stat-period">This month</div>
+      </div>
     </div>
 
     <!-- Schedule Section -->
@@ -82,34 +131,42 @@
 
       <!-- Day View -->
       @if (currentView === 'day') {
-        <div class="day-view">
+        <div class="time-grid-view">
+          <!-- Time Labels Column -->
+          <div class="time-labels">
+            <div class="time-label-header"></div>
+            @for (time of timeSlots; track time) {
+              <div class="time-label">{{ time }}</div>
+            }
+          </div>
+
+          <!-- Day Column -->
           @for (slot of scheduleSlots; track slot.date) {
-            <div class="day-column" [class.today]="slot.isToday">
-              <div class="day-header">
+            <div class="time-grid-column" [class.today]="slot.isToday">
+              <div class="time-grid-header" [class.today]="slot.isToday">
                 <div class="day-name">{{ slot.date | date:'EEEE' }}</div>
-                <div class="day-date">{{ slot.date | date:'MMM d, y' }}</div>
+                <div class="day-date">{{ slot.date | date:'MMM d' }}</div>
               </div>
-              <div class="day-bookings">
-                @if (slot.bookings.length === 0) {
-                  <div class="no-bookings">No bookings</div>
+              <div class="time-grid-body">
+                <!-- Hour lines -->
+                @for (time of timeSlots; track time) {
+                  <div class="hour-line"></div>
                 }
+                <!-- Bookings -->
                 @for (booking of slot.bookings; track booking.id) {
-                  <div class="booking-card clickable" [ngClass]="getStatusClass(booking.status)" (click)="openBookingDetail(booking)">
-                    <div class="booking-time">
-                      {{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end) }}
-                    </div>
-                    <div class="booking-client">
-                      {{ booking.client?.first_name }} {{ booking.client?.last_name }}
-                    </div>
-                    <div class="booking-service">{{ booking.service_name }}</div>
+                  <div
+                    class="time-grid-booking clickable"
+                    [ngClass]="getStatusClass(booking.status)"
+                    [style.top.%]="getBookingTop(booking.scheduled_time_start)"
+                    [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
+                    (click)="openBookingDetail(booking)">
+                    <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
+                    <div class="tgb-client">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</div>
+                    <div class="tgb-service">{{ booking.service_name }}</div>
+                    <div class="tgb-duration">{{ getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) }}</div>
                     @if (booking.groomer) {
-                      <div class="booking-groomer">
-                        Groomer: {{ booking.groomer.first_name }} {{ booking.groomer.last_name }}
-                      </div>
-                    } @else {
-                      <div class="booking-groomer unassigned">No groomer assigned</div>
+                      <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
                     }
-                    <div class="booking-status">{{ booking.status }}</div>
                   </div>
                 }
               </div>
@@ -120,30 +177,43 @@
 
       <!-- Week View -->
       @if (currentView === 'week') {
-        <div class="week-view">
-          <div class="week-header">
-            @for (slot of scheduleSlots; track slot.date) {
-              <div class="week-day-header" [class.today]="slot.isToday">
-                <div class="day-name">{{ slot.date | date:'EEE' }}</div>
-                <div class="day-number">{{ slot.date | date:'d' }}</div>
-              </div>
+        <div class="time-grid-view week">
+          <!-- Time Labels Column -->
+          <div class="time-labels">
+            <div class="time-label-header"></div>
+            @for (time of timeSlots; track time) {
+              <div class="time-label">{{ time }}</div>
             }
           </div>
-          <div class="week-grid">
-            @for (slot of scheduleSlots; track slot.date) {
-              <div class="week-day-column" [class.today]="slot.isToday">
-                @if (slot.bookings.length === 0) {
-                  <div class="empty-day"></div>
+
+          <!-- Day Columns -->
+          @for (slot of scheduleSlots; track slot.date) {
+            <div class="time-grid-column" [class.today]="slot.isToday">
+              <div class="time-grid-header" [class.today]="slot.isToday">
+                <div class="day-name">{{ slot.date | date:'EEE' }}</div>
+                <div class="day-date">{{ slot.date | date:'d' }}</div>
+              </div>
+              <div class="time-grid-body">
+                <!-- Hour lines -->
+                @for (time of timeSlots; track time) {
+                  <div class="hour-line"></div>
                 }
+                <!-- Bookings -->
                 @for (booking of slot.bookings; track booking.id) {
-                  <div class="booking-card-small clickable" [ngClass]="getStatusClass(booking.status)" [title]="booking.client?.first_name + ' ' + booking.client?.last_name" (click)="openBookingDetail(booking)">
-                    <div class="booking-time-small">{{ formatTime(booking.scheduled_time_start) }}</div>
-                    <div class="booking-client-small">{{ booking.client?.first_name?.[0] }}{{ booking.client?.last_name?.[0] }}</div>
+                  <div
+                    class="time-grid-booking compact clickable"
+                    [ngClass]="getStatusClass(booking.status)"
+                    [style.top.%]="getBookingTop(booking.scheduled_time_start)"
+                    [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
+                    [title]="booking.client?.first_name + ' ' + booking.client?.last_name + ' - ' + booking.service_name + ' (' + getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) + ')'"
+                    (click)="openBookingDetail(booking)">
+                    <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
+                    <div class="tgb-client">{{ booking.client?.first_name }}</div>
                   </div>
                 }
               </div>
-            }
-          </div>
+            </div>
+          }
         </div>
       }
 
@@ -181,29 +251,6 @@
           </div>
         </div>
       }
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-      <h3>Quick Actions</h3>
-      <div class="action-buttons">
-        <a routerLink="/bookings" class="action-btn">
-          <span class="action-icon">📋</span>
-          <span>View All Bookings</span>
-        </a>
-        <a routerLink="/bookings" class="action-btn">
-          <span class="action-icon">⏰</span>
-          <span>Pending Requests ({{ kpis[0].value }})</span>
-        </a>
-        <a routerLink="/groomers" class="action-btn">
-          <span class="action-icon">✂️</span>
-          <span>Manage Groomers</span>
-        </a>
-        <a routerLink="/service-areas" class="action-btn">
-          <span class="action-icon">🗺️</span>
-          <span>Service Areas</span>
-        </a>
-      </div>
     </div>
   }
 </div>

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { BookingService } from '../../../core/services/booking.service';
 import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
-import { GroomerService } from '../../../core/services/groomer.service';
+import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../../core/services/groomer.service';
 import { EmailService } from '../../../core/services/email.service';
 import { ChangeRequestService, ChangeRequest } from '../../../core/services/change-request.service';
 import { BookingWithDetails } from '../../../core/models/types';
@@ -92,6 +92,12 @@ export class BookingDetailsComponent implements OnInit {
   showRejectDialog = false;
   rejectionReason: string = '';
   assigningGroomer = false;
+
+  // Dynamic availability slots
+  dynamicAvailableSlots: AvailableSlot[] = [];
+  isLoadingSlots = false;
+  groomerAvailabilityInfo: GroomerAvailableSlotsData | null = null;
+  groomerUnavailableReason: string = '';
 
   // Time change modal
   showTimeChangeModal = false;
@@ -611,12 +617,13 @@ export class BookingDetailsComponent implements OnInit {
   async showGroomerAssignment() {
     if (!this.booking) return;
 
-    // Reset selections
+    // Reset all selections
     this.selectedGroomerId = '';
     this.selectedTimeSlot = null;
-
-    // Initialize date to original booking date
-    this.selectedDate = this.booking.scheduled_date;
+    this.selectedDate = '';
+    this.dynamicAvailableSlots = [];
+    this.groomerAvailabilityInfo = null;
+    this.groomerUnavailableReason = '';
 
     // Set date constraints
     const today = new Date();
@@ -632,13 +639,13 @@ export class BookingDetailsComponent implements OnInit {
     maxDate.setDate(maxDate.getDate() + 90);
     this.maxDate = maxDate.toISOString().split('T')[0];
 
-    // Fetch available groomers for the selected date
+    // Fetch all groomers (groomer selection comes first now)
     try {
-      this.availableGroomers = await this.groomerService.getAvailableGroomers(this.selectedDate);
+      this.availableGroomers = await this.groomerService.getAvailableGroomers();
       this.showAssignmentForm = true;
     } catch (error) {
       console.error('Error fetching groomers:', error);
-      alert('Failed to load available groomers. Please try again.');
+      alert('Failed to load groomers. Please try again.');
     }
   }
 
@@ -646,11 +653,27 @@ export class BookingDetailsComponent implements OnInit {
     this.showAssignmentForm = false;
     this.selectedGroomerId = '';
     this.selectedTimeSlot = null;
+    this.selectedDate = '';
     // Reset custom time state
     this.useCustomTimeSlot = false;
     this.customStartTime = '';
     this.customEndTime = '';
     this.showTimeHelp = false;
+    // Reset dynamic availability state
+    this.dynamicAvailableSlots = [];
+    this.groomerAvailabilityInfo = null;
+    this.groomerUnavailableReason = '';
+    this.isLoadingSlots = false;
+  }
+
+  // Called when groomer selection changes
+  onGroomerChange() {
+    // Reset date and time slot when groomer changes
+    this.selectedDate = '';
+    this.selectedTimeSlot = null;
+    this.dynamicAvailableSlots = [];
+    this.groomerAvailabilityInfo = null;
+    this.groomerUnavailableReason = '';
   }
 
   async onDateChange() {
@@ -663,24 +686,75 @@ export class BookingDetailsComponent implements OnInit {
 
     if (selectedDateObj < today) {
       alert('Cannot select a past date. Please choose today or a future date.');
-      this.selectedDate = this.booking?.scheduled_date || '';
+      this.selectedDate = '';
       return;
     }
 
-    // Reset groomer and time slot selections when date changes
-    this.selectedGroomerId = '';
+    // Reset time slot when date changes
     this.selectedTimeSlot = null;
+    this.dynamicAvailableSlots = [];
+    this.groomerAvailabilityInfo = null;
+    this.groomerUnavailableReason = '';
 
-    // Fetch available groomers for the new date
+    // Fetch available slots for the selected groomer + date
+    if (this.selectedGroomerId && this.selectedDate) {
+      await this.loadAvailableSlots();
+    }
+  }
+
+  // Load available time slots for selected groomer and date
+  async loadAvailableSlots() {
+    if (!this.selectedGroomerId || !this.selectedDate) return;
+
+    this.isLoadingSlots = true;
+    this.dynamicAvailableSlots = [];
+    this.groomerUnavailableReason = '';
+
     try {
-      this.availableGroomers = await this.groomerService.getAvailableGroomers(this.selectedDate);
+      this.groomerService.getGroomerAvailableSlots(this.selectedGroomerId, this.selectedDate).subscribe({
+        next: (data) => {
+          this.groomerAvailabilityInfo = data;
 
-      if (this.availableGroomers.length === 0) {
-        alert('No groomers are available for this date. Please select a different date.');
-      }
+          if (!data.is_available) {
+            this.groomerUnavailableReason = data.reason || 'Groomer is not available on this date';
+            this.dynamicAvailableSlots = [];
+          } else {
+            // Filter to only show available slots
+            this.dynamicAvailableSlots = data.business_slots;
+          }
+
+          this.isLoadingSlots = false;
+        },
+        error: (err) => {
+          console.error('Error loading available slots:', err);
+          this.groomerUnavailableReason = 'Failed to load available time slots';
+          this.isLoadingSlots = false;
+        }
+      });
     } catch (error) {
-      console.error('Error fetching groomers for date:', error);
-      alert('Failed to load available groomers. Please try again.');
+      console.error('Error loading available slots:', error);
+      this.groomerUnavailableReason = 'Failed to load available time slots';
+      this.isLoadingSlots = false;
+    }
+  }
+
+  // Check if there are any available slots
+  hasAvailableSlots(): boolean {
+    return this.dynamicAvailableSlots.some(slot => slot.is_available);
+  }
+
+  // Select a dynamic time slot
+  selectDynamicTimeSlot(slot: AvailableSlot) {
+    if (!slot.is_available) return;
+
+    this.selectedTimeSlot = {
+      label: slot.display_time,
+      start: slot.start_time + ':00', // Add seconds for consistency
+      end: slot.end_time + ':00'
+    };
+    // Clear custom time when selecting a dynamic slot
+    if (this.useCustomTimeSlot) {
+      this.useCustomTimeSlot = false;
     }
   }
 

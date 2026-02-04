@@ -44,6 +44,13 @@
         <span class="material-icons">payments</span>
         Payroll
       </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'availability'"
+        (click)="setTab('availability')">
+        <span class="material-icons">schedule</span>
+        Availability
+      </button>
     </div>
 
     <!-- Tab Content -->
@@ -206,6 +213,99 @@
           <div *ngIf="payrollData.weeks.length === 0" class="no-grooms">
             <p>No completed grooms in this period</p>
           </div>
+        </div>
+      </div>
+
+      <!-- Availability Tab -->
+      <div *ngIf="activeTab === 'availability'" class="tab-panel">
+        <!-- Loading state -->
+        <div *ngIf="isLoadingAvailability" class="availability-loading">
+          <div class="spinner"></div>
+          <p>Loading availability...</p>
+        </div>
+
+        <!-- Availability content -->
+        <div *ngIf="!isLoadingAvailability && availabilityData" class="availability-content">
+          <!-- Info Banner -->
+          <div class="availability-info-banner">
+            <span class="material-icons">info</span>
+            <p>This is a read-only view of the groomer's schedule. Groomers manage their own availability through their portal.</p>
+          </div>
+
+          <!-- Weekly Schedule -->
+          <div class="section weekly-schedule-section">
+            <h2 class="section-title">Weekly Schedule</h2>
+
+            <div class="weekly-grid">
+              @for (day of DAYS; track day; let i = $index) {
+                <div class="day-card">
+                  <h3 class="day-name">{{ day }}</h3>
+                  <div class="day-slots">
+                    @if (getAvailabilityForDay(i).length > 0) {
+                      @for (slot of getAvailabilityForDay(i); track slot.id) {
+                        <div class="time-slot" [class.available]="slot.is_available">
+                          <span class="material-icons slot-icon">schedule</span>
+                          <span class="slot-time">
+                            {{ formatTimeDisplay(slot.start_time) }} - {{ formatTimeDisplay(slot.end_time) }}
+                          </span>
+                        </div>
+                      }
+                    } @else {
+                      <div class="no-availability">
+                        <span class="material-icons">event_busy</span>
+                        <span>Not available</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Upcoming Exceptions -->
+          <div class="section exceptions-section">
+            <h2 class="section-title">Upcoming Time Off</h2>
+            <p class="section-subtitle">Next {{ availabilityData.date_range.from }} to {{ availabilityData.date_range.to }}</p>
+
+            @if (availabilityData.exceptions.length > 0) {
+              <div class="exceptions-list">
+                @for (exception of availabilityData.exceptions; track exception.id) {
+                  <div class="exception-card">
+                    <div class="exception-date">
+                      <span class="material-icons">event</span>
+                      {{ formatExceptionDate(exception.exception_date) }}
+                    </div>
+                    <div class="exception-details">
+                      <span class="exception-badge" [ngClass]="getExceptionTypeClass(exception.exception_type)">
+                        {{ getExceptionTypeLabel(exception.exception_type) }}
+                      </span>
+                      @if (exception.start_time && exception.end_time) {
+                        <span class="exception-time">
+                          {{ formatTimeDisplay(exception.start_time) }} - {{ formatTimeDisplay(exception.end_time) }}
+                        </span>
+                      } @else {
+                        <span class="exception-time all-day">All day</span>
+                      }
+                    </div>
+                    @if (exception.reason) {
+                      <div class="exception-reason">{{ exception.reason }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="no-exceptions">
+                <span class="material-icons">event_available</span>
+                <p>No upcoming time off scheduled</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- No data state -->
+        <div *ngIf="!isLoadingAvailability && !availabilityData" class="no-availability-data">
+          <span class="material-icons">schedule</span>
+          <p>Could not load availability data</p>
         </div>
       </div>
     </div>

@@ -968,3 +968,281 @@
   }
 }
 
+// ===========================================
+// AVAILABILITY TAB STYLES
+// ===========================================
+.availability-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  p {
+    color: #64748b;
+    font-size: 0.9375rem;
+    margin: 0;
+  }
+}
+
+.availability-content {
+  .availability-info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #e0f2fe;
+    border: 1px solid #7dd3fc;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+
+    .material-icons {
+      color: #0284c7;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    p {
+      margin: 0;
+      color: #0369a1;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+  }
+}
+
+.weekly-schedule-section {
+  margin-bottom: 2rem;
+}
+
+.weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.day-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+
+  .day-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .day-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .time-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border: 1px solid #d1fae5;
+    border-radius: 6px;
+
+    &.available {
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+    }
+
+    .slot-icon {
+      color: #10b981;
+      font-size: 18px;
+    }
+
+    .slot-time {
+      font-size: 0.875rem;
+      color: #1e293b;
+      font-weight: 500;
+    }
+  }
+
+  .no-availability {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    color: #94a3b8;
+    font-size: 0.875rem;
+
+    .material-icons {
+      font-size: 20px;
+    }
+  }
+}
+
+.exceptions-section {
+  .section-subtitle {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin: 0.5rem 0 1rem 0;
+  }
+}
+
+.exceptions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.exception-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .exception-date {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: #1e293b;
+    min-width: 180px;
+
+    .material-icons {
+      color: #64748b;
+      font-size: 18px;
+    }
+  }
+
+  .exception-details {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .exception-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+
+    &.badge-vacation {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    &.badge-sick {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    &.badge-blocked {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    &.badge-custom {
+      background: #f3e8ff;
+      color: #7c3aed;
+    }
+  }
+
+  .exception-time {
+    font-size: 0.875rem;
+    color: #64748b;
+
+    &.all-day {
+      font-style: italic;
+    }
+  }
+
+  .exception-reason {
+    width: 100%;
+    font-size: 0.875rem;
+    color: #64748b;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #e2e8f0;
+    margin-top: 0.25rem;
+
+    @media (min-width: 640px) {
+      width: auto;
+      padding-top: 0;
+      border-top: none;
+      margin-top: 0;
+      margin-left: auto;
+    }
+  }
+}
+
+.no-exceptions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  color: #9ca3af;
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+
+  .material-icons {
+    font-size: 40px;
+    margin-bottom: 0.5rem;
+    color: #d1d5db;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+}
+
+.no-availability-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+
+  .material-icons {
+    font-size: 48px;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+

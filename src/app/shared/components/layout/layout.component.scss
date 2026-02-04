@@ -325,6 +325,11 @@
         font-size: 0.8rem;
         padding: 3px 10px;
       }
+
+      // SMS inbox badge - use purple/indigo to match branding
+      &.sms-badge {
+        background: #6366f1;
+      }
     }
   }
 }
