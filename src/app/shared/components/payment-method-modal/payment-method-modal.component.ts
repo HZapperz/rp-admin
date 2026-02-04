@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientService } from '../../../core/services/client.service';
 import { environment } from '../../../../environments/environment';
-import { loadStripe, Stripe, StripeElements, StripePaymentElement } from '@stripe/stripe-js';
+import { loadStripe, Stripe, StripeElements, StripeCardElement } from '@stripe/stripe-js';
 
 @Component({
   selector: 'app-payment-method-modal',
@@ -17,11 +17,11 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
   @Output() close = new EventEmitter<void>();
   @Output() paymentMethodAdded = new EventEmitter<void>();
 
-  @ViewChild('paymentElement') paymentElementRef!: ElementRef;
+  @ViewChild('cardElement') cardElementRef!: ElementRef;
 
   private stripe: Stripe | null = null;
   private elements: StripeElements | null = null;
-  private paymentElement: StripePaymentElement | null = null;
+  private cardElement: StripeCardElement | null = null;
 
   loading = true;
   saving = false;
@@ -71,9 +71,10 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
     }
 
     try {
-      // Create Stripe Elements with the client secret
+      console.log('Payment modal: Creating Stripe Elements...');
+
+      // Create Stripe Elements (without clientSecret for Card Element)
       this.elements = this.stripe.elements({
-        clientSecret: this.clientSecret,
         appearance: {
           theme: 'stripe',
           variables: {
@@ -84,41 +85,57 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
             fontFamily: 'system-ui, -apple-system, sans-serif',
             borderRadius: '10px',
             spacingUnit: '4px'
-          },
-          rules: {
-            '.Input': {
-              border: '2px solid #e2e8f0',
-              padding: '12px 16px',
-            },
-            '.Input:focus': {
-              border: '2px solid #667eea',
-              boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)'
-            }
           }
         }
       });
 
-      // Create and mount the Payment Element
-      this.paymentElement = this.elements.create('payment', {
-        layout: 'tabs'
+      // Create Card Element (simpler, no wallet integrations)
+      this.cardElement = this.elements.create('card', {
+        style: {
+          base: {
+            fontSize: '16px',
+            color: '#1a202c',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            '::placeholder': {
+              color: '#a0aec0'
+            }
+          },
+          invalid: {
+            color: '#dc2626',
+            iconColor: '#dc2626'
+          }
+        },
+        hidePostalCode: false
       });
 
       const container = document.getElementById('payment-element-container');
       if (container) {
-        this.paymentElement.mount(container);
+        this.cardElement.mount(container);
+        console.log('Payment modal: Card element mounted successfully');
+      } else {
+        console.error('Payment modal: Container not found');
       }
+
+      // Listen for errors on the card element
+      this.cardElement.on('change', (event) => {
+        if (event.error) {
+          this.error = event.error.message || '';
+        } else {
+          this.error = '';
+        }
+      });
 
       this.loading = false;
     } catch (err: any) {
-      console.error('Error mounting payment element:', err);
+      console.error('Error mounting card element:', err);
       this.error = 'Failed to load payment form';
       this.loading = false;
     }
   }
 
   ngOnDestroy(): void {
-    if (this.paymentElement) {
-      this.paymentElement.unmount();
+    if (this.cardElement) {
+      this.cardElement.unmount();
     }
   }
 
@@ -133,7 +150,7 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
   }
 
   async submitPayment(): Promise<void> {
-    if (!this.stripe || !this.elements) {
+    if (!this.stripe || !this.cardElement) {
       this.error = 'Payment form not ready';
       return;
     }
@@ -142,16 +159,20 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
     this.error = '';
 
     try {
-      // Confirm the SetupIntent
-      const { setupIntent, error: setupError } = await this.stripe.confirmSetup({
-        elements: this.elements,
-        redirect: 'if_required',
-        confirmParams: {
-          return_url: window.location.href
+      console.log('Payment modal: Confirming card setup...');
+
+      // Confirm the SetupIntent with the Card Element
+      const { setupIntent, error: setupError } = await this.stripe.confirmCardSetup(
+        this.clientSecret,
+        {
+          payment_method: {
+            card: this.cardElement
+          }
         }
-      });
+      );
 
       if (setupError) {
+        console.error('Payment modal: Setup error:', setupError);
         this.error = setupError.message || 'Failed to save card';
         this.saving = false;
         return;
@@ -162,6 +183,8 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
         this.saving = false;
         return;
       }
+
+      console.log('Payment modal: Card setup confirmed, saving to database...');
 
       // Save the payment method to the database
       const paymentMethodId = typeof setupIntent.payment_method === 'string'
@@ -175,6 +198,7 @@ export class PaymentMethodModalComponent implements OnInit, OnDestroy {
         true // set as default
       );
 
+      console.log('Payment modal: Payment method saved successfully');
       this.paymentMethodAdded.emit();
       this.close.emit();
 
