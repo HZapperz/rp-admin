@@ -127,10 +127,45 @@
 }
 
 .payment-form {
-  min-height: 200px;
+  .card-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
 
-  #payment-element-container {
-    min-height: 150px;
+  .card-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.2s;
+
+    &:focus-within {
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .card-icon {
+      flex-shrink: 0;
+      margin-right: 0.75rem;
+      color: #9ca3af;
+    }
+
+    #payment-element-container {
+      flex: 1;
+      min-height: 24px;
+    }
+  }
+
+  .card-hint {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
   }
 }
 
