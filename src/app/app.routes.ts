@@ -39,6 +39,11 @@ export const routes: Routes = [
           import('./features/warm-leads/warm-leads.routes').then(m => m.routes)
       },
       {
+        path: 'fill-schedule',
+        loadChildren: () =>
+          import('./features/fill-schedule/fill-schedule.routes').then(m => m.routes)
+      },
+      {
         path: 'groomers',
         loadChildren: () =>
           import('./features/groomers/groomers.routes').then(m => m.routes)

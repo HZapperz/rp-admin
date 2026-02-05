@@ -40,6 +40,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'SMS Inbox', route: '/sms-inbox', icon: 'sms' },
     { label: 'Clients', route: '/clients', icon: 'people' },
     { label: 'Warm Leads', route: '/warm-leads', icon: 'whatshot' },
+    { label: 'Fill Schedule', route: '/fill-schedule', icon: 'calendar_month' },
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },
     { label: 'Services', route: '/services', icon: 'spa' },
     { label: 'Analytics', route: '/analytics', icon: 'analytics' },
