@@ -411,6 +411,10 @@
                   <span class="text-green-600">Discount</span>
                   <span class="text-green-600">-${{ booking.discount_amount }}</span>
                 </div>
+                <div class="price-row-compact" *ngIf="booking.credits_applied && booking.credits_applied > 0">
+                  <span class="text-blue-600">Credits Applied</span>
+                  <span class="text-blue-600">-${{ booking.credits_applied }}</span>
+                </div>
                 <div class="price-row-compact">
                   <span>Tax</span>
                   <span>${{ booking.tax_amount }}</span>
