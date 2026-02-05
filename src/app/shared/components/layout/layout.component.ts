@@ -35,6 +35,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   navItems: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
     { label: 'Bookings', route: '/bookings', icon: 'event' },
+    { label: 'Rebookings', route: '/bookings/rebookings', icon: 'event_repeat' },
     { label: 'Change Requests', route: '/change-requests', icon: 'schedule' },
     { label: 'SMS Inbox', route: '/sms-inbox', icon: 'sms' },
     { label: 'Clients', route: '/clients', icon: 'people' },
