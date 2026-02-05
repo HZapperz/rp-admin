@@ -463,3 +463,46 @@ export interface AvailablePayrollMonth {
   label: string;
   booking_count: number;
 }
+
+// Rebooking Types
+export type RebookingType = 'schedule' | 'callback';
+export type RebookingStatus = 'pending' | 'contacted' | 'booked' | 'declined' | 'no_answer';
+
+export interface Rebooking {
+  id: string;
+  booking_id: string;
+  client_id: string;
+  groomer_id: string;
+  type: RebookingType;
+  preferred_date?: string;
+  preferred_time_slot?: 'morning' | 'afternoon';
+  callback_weeks?: number;
+  callback_date?: string;
+  groomer_notes?: string;
+  status: RebookingStatus;
+  admin_notes?: string;
+  new_booking_id?: string;
+  contacted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RebookingWithDetails extends Rebooking {
+  client?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    email?: string;
+  };
+  groomer?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  booking?: {
+    id: string;
+    scheduled_date: string;
+  };
+  pets?: Array<{ name: string }>;
+}
