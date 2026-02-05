@@ -541,6 +541,12 @@
                 <div class="form-row" *ngIf="selectedGroomerId && selectedDate">
                   <label>3. Time Slot</label>
 
+                  <!-- Client's preferred shift (info only) -->
+                  <div *ngIf="booking?.shift_preference" class="client-preference-info">
+                    <span class="preference-label">Client requested:</span>
+                    <span class="preference-value">{{ booking!.shift_preference | titlecase }}</span>
+                  </div>
+
                   <!-- Loading state -->
                   <div *ngIf="isLoadingSlots" class="slots-loading">
                     <span class="spinner-small"></span> Loading available slots...
@@ -554,24 +560,49 @@
                     {{ groomerUnavailableReason }}
                   </div>
 
-                  <!-- Dynamic time slots -->
-                  <div *ngIf="!isLoadingSlots && !groomerUnavailableReason && dynamicAvailableSlots.length > 0" class="time-slots-compact">
-                    <button
-                      *ngFor="let slot of dynamicAvailableSlots"
-                      (click)="selectDynamicTimeSlot(slot)"
-                      [class.selected]="selectedTimeSlot?.start === slot.start_time + ':00'"
-                      [class.unavailable]="!slot.is_available"
-                      [disabled]="!slot.is_available"
-                      [title]="slot.conflict_reason || ''"
-                      class="slot-btn-compact">
-                      {{ slot.label }}
-                      <span *ngIf="!slot.is_available" class="slot-conflict-icon">✕</span>
-                    </button>
-                  </div>
+                  <!-- Granular time slots (6 slots: 3 morning + 3 afternoon) -->
+                  <div *ngIf="!isLoadingSlots && !groomerUnavailableReason" class="time-slots-sections">
+                    <!-- Morning slots -->
+                    <div class="slot-section" [class.preferred]="booking!.shift_preference === 'morning'">
+                      <div class="slot-section-header">
+                        <span class="slot-section-title">Morning</span>
+                        <span *ngIf="booking!.shift_preference === 'morning'" class="preferred-badge">Preferred</span>
+                      </div>
+                      <div class="time-slots-grid">
+                        <button
+                          *ngFor="let slot of morningSlots"
+                          (click)="selectTimeSlot(slot)"
+                          [class.selected]="selectedTimeSlot?.start === slot.start"
+                          [class.unavailable]="!isSlotAvailable(slot)"
+                          [disabled]="!isSlotAvailable(slot)"
+                          [title]="getSlotConflictReason(slot)"
+                          class="slot-btn-granular">
+                          {{ slot.label }}
+                          <span *ngIf="!isSlotAvailable(slot)" class="slot-conflict-icon">✕</span>
+                        </button>
+                      </div>
+                    </div>
 
-                  <!-- No slots available message -->
-                  <div *ngIf="!isLoadingSlots && !groomerUnavailableReason && dynamicAvailableSlots.length > 0 && !hasAvailableSlots()" class="no-slots-msg">
-                    All time slots are booked for this date.
+                    <!-- Afternoon slots -->
+                    <div class="slot-section" [class.preferred]="booking!.shift_preference === 'afternoon'">
+                      <div class="slot-section-header">
+                        <span class="slot-section-title">Afternoon</span>
+                        <span *ngIf="booking!.shift_preference === 'afternoon'" class="preferred-badge">Preferred</span>
+                      </div>
+                      <div class="time-slots-grid">
+                        <button
+                          *ngFor="let slot of afternoonSlots"
+                          (click)="selectTimeSlot(slot)"
+                          [class.selected]="selectedTimeSlot?.start === slot.start"
+                          [class.unavailable]="!isSlotAvailable(slot)"
+                          [disabled]="!isSlotAvailable(slot)"
+                          [title]="getSlotConflictReason(slot)"
+                          class="slot-btn-granular">
+                          {{ slot.label }}
+                          <span *ngIf="!isSlotAvailable(slot)" class="slot-conflict-icon">✕</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Custom time option -->

@@ -1135,6 +1135,123 @@
   }
 }
 
+// Client preference info
+.client-preference-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 0.375rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+
+  .preference-label {
+    color: #64748b;
+  }
+
+  .preference-value {
+    font-weight: 600;
+    color: #0369a1;
+  }
+}
+
+// Time slots sections (Morning + Afternoon)
+.time-slots-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slot-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: white;
+
+  &.preferred {
+    border-color: #7c3aed;
+    background: #faf5ff;
+
+    .slot-section-title {
+      color: #7c3aed;
+    }
+  }
+}
+
+.slot-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.slot-section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.preferred-badge {
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 0.125rem 0.375rem;
+  background: #7c3aed;
+  color: white;
+  border-radius: 9999px;
+}
+
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.375rem;
+}
+
+.slot-btn-granular {
+  padding: 0.5rem 0.25rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  position: relative;
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+
+  &.selected {
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+    font-weight: 500;
+  }
+
+  &.unavailable {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+    text-decoration: line-through;
+    opacity: 0.7;
+
+    .slot-conflict-icon {
+      color: #dc2626;
+      font-size: 0.5rem;
+      margin-left: 0.125rem;
+    }
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
 .no-slots-msg {
   padding: 0.75rem;
   background: #fef3cd;

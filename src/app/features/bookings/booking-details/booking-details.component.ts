@@ -766,6 +766,73 @@ export class BookingDetailsComponent implements OnInit {
     }
   }
 
+  /**
+   * Check if a granular time slot is available for the selected groomer and date.
+   * Checks against existing bookings and groomer working hours.
+   */
+  isSlotAvailable(slot: { label: string; start: string; end: string }): boolean {
+    if (!this.groomerAvailabilityInfo) return true; // Default to available if no data yet
+    if (!this.groomerAvailabilityInfo.is_available) return false; // Groomer not working this day
+
+    const slotStart = slot.start.substring(0, 5); // "08:30"
+    const slotEnd = slot.end.substring(0, 5); // "09:45"
+
+    // Check against existing bookings
+    for (const booking of this.groomerAvailabilityInfo.existing_bookings || []) {
+      const bookingStart = booking.start_time.substring(0, 5);
+      const bookingEnd = booking.end_time.substring(0, 5);
+
+      // Check for overlap: slot overlaps if it starts before booking ends AND ends after booking starts
+      if (slotStart < bookingEnd && slotEnd > bookingStart) {
+        return false;
+      }
+    }
+
+    // Check against blocked times (date exceptions)
+    for (const blocked of this.groomerAvailabilityInfo.blocked_times || []) {
+      if (blocked.start_time && blocked.end_time) {
+        const blockedStart = blocked.start_time.substring(0, 5);
+        const blockedEnd = blocked.end_time.substring(0, 5);
+        if (slotStart < blockedEnd && slotEnd > blockedStart) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Get the conflict reason for a slot (for tooltip display)
+   */
+  getSlotConflictReason(slot: { label: string; start: string; end: string }): string {
+    if (!this.groomerAvailabilityInfo) return '';
+    if (!this.groomerAvailabilityInfo.is_available) return this.groomerAvailabilityInfo.reason || 'Groomer unavailable';
+
+    const slotStart = slot.start.substring(0, 5);
+    const slotEnd = slot.end.substring(0, 5);
+
+    for (const booking of this.groomerAvailabilityInfo.existing_bookings || []) {
+      const bookingStart = booking.start_time.substring(0, 5);
+      const bookingEnd = booking.end_time.substring(0, 5);
+      if (slotStart < bookingEnd && slotEnd > bookingStart) {
+        return 'Already booked';
+      }
+    }
+
+    for (const blocked of this.groomerAvailabilityInfo.blocked_times || []) {
+      if (blocked.start_time && blocked.end_time) {
+        const blockedStart = blocked.start_time.substring(0, 5);
+        const blockedEnd = blocked.end_time.substring(0, 5);
+        if (slotStart < blockedEnd && slotEnd > blockedStart) {
+          return `Blocked: ${blocked.exception_type}`;
+        }
+      }
+    }
+
+    return '';
+  }
+
   // Custom Time Slot Methods
   toggleCustomTimeSlot() {
     this.useCustomTimeSlot = !this.useCustomTimeSlot;
