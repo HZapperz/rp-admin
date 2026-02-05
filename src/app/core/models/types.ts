@@ -108,6 +108,7 @@ export interface Booking {
   // Pricing breakdown fields
   original_subtotal?: number;
   discount_amount?: number;
+  credits_applied?: number;
   authorized_amount?: number;
   subtotal_before_tax?: number;
   tax_amount?: number;
