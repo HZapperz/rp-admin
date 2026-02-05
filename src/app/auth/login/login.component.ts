@@ -17,6 +17,11 @@ export class LoginComponent implements OnInit {
   errorMessage: string = '';
   returnUrl: string = '/dashboard';
 
+  // UI state
+  showPassword = false;
+  emailFocused = false;
+  passwordFocused = false;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
