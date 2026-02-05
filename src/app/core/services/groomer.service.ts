@@ -1520,10 +1520,13 @@ export class GroomerService {
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 
-    // Calculate available slots
+    // Helper to normalize time to HH:MM format for consistent comparison
+    const normalizeTime = (time: string): string => time.substring(0, 5);
+
+    // Calculate available slots (normalize times to HH:MM)
     const availablePeriods = weeklySlots.map((slot: any) => ({
-      start: slot.start_time,
-      end: slot.end_time,
+      start: normalizeTime(slot.start_time),
+      end: normalizeTime(slot.end_time),
     }));
 
     const blockedPeriods: { start: string; end: string; reason: string }[] = [];
@@ -1532,8 +1535,8 @@ export class GroomerService {
     for (const exc of exceptions || []) {
       if (exc.start_time && exc.end_time) {
         blockedPeriods.push({
-          start: exc.start_time,
-          end: exc.end_time,
+          start: normalizeTime(exc.start_time),
+          end: normalizeTime(exc.end_time),
           reason: `${exc.exception_type}${exc.reason ? `: ${exc.reason}` : ''}`,
         });
       }
@@ -1542,8 +1545,8 @@ export class GroomerService {
     // Add existing bookings
     for (const booking of existingBookings || []) {
       blockedPeriods.push({
-        start: booking.scheduled_time_start,
-        end: booking.scheduled_time_end,
+        start: normalizeTime(booking.scheduled_time_start),
+        end: normalizeTime(booking.scheduled_time_end),
         reason: `Existing booking (${booking.status})`,
       });
     }
