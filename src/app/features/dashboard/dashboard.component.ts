@@ -240,6 +240,7 @@ export class DashboardComponent implements OnInit {
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const bookings = this.allBookings
       .filter(b => {
+        if (b.status === 'cancelled') return false;
         // Direct string comparison - both are already in YYYY-MM-DD format
         const bookingDateStr = b.scheduled_date.split('T')[0];
         return bookingDateStr === dateStr;
