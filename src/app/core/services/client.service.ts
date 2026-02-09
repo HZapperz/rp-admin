@@ -189,7 +189,7 @@ export class ClientService {
     // Step 1: Get all clients
     let query = this.supabase
       .from('users')
-      .select('id, first_name, last_name, email, phone, avatar_url, created_at, sms_consent as sms_enabled, last_outreach_date')
+      .select('id, first_name, last_name, email, phone, avatar_url, created_at, sms_consent, last_outreach_date')
       .eq('role', 'CLIENT')
       .order('created_at', { ascending: false });
 
@@ -339,6 +339,7 @@ export class ClientService {
 
       return {
         ...client,
+        sms_enabled: (client as any).sms_consent, // Map sms_consent to sms_enabled
         total_bookings: totalBookings,
         total_spent: totalSpent,
         last_booking_date: lastBookingDate,
