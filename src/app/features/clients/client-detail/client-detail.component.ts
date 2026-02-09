@@ -58,6 +58,9 @@ export class ClientDetailComponent implements OnInit {
   // Payment Method Modal
   showPaymentMethodModal = false;
 
+  // Expandable pets tracking
+  expandedPets: { [key: string]: boolean } = {};
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -341,5 +344,19 @@ export class ClientDetailComponent implements OnInit {
       this.clientData.paymentMethods = await this.clientService.getClientPaymentMethods(this.clientData.client.id);
     }
     this.showPaymentMethodModal = false;
+  }
+
+  // ============================================
+  // Pet Details Expansion
+  // ============================================
+  togglePetDetails(petId: string): void {
+    this.expandedPets[petId] = !this.expandedPets[petId];
+  }
+
+  // ============================================
+  // Navigate to Booking Detail
+  // ============================================
+  viewBooking(bookingId: string): void {
+    this.router.navigate(['/bookings', bookingId]);
   }
 }

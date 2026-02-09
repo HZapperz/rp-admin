@@ -21,6 +21,7 @@ export class ClientsListComponent implements OnInit {
   failedAvatars = new Set<string>();
   expandedCards: Set<string> = new Set();
   showCreateClientModal = false;
+  viewMode: 'table' | 'cards' = 'table'; // Default to table view
 
   constructor(private clientService: ClientService, private router: Router) {}
 
@@ -117,5 +118,10 @@ export class ClientsListComponent implements OnInit {
   onClientCreated(clientId: string): void {
     this.showCreateClientModal = false;
     this.router.navigate(['/clients', clientId]);
+  }
+
+  // View toggle methods
+  setViewMode(mode: 'table' | 'cards'): void {
+    this.viewMode = mode;
   }
 }

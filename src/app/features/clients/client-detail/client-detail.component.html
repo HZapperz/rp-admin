@@ -14,86 +14,134 @@
 
   <!-- Client Detail Content -->
   <div *ngIf="!loading && !error && clientData" class="detail-content">
-    <!-- Header -->
-    <div class="detail-header">
-      <button (click)="goBack()" class="btn btn-back">
+    <!-- Compact Header -->
+    <div class="page-header">
+      <button (click)="goBack()" class="btn-back-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Back to Clients
       </button>
-      <h1>Client Details</h1>
+      <div class="header-center">
+        <span class="client-label">Client</span>
+        <span class="client-name-header">{{ clientData.client.first_name }} {{ clientData.client.last_name }}</span>
+      </div>
+      <button class="btn-edit-header" (click)="openEditClientModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit
+      </button>
     </div>
 
-    <!-- Client Overview -->
-    <div class="section overview-section">
-      <div class="client-profile">
-        <div class="profile-image">
-          <img
-            [src]="clientData.client.avatar_url || 'https://via.placeholder.com/150?text=No+Image'"
-            [alt]="clientData.client.first_name + ' ' + clientData.client.last_name"
-            onerror="this.src='https://via.placeholder.com/150?text=No+Image'"
-          />
+    <!-- Quick Info Bar -->
+    <div class="quick-info-bar">
+      <div class="info-chip">
+        <span class="chip-icon">📧</span>
+        <span class="chip-value">{{ clientData.client.email }}</span>
+      </div>
+      <div class="info-chip">
+        <span class="chip-icon">📞</span>
+        <span class="chip-value">{{ clientData.client.phone || 'N/A' }}</span>
+      </div>
+      <div class="info-chip">
+        <span class="chip-icon">🐾</span>
+        <span class="chip-label">Pets:</span>
+        <span class="chip-value">{{ clientData.pets.length }}</span>
+      </div>
+      <div class="info-chip highlight">
+        <span class="chip-label">Total Spent:</span>
+        <span class="chip-value">{{ formatCurrency(clientData.client.total_spent) }}</span>
+      </div>
+    </div>
+
+    <!-- Client Overview (2-column grid) -->
+    <div class="details-grid two-col">
+      <!-- Profile Card -->
+      <div class="compact-card">
+        <div class="compact-header">
+          <h3>Profile</h3>
         </div>
-        <div class="profile-info">
-          <div class="profile-name-row">
-            <h2>{{ clientData.client.first_name }} {{ clientData.client.last_name }}</h2>
-            <button class="btn btn-secondary btn-sm" (click)="openEditClientModal()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Edit
-            </button>
+        <div class="compact-body">
+          <div class="profile-row">
+            <img
+              *ngIf="clientData.client.avatar_url"
+              [src]="clientData.client.avatar_url"
+              [alt]="clientData.client.first_name + ' ' + clientData.client.last_name"
+              class="avatar-img-small"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+            />
+            <div
+              *ngIf="!clientData.client.avatar_url"
+              class="avatar-small"
+            >
+              {{ clientData.client.first_name.charAt(0) }}{{ clientData.client.last_name.charAt(0) }}
+            </div>
+            <div class="profile-details">
+              <span class="profile-name">{{ clientData.client.first_name }} {{ clientData.client.last_name }}</span>
+              <div class="contact-icons">
+                <a [href]="'mailto:' + clientData.client.email" class="contact-link" title="Email">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                </a>
+                <a *ngIf="clientData.client.phone" [href]="'tel:' + clientData.client.phone" class="contact-link" title="Call">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                  </svg>
+                </a>
+                <a *ngIf="clientData.client.phone" [href]="'sms:' + clientData.client.phone" class="contact-link" title="SMS">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
           </div>
-          <div class="profile-details">
-            <div class="detail-item">
-              <span class="label">Email:</span>
-              <span class="value">{{ clientData.client.email }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Phone:</span>
-              <span class="value">{{ clientData.client.phone || 'N/A' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Member Since:</span>
-              <span class="value">{{ formatDate(clientData.client.created_at) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Last Logged In:</span>
-              <span class="value">{{ formatDateTime(clientData.client.last_sign_in_at) }}</span>
-            </div>
-            <div class="detail-item" *ngIf="clientData.client.blocked_at">
-              <span class="label">Status:</span>
-              <span class="value status-blocked">Blocked</span>
-            </div>
+          <div class="detail-row">
+            <span class="detail-label">Member Since</span>
+            <span class="detail-value">{{ formatDate(clientData.client.created_at) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Last Login</span>
+            <span class="detail-value">{{ formatDateTime(clientData.client.last_sign_in_at) }}</span>
+          </div>
+          <div class="detail-row" *ngIf="clientData.client.blocked_at">
+            <span class="detail-label">Status</span>
+            <span class="status-blocked">Blocked</span>
           </div>
         </div>
       </div>
 
-      <!-- Statistics -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">{{ clientData.client.total_bookings }}</div>
-          <div class="stat-label">Total Bookings</div>
+      <!-- Stats Card -->
+      <div class="compact-card">
+        <div class="compact-header">
+          <h3>Statistics</h3>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ formatCurrency(clientData.client.total_spent) }}</div>
-          <div class="stat-label">Total Spent</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ clientData.client.last_booking_date ? formatDate(clientData.client.last_booking_date) : 'Never' }}</div>
-          <div class="stat-label">Last Booking</div>
+        <div class="compact-body">
+          <div class="stat-item-compact">
+            <span class="stat-label-compact">Total Bookings</span>
+            <span class="stat-value-compact">{{ clientData.client.total_bookings }}</span>
+          </div>
+          <div class="stat-item-compact">
+            <span class="stat-label-compact">Total Spent</span>
+            <span class="stat-value-compact">{{ formatCurrency(clientData.client.total_spent) }}</span>
+          </div>
+          <div class="stat-item-compact">
+            <span class="stat-label-compact">Last Booking</span>
+            <span class="stat-value-compact">{{ clientData.client.last_booking_date ? formatDate(clientData.client.last_booking_date) : 'Never' }}</span>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Pets Section -->
-    <div class="section">
-      <div class="section-header">
-        <h3 class="section-title">Pets ({{ clientData.pets.length }})</h3>
-        <button class="btn btn-primary btn-sm" (click)="openAddPetModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="compact-card">
+      <div class="compact-header">
+        <h3>Pets ({{ clientData.pets.length }})</h3>
+        <button class="btn-add-compact" (click)="openAddPetModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Add Pet
@@ -102,46 +150,67 @@
       <div *ngIf="clientData.pets.length === 0" class="empty-state">
         No pets registered
       </div>
-      <div class="pets-grid" *ngIf="clientData.pets.length > 0">
-        <div class="pet-card" *ngFor="let pet of clientData.pets" (click)="openEditPetModal(pet)" style="cursor: pointer;">
-          <div class="pet-edit-indicator">
+      <div class="pets-grid-compact" *ngIf="clientData.pets.length > 0">
+        <div class="pet-card-compact" *ngFor="let pet of clientData.pets" (click)="openEditPetModal(pet)">
+          <div class="pet-top">
+            <img
+              *ngIf="pet.photo_url"
+              [src]="getPetPhotoUrl(pet.photo_url)"
+              [alt]="pet.name"
+              class="pet-photo-small"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+            />
+            <div *ngIf="!pet.photo_url" class="pet-placeholder">
+              🐾
+            </div>
+            <div class="pet-info-compact">
+              <span class="pet-name">{{ pet.name }}</span>
+              <span class="pet-breed">{{ pet.breed || 'Unknown breed' }}</span>
+              <div class="pet-badges-compact">
+                <span class="badge-small" *ngIf="pet.size_category">{{ pet.size_category }}</span>
+              </div>
+            </div>
+          </div>
+          <button
+            class="expand-btn"
+            [class.expanded]="expandedPets[pet.id]"
+            (click)="togglePetDetails(pet.id); $event.stopPropagation()"
+          >
+            <span>{{ expandedPets[pet.id] ? 'Hide' : 'Show' }} Health Details</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-          </div>
-          <div class="pet-header">
-            <div class="pet-image-wrapper">
-              <img
-                [src]="getPetPhotoUrl(pet.photo_url)"
-                [alt]="pet.name"
-                class="pet-image"
-                onerror="this.src='https://via.placeholder.com/80?text=Pet'"
-              />
+          </button>
+          <div class="pet-health-collapsed" [class.expanded]="expandedPets[pet.id]">
+            <div class="health-grid-compact">
+              <div class="health-item-compact" *ngIf="pet.age || pet.date_of_birth">
+                <span class="hl">Age:</span>
+                <span class="hv">{{ pet.age || calculateAge(pet.date_of_birth) }}</span>
+              </div>
+              <div class="health-item-compact">
+                <span class="hl">Allergies:</span>
+                <span class="hv" [class.negative]="pet.has_allergies">{{ pet.has_allergies ? 'Yes' : 'No' }}</span>
+              </div>
+              <div class="health-item-compact">
+                <span class="hl">Skin Cond.:</span>
+                <span class="hv" [class.negative]="pet.has_skin_conditions">{{ pet.has_skin_conditions ? 'Yes' : 'No' }}</span>
+              </div>
+              <div class="health-item-compact" *ngIf="pet.blow_dryer_reaction">
+                <span class="hl">Dryer:</span>
+                <span class="hv">{{ pet.blow_dryer_reaction }}</span>
+              </div>
+              <div class="health-item-compact" *ngIf="pet.water_reaction">
+                <span class="hl">Water:</span>
+                <span class="hv">{{ pet.water_reaction }}</span>
+              </div>
             </div>
-            <div class="pet-basic-info">
-              <h4>{{ pet.name }}</h4>
-              <p class="pet-breed">{{ pet.breed || 'Unknown breed' }}</p>
-              <span class="pet-size" *ngIf="pet.size_category">{{ pet.size_category | uppercase }}</span>
+            <div class="health-notes" *ngIf="pet.has_allergies && pet.allergy_details">
+              <strong>Allergies:</strong> {{ pet.allergy_details }}
             </div>
-          </div>
-          <div class="pet-details">
-            <div *ngIf="pet.age || pet.date_of_birth" class="detail-line">
-              <strong>Age:</strong> {{ pet.age || calculateAge(pet.date_of_birth) }}
+            <div class="health-notes" *ngIf="pet.has_skin_conditions && pet.skin_condition_details">
+              <strong>Skin:</strong> {{ pet.skin_condition_details }}
             </div>
-            <div *ngIf="pet.has_allergies" class="detail-line">
-              <strong>Allergies:</strong> {{ pet.allergy_details || 'Yes' }}
-            </div>
-            <div *ngIf="pet.has_skin_conditions" class="detail-line">
-              <strong>Skin Conditions:</strong> {{ pet.skin_condition_details || 'Yes' }}
-            </div>
-            <div *ngIf="pet.blow_dryer_reaction" class="detail-line">
-              <strong>Blow Dryer Reaction:</strong> {{ pet.blow_dryer_reaction }}
-            </div>
-            <div *ngIf="pet.water_reaction" class="detail-line">
-              <strong>Water Reaction:</strong> {{ pet.water_reaction }}
-            </div>
-            <div *ngIf="pet.special_notes || pet.additional_notes" class="detail-line">
+            <div class="health-notes" *ngIf="pet.special_notes || pet.additional_notes">
               <strong>Notes:</strong> {{ pet.special_notes || pet.additional_notes }}
             </div>
           </div>
@@ -150,11 +219,11 @@
     </div>
 
     <!-- Addresses Section -->
-    <div class="section">
-      <div class="section-header">
-        <h3 class="section-title">Addresses ({{ clientData.addresses.length }})</h3>
-        <button class="btn btn-primary btn-sm" (click)="openAddAddressModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="compact-card">
+      <div class="compact-header">
+        <h3>Addresses ({{ clientData.addresses.length }})</h3>
+        <button class="btn-add-compact" (click)="openAddAddressModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Add Address
@@ -163,49 +232,45 @@
       <div *ngIf="clientData.addresses.length === 0" class="empty-state">
         No addresses saved
       </div>
-      <div class="addresses-list" *ngIf="clientData.addresses.length > 0">
-        <div class="address-card" *ngFor="let address of clientData.addresses">
-          <div class="address-header">
-            <span class="address-name">{{ address.name }}</span>
-            <div class="address-actions">
-              <div class="address-badges">
-                <span class="badge badge-default" *ngIf="address.is_default">Default</span>
-                <span class="badge badge-type">{{ address.address_type }}</span>
-              </div>
-              <button class="btn-icon" (click)="openEditAddressModal(address)" title="Edit">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-              </button>
-              <button class="btn-icon btn-icon-danger" (click)="deleteAddress(address)" title="Delete">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                </svg>
-              </button>
+      <div class="addresses-list-compact" *ngIf="clientData.addresses.length > 0">
+        <div class="address-item-compact" *ngFor="let address of clientData.addresses">
+          <div class="address-header-compact">
+            <span class="address-name-compact">{{ address.name }}</span>
+            <div class="address-badges-compact">
+              <span class="badge-default" *ngIf="address.is_default">Default</span>
+              <span class="badge-type">{{ address.address_type }}</span>
             </div>
           </div>
-          <div class="address-details">
-            <!-- Only show building on separate line if we have both building AND street -->
+          <div class="address-details-compact">
             <span *ngIf="address.building && address.street">{{ address.building }}<br/></span>
-            <!-- Use street, fall back to building for legacy data -->
             {{ address.street || address.building }}<span *ngIf="address.apartment">, Apt {{ address.apartment }}</span><span *ngIf="address.floor">, Floor {{ address.floor }}</span><br/>
             {{ address.city }}, {{ address.state }} {{ address.zip_code }}
-            <div *ngIf="address.additional_info" class="address-notes">
-              {{ address.additional_info }}
-            </div>
+            <div *ngIf="address.additional_info">{{ address.additional_info }}</div>
+          </div>
+          <div class="address-actions-compact">
+            <button class="btn-icon-compact" (click)="openEditAddressModal(address)" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="btn-icon-compact danger" (click)="deleteAddress(address)" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Payment Methods Section -->
-    <div class="section">
-      <div class="section-header">
-        <h3 class="section-title">Payment Methods ({{ clientData.paymentMethods.length }})</h3>
-        <button class="btn btn-primary btn-sm" (click)="openPaymentMethodModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="compact-card">
+      <div class="compact-header">
+        <h3>Payment Methods ({{ clientData.paymentMethods.length }})</h3>
+        <button class="btn-add-compact" (click)="openPaymentMethodModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Add Card
@@ -214,28 +279,30 @@
       <div *ngIf="clientData.paymentMethods.length === 0" class="empty-state">
         No payment methods saved
       </div>
-      <div class="payment-methods-list" *ngIf="clientData.paymentMethods.length > 0">
-        <div class="payment-card" *ngFor="let pm of clientData.paymentMethods">
-          <div class="payment-header">
-            <span class="card-brand">{{ pm.brand | uppercase }}</span>
-            <span class="badge badge-default" *ngIf="pm.is_default">Default</span>
+      <div class="payment-methods-list-compact" *ngIf="clientData.paymentMethods.length > 0">
+        <div class="payment-item-compact" *ngFor="let pm of clientData.paymentMethods">
+          <div class="payment-header-compact">
+            <span class="card-brand-compact">{{ pm.brand | uppercase }}</span>
+            <span class="badge-default" *ngIf="pm.is_default">Default</span>
           </div>
-          <div class="payment-details">
-            <div class="card-number">•••• •••• •••• {{ pm.last4 }}</div>
-            <div class="card-expiry">Expires: {{ pm.exp_month }}/{{ pm.exp_year }}</div>
+          <div class="payment-details-compact">
+            <div class="card-number-compact">•••• •••• •••• {{ pm.last4 }}</div>
+            <div class="card-expiry-compact">Expires: {{ pm.exp_month }}/{{ pm.exp_year }}</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Booking History Section -->
-    <div class="section">
-      <h3 class="section-title">Booking History ({{ clientData.bookings.length }})</h3>
+    <div class="compact-card">
+      <div class="compact-header">
+        <h3>Booking History ({{ clientData.bookings.length }})</h3>
+      </div>
       <div *ngIf="clientData.bookings.length === 0" class="empty-state">
         No bookings yet
       </div>
       <!-- Desktop Table View -->
-      <div class="bookings-table desktop-view" *ngIf="clientData.bookings.length > 0">
+      <div class="bookings-table-compact desktop-view" *ngIf="clientData.bookings.length > 0">
         <table>
           <thead>
             <tr>
@@ -248,14 +315,14 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let booking of clientData.bookings">
+            <tr *ngFor="let booking of clientData.bookings" (click)="viewBooking(booking.id)" style="cursor: pointer;">
               <td>{{ formatDate(booking.scheduled_date) }}</td>
               <td>{{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end) }}</td>
               <td>{{ booking.service_name || 'N/A' }}</td>
               <td>{{ booking.groomer_name || 'Unassigned' }}</td>
               <td>{{ formatCurrency(booking.total_amount) }}</td>
               <td>
-                <span [class]="'status-badge ' + getStatusClass(booking.status)">
+                <span [class]="'status-badge-small ' + getStatusClass(booking.status)">
                   {{ getStatusLabel(booking.status) }}
                 </span>
               </td>
@@ -264,11 +331,11 @@
         </table>
       </div>
       <!-- Mobile Card View -->
-      <div class="bookings-cards mobile-view" *ngIf="clientData.bookings.length > 0">
-        <div class="booking-card" *ngFor="let booking of clientData.bookings">
+      <div class="mobile-view" *ngIf="clientData.bookings.length > 0">
+        <div class="booking-card-mobile" *ngFor="let booking of clientData.bookings" (click)="viewBooking(booking.id)">
           <div class="booking-card-header">
             <div class="booking-date">{{ formatDate(booking.scheduled_date) }}</div>
-            <span [class]="'status-badge ' + getStatusClass(booking.status)">
+            <span [class]="'status-badge-small ' + getStatusClass(booking.status)">
               {{ getStatusLabel(booking.status) }}
             </span>
           </div>
@@ -295,32 +362,34 @@
     </div>
 
     <!-- Ratings Section -->
-    <div class="section">
-      <h3 class="section-title">Reviews Given ({{ clientData.ratings.length }})</h3>
+    <div class="compact-card">
+      <div class="compact-header">
+        <h3>Reviews Given ({{ clientData.ratings.length }})</h3>
+      </div>
       <div *ngIf="clientData.ratings.length === 0" class="empty-state">
         No reviews yet
       </div>
-      <div class="ratings-list" *ngIf="clientData.ratings.length > 0">
-        <div class="rating-card" *ngFor="let rating of clientData.ratings">
-          <div class="rating-header">
-            <span class="groomer-name">Groomer: {{ rating.groomer?.first_name }} {{ rating.groomer?.last_name }}</span>
-            <span class="rating-date">{{ formatDate(rating.created_at) }}</span>
+      <div class="ratings-list-compact" *ngIf="clientData.ratings.length > 0">
+        <div class="rating-item-compact" *ngFor="let rating of clientData.ratings">
+          <div class="rating-header-compact">
+            <span class="groomer-name-compact">Groomer: {{ rating.groomer?.first_name }} {{ rating.groomer?.last_name }}</span>
+            <span class="rating-date-compact">{{ formatDate(rating.created_at) }}</span>
           </div>
-          <div class="rating-scores">
-            <div class="score-item">
+          <div class="rating-scores-compact">
+            <div class="score-chip">
               <span class="score-label">Experience:</span>
               <span class="score-value">{{ rating.experience_rating }}/5 ⭐</span>
             </div>
-            <div class="score-item">
+            <div class="score-chip">
               <span class="score-label">Quality:</span>
               <span class="score-value">{{ rating.quality_rating }}/5 ⭐</span>
             </div>
-            <div class="score-item">
+            <div class="score-chip">
               <span class="score-label">Recommendation:</span>
               <span class="score-value">{{ rating.recommendation_rating }}/5 ⭐</span>
             </div>
           </div>
-          <div class="rating-comment" *ngIf="rating.comment">
+          <div class="rating-comment-compact" *ngIf="rating.comment">
             "{{ rating.comment }}"
           </div>
         </div>
@@ -328,53 +397,58 @@
     </div>
 
     <!-- Admin Notes Section -->
-    <div class="section">
-      <h3 class="section-title">Admin Notes</h3>
-
-      <!-- Add Note Form -->
-      <div class="add-note-form">
-        <h4>Add New Note</h4>
-        <div class="form-group">
-          <label for="note-priority">Priority:</label>
-          <select id="note-priority" [(ngModel)]="newNotePriority" class="form-control">
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="note-text">Note:</label>
-          <textarea
-            id="note-text"
-            [(ngModel)]="newNoteText"
-            class="form-control"
-            rows="3"
-            placeholder="Enter admin note..."
-          ></textarea>
-        </div>
-        <button
-          (click)="addAdminNote()"
-          [disabled]="!newNoteText.trim() || addingNote"
-          class="btn btn-primary"
-        >
-          {{ addingNote ? 'Adding...' : 'Add Note' }}
-        </button>
+    <div class="compact-card">
+      <div class="compact-header">
+        <h3>Admin Notes</h3>
       </div>
-
-      <!-- Notes List -->
-      <div *ngIf="clientData.adminNotes.length === 0" class="empty-state">
-        No admin notes yet
-      </div>
-      <div class="notes-list" *ngIf="clientData.adminNotes.length > 0">
-        <div class="note-card" *ngFor="let note of clientData.adminNotes">
-          <div class="note-header">
-            <span [class]="'priority-badge priority-' + note.priority">{{ note.priority || 'medium' }}</span>
-            <span class="note-author">{{ note.admin?.first_name }} {{ note.admin?.last_name }}</span>
-            <span class="note-date">{{ formatDate(note.created_at) }}</span>
+      <div class="compact-body">
+        <!-- Add Note Form -->
+        <div class="add-note-form-compact">
+          <div class="form-row-compact">
+            <label for="note-priority">Priority:</label>
+            <select id="note-priority" [(ngModel)]="newNotePriority" class="form-select-compact">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
           </div>
-          <div class="note-content">
-            {{ note.note }}
+          <div class="form-row-compact">
+            <label for="note-text">Note:</label>
+            <textarea
+              id="note-text"
+              [(ngModel)]="newNoteText"
+              class="form-textarea-compact"
+              rows="3"
+              placeholder="Enter admin note..."
+            ></textarea>
+          </div>
+          <button
+            (click)="addAdminNote()"
+            [disabled]="!newNoteText.trim() || addingNote"
+            class="btn-add-compact"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {{ addingNote ? 'Adding...' : 'Add Note' }}
+          </button>
+        </div>
+
+        <!-- Notes List -->
+        <div *ngIf="clientData.adminNotes.length === 0" class="empty-state">
+          No admin notes yet
+        </div>
+        <div class="notes-list-compact" *ngIf="clientData.adminNotes.length > 0">
+          <div class="note-item-compact" *ngFor="let note of clientData.adminNotes">
+            <div class="note-header-compact">
+              <div class="note-meta-compact">
+                <span [class]="'priority-badge-compact priority-' + (note.priority || 'medium')">{{ note.priority || 'medium' }}</span>
+                <span class="note-author-compact">{{ note.admin?.first_name }} {{ note.admin?.last_name }}</span>
+              </div>
+              <span class="note-date-compact">{{ formatDate(note.created_at) }}</span>
+            </div>
+            <p class="note-content-compact">{{ note.note }}</p>
           </div>
         </div>
       </div>
@@ -431,4 +505,3 @@
     ></app-payment-method-modal>
   </div>
 </div>
-
