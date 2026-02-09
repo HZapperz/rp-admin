@@ -43,6 +43,7 @@ export interface ClientWithStats {
   total_bookings: number;
   total_spent: number;
   last_booking_date?: string;
+  last_tip_amount?: number;
   next_booking_date?: string;
   last_outreach_date?: string;
   blocked_at?: string;
@@ -228,9 +229,10 @@ export class ClientService {
       // Completed bookings for stats
       this.supabase
         .from('bookings')
-        .select('client_id, total_amount, scheduled_date, status')
+        .select('client_id, total_amount, scheduled_date, status, tip_amount')
         .in('client_id', clientIds)
-        .eq('status', 'completed'),
+        .eq('status', 'completed')
+        .order('scheduled_date', { ascending: false }),
       // Upcoming bookings (scheduled or confirmed)
       this.supabase
         .from('bookings')
@@ -327,9 +329,9 @@ export class ClientService {
 
       const totalBookings = clientCompletedBookings.length;
       const totalSpent = clientCompletedBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-      const lastBookingDate = clientCompletedBookings.length > 0
-        ? clientCompletedBookings.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())[0].scheduled_date
-        : undefined;
+      const sortedBookings = clientCompletedBookings.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+      const lastBookingDate = sortedBookings.length > 0 ? sortedBookings[0].scheduled_date : undefined;
+      const lastTipAmount = sortedBookings.length > 0 ? (sortedBookings[0].tip_amount || 0) : undefined;
 
       const nextBookingDate = clientUpcomingBookings.length > 0
         ? clientUpcomingBookings.sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime())[0].scheduled_date
@@ -343,6 +345,7 @@ export class ClientService {
         total_bookings: totalBookings,
         total_spent: totalSpent,
         last_booking_date: lastBookingDate,
+        last_tip_amount: lastTipAmount,
         next_booking_date: nextBookingDate,
         pets: clientPets,
         is_warm_lead: isWarmLead,

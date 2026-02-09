@@ -23,6 +23,7 @@ export class OutreachListComponent implements OnInit {
   segmentFilter: 'all' | 'ACTIVE_CLIENT' | 'WARM_LEAD' = 'all';
   smsFilter: 'all' | 'sms-yes' | 'hide-no-sms' = 'all';
   priorityFilter: 'all' | 'high' | 'medium' | 'low' = 'all';
+  sortBy: 'priority' | 'last-booking-asc' | 'last-booking-desc' = 'priority';
 
   constructor(private clientService: ClientService, private router: Router) {}
 
@@ -85,20 +86,35 @@ export class OutreachListComponent implements OnInit {
       console.log(`After priority filter (${this.priorityFilter}):`, filtered.length);
     }
 
-    // Sort: Uncontacted customers first, then by priority
-    filtered.sort((a, b) => {
-      // First, sort by outreach status (uncontacted first)
-      const aContacted = a.last_outreach_date ? 1 : 0;
-      const bContacted = b.last_outreach_date ? 1 : 0;
-      if (aContacted !== bContacted) {
-        return aContacted - bContacted;
-      }
+    // Sort based on selected option
+    if (this.sortBy === 'last-booking-asc') {
+      filtered.sort((a, b) => {
+        const aDate = a.last_booking_date ? new Date(a.last_booking_date).getTime() : 0;
+        const bDate = b.last_booking_date ? new Date(b.last_booking_date).getTime() : 0;
+        return aDate - bDate; // Oldest first
+      });
+    } else if (this.sortBy === 'last-booking-desc') {
+      filtered.sort((a, b) => {
+        const aDate = a.last_booking_date ? new Date(a.last_booking_date).getTime() : 0;
+        const bDate = b.last_booking_date ? new Date(b.last_booking_date).getTime() : 0;
+        return bDate - aDate; // Most recent first
+      });
+    } else {
+      // Default: Uncontacted customers first, then by priority
+      filtered.sort((a, b) => {
+        // First, sort by outreach status (uncontacted first)
+        const aContacted = a.last_outreach_date ? 1 : 0;
+        const bContacted = b.last_outreach_date ? 1 : 0;
+        if (aContacted !== bContacted) {
+          return aContacted - bContacted;
+        }
 
-      // Then by priority
-      const aPriority = this.getPriority(a);
-      const bPriority = this.getPriority(b);
-      return bPriority - aPriority;
-    });
+        // Then by priority
+        const aPriority = this.getPriority(a);
+        const bPriority = this.getPriority(b);
+        return bPriority - aPriority;
+      });
+    }
 
     console.log('Final filtered count:', filtered.length);
     this.clients = filtered;
@@ -144,6 +160,11 @@ export class OutreachListComponent implements OnInit {
 
   setPriorityFilter(filter: typeof this.priorityFilter) {
     this.priorityFilter = filter;
+    this.applyFilters();
+  }
+
+  setSortBy(sort: typeof this.sortBy) {
+    this.sortBy = sort;
     this.applyFilters();
   }
 

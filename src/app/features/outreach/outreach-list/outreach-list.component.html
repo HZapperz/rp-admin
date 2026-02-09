@@ -85,6 +85,23 @@
           (click)="setPriorityFilter('low')">Low</button>
       </div>
     </div>
+    <div class="filter-row">
+      <label class="filter-label">Sort By:</label>
+      <div class="filter-buttons">
+        <button
+          class="filter-btn"
+          [class.active]="sortBy === 'priority'"
+          (click)="setSortBy('priority')">Priority</button>
+        <button
+          class="filter-btn"
+          [class.active]="sortBy === 'last-booking-desc'"
+          (click)="setSortBy('last-booking-desc')">Last Booking ↓</button>
+        <button
+          class="filter-btn"
+          [class.active]="sortBy === 'last-booking-asc'"
+          (click)="setSortBy('last-booking-asc')">Last Booking ↑</button>
+      </div>
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -161,6 +178,10 @@
             <div class="info-item">
               <div class="info-label">Account Created</div>
               <div class="info-value date-text">{{ formatDate(client.created_at) }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Last Tip</div>
+              <div class="info-value">{{ client.last_tip_amount ? '$' + client.last_tip_amount.toFixed(2) : 'N/A' }}</div>
             </div>
           </div>
 
