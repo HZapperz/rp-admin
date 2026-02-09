@@ -132,10 +132,12 @@
           </div>
           <div class="contact-row">
             <div class="contact-label">SMS</div>
-            @if (client.sms_enabled) {
+            @if (client.sms_enabled === true) {
               <span class="sms-ok">✓ SMS OK</span>
-            } @else {
+            } @else if (client.sms_enabled === false) {
               <span class="sms-no">✗ NO SMS</span>
+            } @else {
+              <span class="sms-unknown">? Unknown</span>
             }
           </div>
 
