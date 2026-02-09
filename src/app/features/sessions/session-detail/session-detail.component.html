@@ -33,6 +33,15 @@
 
     <!-- Metadata Grid -->
     <div class="metadata-grid">
+      <div class="metadata-card" *ngIf="session.user">
+        <span class="material-icons">person</span>
+        <div class="metadata-content">
+          <span class="metadata-label">User</span>
+          <span class="metadata-value">{{ getUserDisplay() }}</span>
+          <span class="metadata-sub" *ngIf="session.user.email">{{ session.user.email }}</span>
+        </div>
+      </div>
+
       <div class="metadata-card">
         <span class="material-icons">schedule</span>
         <div class="metadata-content">

@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import {
   SessionRecordingService,
   RecordingSession,
-  SessionFilters
+  SessionFilters,
+  SessionUser
 } from '../../../core/services/session-recording.service';
 
 @Component({
@@ -92,6 +93,12 @@ export class SessionsListComponent implements OnInit {
     if (session.has_signed_up) return 'status-signed-up';
     if (session.user_id) return 'status-logged-in';
     return 'status-dropped';
+  }
+
+  getUserDisplay(session: RecordingSession): string {
+    if (!session.user) return 'Anonymous';
+    const name = [session.user.first_name, session.user.last_name].filter(Boolean).join(' ');
+    return name || session.user.email || 'Anonymous';
   }
 
   getDeviceInfo(session: RecordingSession): string {

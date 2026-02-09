@@ -7,6 +7,7 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../../core/services/groomer.service';
 import { EmailService } from '../../../core/services/email.service';
 import { ChangeRequestService, ChangeRequest } from '../../../core/services/change-request.service';
+import { PackageService } from '../../../core/services/package.service';
 import { BookingWithDetails } from '../../../core/models/types';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -49,6 +50,7 @@ export class BookingDetailsComponent implements OnInit {
   private groomerService = inject(GroomerService);
   private emailService = inject(EmailService);
   private changeRequestService = inject(ChangeRequestService);
+  private packageService = inject(PackageService);
   private http = inject(HttpClient);
 
   booking: BookingWithDetails | null = null;
@@ -140,11 +142,11 @@ export class BookingDetailsComponent implements OnInit {
   removePetDiscountOption: 'keep' | 'recalculate' | 'remove' = 'recalculate';
   isRemovingPet = false;
 
-  // Package configuration
+  // Package configuration (icons only - names come from PackageService)
   servicePackages = [
-    { id: 'basic', name: 'Royal Bath', icon: '🛁' },
-    { id: 'premium', name: 'Royal Groom', icon: '✂️' },
-    { id: 'deluxe', name: 'Royal Spa', icon: '✨' }
+    { id: 'basic', icon: '🛁' },
+    { id: 'premium', icon: '✂️' },
+    { id: 'deluxe', icon: '✨' }
   ];
 
   packagePrices: Record<string, Record<string, number>> = {
@@ -1510,8 +1512,11 @@ export class BookingDetailsComponent implements OnInit {
   }
 
   getPackageName(packageType: string): string {
-    const pkg = this.servicePackages.find(p => p.id === packageType);
-    return pkg ? pkg.name : packageType;
+    return this.packageService.getPackageNameByType(packageType);
+  }
+
+  getPackageDisplayName(packageType: string): string {
+    return this.packageService.getPackageNameByType(packageType);
   }
 
   async confirmServiceChange() {

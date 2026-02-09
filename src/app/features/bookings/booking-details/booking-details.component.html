@@ -290,7 +290,7 @@
                       {{ petBooking.service_size | uppercase }}
                     </span>
                     <span class="badge-small package-badge" [ngClass]="'package-' + petBooking.package_type">
-                      {{ petBooking.package_type | titlecase }}
+                      {{ getPackageDisplayName(petBooking.package_type) }}
                     </span>
                   </div>
                 </div>
@@ -974,7 +974,7 @@
           <div class="package-selection-grid">
             <button *ngFor="let pkg of servicePackages" (click)="selectPackage(pkg.id)" [class.selected]="newPackageType === pkg.id" class="package-option-btn">
               <span class="package-icon">{{ pkg.icon }}</span>
-              <span class="package-name">{{ pkg.name }}</span>
+              <span class="package-name">{{ getPackageDisplayName(pkg.id) }}</span>
               <span class="package-price">${{ packagePrices[pkg.id][selectedPetForServiceChange?.service_size || 'medium'] }}</span>
             </button>
           </div>

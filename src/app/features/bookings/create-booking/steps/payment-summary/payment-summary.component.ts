@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ClientService } from '../../../../../core/services/client.service';
+import { PackageService } from '../../../../../core/services/package.service';
 
 export interface PaymentConfig {
   payment_type: 'use_saved_card' | 'cash_on_service';
@@ -48,7 +49,10 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
 
   isLoadingPaymentMethods = false;
 
-  constructor(private clientService: ClientService) {}
+  constructor(
+    private clientService: ClientService,
+    private packageService: PackageService
+  ) {}
 
   ngOnInit(): void {
     this.calculateTotals();
@@ -187,5 +191,9 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     }
 
     return true;
+  }
+
+  getPackageDisplayName(packageType: string): string {
+    return this.packageService.getPackageNameByType(packageType);
   }
 }

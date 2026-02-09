@@ -81,6 +81,7 @@
     <table>
       <thead>
         <tr>
+          <th>User</th>
           <th>Started</th>
           <th>Entry Page</th>
           <th>Pages</th>
@@ -96,6 +97,7 @@
           (click)="viewSession(session)"
           class="session-row"
         >
+          <td class="user-cell">{{ getUserDisplay(session) }}</td>
           <td class="date-cell">{{ formatDate(session.started_at) }}</td>
           <td class="url-cell">{{ truncateUrl(session.initial_url) }}</td>
           <td class="pages-cell">{{ session.page_views || 0 }}</td>

@@ -11,6 +11,12 @@ export interface SignupEvent {
   userId?: string;
 }
 
+export interface SessionUser {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+}
+
 export interface RecordingSession {
   id: string;
   session_id: string;
@@ -32,6 +38,7 @@ export interface RecordingSession {
   started_at: string;
   ended_at: string | null;
   created_at: string;
+  user: SessionUser | null;
 }
 
 export interface RecordingSessionEvent {
@@ -119,7 +126,26 @@ export class SessionRecordingService {
       throw error;
     }
 
-    return data || [];
+    const sessions: RecordingSession[] = (data || []).map((s: any) => ({ ...s, user: null }));
+    return this.attachUsers(sessions);
+  }
+
+  private async attachUsers(sessions: RecordingSession[]): Promise<RecordingSession[]> {
+    const userIds = [...new Set(sessions.map(s => s.user_id).filter(Boolean))] as string[];
+    if (userIds.length === 0) return sessions;
+
+    const { data: users, error } = await this.supabase.from('users')
+      .select('id, first_name, last_name, email')
+      .in('id', userIds);
+
+    if (error || !users) return sessions;
+
+    const userMap = new Map(users.map((u: any) => [u.id, { first_name: u.first_name, last_name: u.last_name, email: u.email }]));
+
+    return sessions.map(s => ({
+      ...s,
+      user: s.user_id ? userMap.get(s.user_id) || null : null
+    }));
   }
 
   /**
@@ -140,7 +166,17 @@ export class SessionRecordingService {
       return null;
     }
 
-    return data;
+    const session: RecordingSession = { ...data, user: null };
+    if (session.user_id) {
+      const { data: userData } = await this.supabase.from('users')
+        .select('first_name, last_name, email')
+        .eq('id', session.user_id)
+        .single();
+      if (userData) {
+        session.user = userData;
+      }
+    }
+    return session;
   }
 
   /**

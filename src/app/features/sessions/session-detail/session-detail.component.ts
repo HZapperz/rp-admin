@@ -189,6 +189,12 @@ export class SessionDetailComponent implements OnInit, OnDestroy, AfterViewInit 
     this.router.navigate(['/sessions']);
   }
 
+  getUserDisplay(): string {
+    if (!this.session?.user) return 'Anonymous';
+    const name = [this.session.user.first_name, this.session.user.last_name].filter(Boolean).join(' ');
+    return name || this.session.user.email || 'Anonymous';
+  }
+
   getStatusLabel(): string {
     if (!this.session) return '';
     if (this.session.is_converted) return 'Converted';

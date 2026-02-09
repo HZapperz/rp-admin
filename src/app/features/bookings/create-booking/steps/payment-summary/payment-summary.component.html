@@ -96,7 +96,7 @@
           <div class="service-info">
             <span class="pet-name">{{ service.pet_name }}</span>
             <span class="service-details">
-              {{ service.package_type }}
+              {{ getPackageDisplayName(service.package_type) }}
               <span *ngIf="service.add_ons.length > 0">+ {{ service.add_ons.length }} add-on(s)</span>
             </span>
           </div>

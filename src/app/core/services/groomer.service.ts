@@ -1603,6 +1603,20 @@ export class GroomerService {
 
     const hasAvailability = calculatedBusinessSlots.some((s) => s.is_available);
 
+    // Determine reason if no availability
+    let unavailableReason: string | undefined;
+    if (!hasAvailability && calculatedBusinessSlots.length > 0) {
+      // Check if all slots are blocked by existing bookings
+      const allBlockedByBookings = calculatedBusinessSlots.every(
+        (s) => s.conflict_reason?.includes('Existing booking')
+      );
+      if (allBlockedByBookings) {
+        unavailableReason = 'All time slots are already booked';
+      } else {
+        unavailableReason = 'No available time slots for this date';
+      }
+    }
+
     return {
       groomer: {
         id: groomer.id,
@@ -1612,6 +1626,7 @@ export class GroomerService {
       date,
       day_of_week: dayOfWeek,
       is_available: hasAvailability,
+      reason: unavailableReason,
       weekly_availability: weeklySlots,
       business_slots: calculatedBusinessSlots,
       granular_slots: [], // Can implement granular slots later if needed
