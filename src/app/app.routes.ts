@@ -94,6 +94,11 @@ export const routes: Routes = [
           import('./features/sms-inbox/sms-inbox.routes').then(m => m.routes)
       },
       {
+        path: 'outreach',
+        loadComponent: () =>
+          import('./features/outreach/outreach-list/outreach-list.component').then(m => m.OutreachListComponent)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

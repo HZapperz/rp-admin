@@ -1,0 +1,191 @@
+<div class="outreach-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>🐾 Customer Outreach</h1>
+        <p class="subtitle">Prioritized customer list for scheduling and outreach</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Section -->
+  <div class="search-section">
+    <div class="search-box">
+      <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by name, email, phone, or zip..."
+        (input)="onSearch($event)"
+        [value]="searchTerm"
+      />
+    </div>
+
+    <div class="results-count" *ngIf="!isLoading">
+      <span id="visible-count">{{ clients.length }}</span> customers
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section" *ngIf="!isLoading">
+    <div class="filter-row">
+      <label class="filter-label">Segment:</label>
+      <div class="filter-buttons">
+        <button
+          class="filter-btn"
+          [class.active]="segmentFilter === 'all'"
+          (click)="setSegmentFilter('all')">All</button>
+        <button
+          class="filter-btn"
+          [class.active]="segmentFilter === 'ACTIVE_CLIENT'"
+          (click)="setSegmentFilter('ACTIVE_CLIENT')">Active Clients</button>
+        <button
+          class="filter-btn"
+          [class.active]="segmentFilter === 'WARM_LEAD'"
+          (click)="setSegmentFilter('WARM_LEAD')">Warm Leads</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">SMS:</label>
+      <div class="filter-buttons">
+        <button
+          class="filter-btn"
+          [class.active]="smsFilter === 'all'"
+          (click)="setSmsFilter('all')">All</button>
+        <button
+          class="filter-btn"
+          [class.active]="smsFilter === 'sms-yes'"
+          (click)="setSmsFilter('sms-yes')">SMS OK Only</button>
+        <button
+          class="filter-btn"
+          [class.active]="smsFilter === 'hide-no-sms'"
+          (click)="setSmsFilter('hide-no-sms')">Hide NO SMS</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">Priority:</label>
+      <div class="filter-buttons">
+        <button
+          class="filter-btn"
+          [class.active]="priorityFilter === 'all'"
+          (click)="setPriorityFilter('all')">All</button>
+        <button
+          class="filter-btn"
+          [class.active]="priorityFilter === 'high'"
+          (click)="setPriorityFilter('high')">High</button>
+        <button
+          class="filter-btn"
+          [class.active]="priorityFilter === 'medium'"
+          (click)="setPriorityFilter('medium')">Medium</button>
+        <button
+          class="filter-btn"
+          [class.active]="priorityFilter === 'low'"
+          (click)="setPriorityFilter('low')">Low</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading customers...</p>
+    </div>
+  }
+
+  <!-- Customer Cards -->
+  @if (!isLoading) {
+    <div class="customer-grid">
+      @if (clients.length === 0) {
+        <div class="no-customers">
+          <p>No customers found</p>
+        </div>
+      }
+      @for (client of clients; track client.id) {
+        <div class="customer-card" [class.contacted]="isContacted(client)" (click)="viewClientDetail(client.id)">
+          <div class="card-header">
+            <div>
+              <div class="customer-name">
+                {{ client.first_name }} {{ client.last_name }}
+                @if (isContacted(client)) {
+                  <span class="contacted-badge">✓ Contacted</span>
+                }
+              </div>
+              <span class="segment-badge" [ngClass]="getSegmentBadgeClass(getSegment(client))">
+                {{ getSegment(client).replace('_', ' ') }}
+              </span>
+            </div>
+            <div class="priority-badge" [ngClass]="getPriorityClass(client)">
+              Priority {{ getPriority(client) }}
+            </div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-label">Email</div>
+            <div class="contact-value">{{ client.email }}</div>
+          </div>
+          <div class="contact-row">
+            <div class="contact-label">Phone</div>
+            <div class="contact-value">{{ client.phone || 'N/A' }}</div>
+          </div>
+          <div class="contact-row">
+            <div class="contact-label">SMS</div>
+            @if (client.sms_enabled) {
+              <span class="sms-ok">✓ SMS OK</span>
+            } @else {
+              <span class="sms-no">✗ NO SMS</span>
+            }
+          </div>
+
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Pets</div>
+              <div class="info-value">{{ getPetNames(client.pets) }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Bookings</div>
+              <div class="info-value">{{ client.total_bookings }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Total Spent</div>
+              <div class="info-value">${{ client.total_spent.toFixed(2) }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">{{ client.next_booking_date ? 'Next Booking' : 'Last Booking' }}</div>
+              <div class="info-value date-text">{{ formatDate(client.next_booking_date || client.last_booking_date) }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Account Created</div>
+              <div class="info-value date-text">{{ formatDate(client.created_at) }}</div>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button class="action-btn" (click)="callClient(client, $event)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              Call
+            </button>
+            <button class="action-btn" (click)="smsClient(client, $event)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              SMS
+            </button>
+            @if (!isContacted(client)) {
+              <button class="action-btn mark-contacted-btn" (click)="markAsContacted(client, $event)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Mark Contacted
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

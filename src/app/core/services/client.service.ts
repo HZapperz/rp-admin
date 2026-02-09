@@ -43,9 +43,12 @@ export interface ClientWithStats {
   total_bookings: number;
   total_spent: number;
   last_booking_date?: string;
+  next_booking_date?: string;
+  last_outreach_date?: string;
   blocked_at?: string;
   last_sign_in_at?: string;
   pets?: { id: string; name: string }[];
+  sms_enabled?: boolean;
   // Warm lead fields
   is_warm_lead: boolean;
   completion_status: {
@@ -186,7 +189,7 @@ export class ClientService {
     // Step 1: Get all clients
     let query = this.supabase
       .from('users')
-      .select('id, first_name, last_name, email, phone, avatar_url, created_at')
+      .select('id, first_name, last_name, email, phone, avatar_url, created_at, sms_consent as sms_enabled, last_outreach_date')
       .eq('role', 'CLIENT')
       .order('created_at', { ascending: false });
 
@@ -221,13 +224,20 @@ export class ClientService {
     // Step 2: Batch fetch all related data for these clients
     const clientIds = clients.map(c => c.id);
 
-    const [completedBookingsResult, allBookingsResult, petsResult, addressesResult, paymentMethodsResult] = await Promise.all([
+    const [completedBookingsResult, upcomingBookingsResult, allBookingsResult, petsResult, addressesResult, paymentMethodsResult] = await Promise.all([
       // Completed bookings for stats
       this.supabase
         .from('bookings')
         .select('client_id, total_amount, scheduled_date, status')
         .in('client_id', clientIds)
         .eq('status', 'completed'),
+      // Upcoming bookings (scheduled or confirmed)
+      this.supabase
+        .from('bookings')
+        .select('client_id, scheduled_date, status')
+        .in('client_id', clientIds)
+        .in('status', ['scheduled', 'confirmed'])
+        .gte('scheduled_date', new Date().toISOString()),
       // All bookings to check "has started booking"
       this.supabase
         .from('bookings')
@@ -251,6 +261,7 @@ export class ClientService {
     ]);
 
     const completedBookings = completedBookingsResult.data || [];
+    const upcomingBookings = upcomingBookingsResult.data || [];
     const allBookings = allBookingsResult.data || [];
     const pets = petsResult.data || [];
     const addresses = addressesResult.data || [];
@@ -258,6 +269,14 @@ export class ClientService {
 
     // Step 3: Create lookups by client_id
     const completedBookingsByClient: Record<string, any[]> = completedBookings.reduce((acc, booking) => {
+      if (!acc[booking.client_id]) {
+        acc[booking.client_id] = [];
+      }
+      acc[booking.client_id].push(booking);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const upcomingBookingsByClient: Record<string, any[]> = upcomingBookings.reduce((acc, booking) => {
       if (!acc[booking.client_id]) {
         acc[booking.client_id] = [];
       }
@@ -300,6 +319,7 @@ export class ClientService {
     // Step 4: Combine and calculate stats
     const clientsWithStats: ClientWithStats[] = clients.map(client => {
       const clientCompletedBookings = completedBookingsByClient[client.id] || [];
+      const clientUpcomingBookings = upcomingBookingsByClient[client.id] || [];
       const clientAllBookings = allBookingsByClient[client.id] || [];
       const clientPets = petsByClient[client.id] || [];
       const clientAddresses = addressesByClient[client.id] || [];
@@ -311,6 +331,10 @@ export class ClientService {
         ? clientCompletedBookings.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())[0].scheduled_date
         : undefined;
 
+      const nextBookingDate = clientUpcomingBookings.length > 0
+        ? clientUpcomingBookings.sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime())[0].scheduled_date
+        : undefined;
+
       const isWarmLead = totalBookings === 0;
 
       return {
@@ -318,6 +342,7 @@ export class ClientService {
         total_bookings: totalBookings,
         total_spent: totalSpent,
         last_booking_date: lastBookingDate,
+        next_booking_date: nextBookingDate,
         pets: clientPets,
         is_warm_lead: isWarmLead,
         completion_status: {
@@ -435,6 +460,22 @@ export class ClientService {
 
     if (error) {
       console.error('Error unblocking client:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  async markOutreachCompleted(clientId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('users')
+      .update({
+        last_outreach_date: new Date().toISOString()
+      })
+      .eq('id', clientId);
+
+    if (error) {
+      console.error('Error marking outreach completed:', error);
       return false;
     }
 
