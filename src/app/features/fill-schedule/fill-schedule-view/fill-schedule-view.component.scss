@@ -404,6 +404,16 @@
         font-size: 1rem;
         font-weight: 600;
         color: #1e293b;
+
+        &.clickable {
+          cursor: pointer;
+          transition: color 0.2s;
+
+          &:hover {
+            color: #667eea;
+            text-decoration: underline;
+          }
+        }
       }
     }
 

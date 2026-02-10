@@ -118,7 +118,7 @@
                   <div class="client-main">
                     <div class="client-info">
                       <div class="client-name-row">
-                        <span class="client-name">{{ client.first_name }} {{ client.last_name }}</span>
+                        <span class="client-name clickable" (click)="viewClient(client.id)" title="View client details">{{ client.first_name }} {{ client.last_name }}</span>
                         <span class="lead-badge" [ngClass]="getLeadBadge(client.completed_bookings).class">
                           {{ getLeadBadge(client.completed_bookings).label }}
                         </span>
