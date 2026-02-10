@@ -329,13 +329,36 @@ export class DashboardComponent implements OnInit {
 
   // Calculate height as percentage based on duration
   getBookingHeight(startTime: string, endTime: string): number {
-    if (!startTime || !endTime) return 8; // Default minimum height
-    const [startHours, startMinutes] = startTime.split(':').map(Number);
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    const durationMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
-    const totalDayMinutes = (this.dayEndHour - this.dayStartHour) * 60;
-    const heightPercent = (durationMinutes / totalDayMinutes) * 100;
-    return Math.max(heightPercent, 5); // Minimum 5% height for visibility
+    if (!startTime || !endTime) {
+      console.warn('Missing booking time:', { startTime, endTime });
+      return 12.5; // Default to 75 minutes (1h 15m standard slot) if missing
+    }
+
+    try {
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
+      const [endHours, endMinutes] = endTime.split(':').map(Number);
+
+      // Validate parsed values
+      if (isNaN(startHours) || isNaN(startMinutes) || isNaN(endHours) || isNaN(endMinutes)) {
+        console.warn('Invalid time values:', { startTime, endTime });
+        return 12.5; // Default to 75 minutes
+      }
+
+      const durationMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+
+      // Check for invalid duration
+      if (durationMinutes <= 0) {
+        console.warn('Invalid duration (end before start):', { startTime, endTime, durationMinutes });
+        return 12.5; // Default to 75 minutes
+      }
+
+      const totalDayMinutes = (this.dayEndHour - this.dayStartHour) * 60;
+      const heightPercent = (durationMinutes / totalDayMinutes) * 100;
+      return Math.max(heightPercent, 5); // Minimum 5% height for visibility
+    } catch (error) {
+      console.error('Error calculating booking height:', error, { startTime, endTime });
+      return 12.5; // Default to 75 minutes
+    }
   }
 
   // Get duration in readable format

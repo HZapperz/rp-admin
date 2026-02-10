@@ -1242,6 +1242,21 @@ export class BookingDetailsComponent implements OnInit {
     try {
       this.savingTimeChange = true;
 
+      console.log('Confirming time change with:', {
+        bookingId: this.booking.id,
+        newDate: this.newScheduledDate,
+        startTime: timeSlotStart,
+        endTime: timeSlotEnd,
+        reason: this.timeChangeReason
+      });
+
+      // Validate that we have proper times
+      if (!timeSlotStart || !timeSlotEnd) {
+        alert('Invalid time selection. Please ensure both start and end times are selected.');
+        this.savingTimeChange = false;
+        return;
+      }
+
       // Call the booking service to change the time
       const result = await this.bookingService.changeBookingTime(
         this.booking.id,
@@ -1251,15 +1266,19 @@ export class BookingDetailsComponent implements OnInit {
       );
 
       if (!result.success) {
-        alert('Failed to update booking time. Please try again.');
+        alert('Failed to update booking time. Please check the console for errors and ensure the times are valid.');
         this.savingTimeChange = false;
         return;
       }
+
+      console.log('Booking time updated successfully, fetching updated booking...');
 
       // Fetch updated booking for email
       const updatedBooking = await this.bookingService.getBookingById(this.booking.id);
 
       if (updatedBooking && result.oldValues) {
+        console.log('Sending time change notification emails...');
+
         // Send time change notification emails
         const emailResult = await this.emailService.sendTimeChangeEmails(
           updatedBooking,
@@ -1270,11 +1289,14 @@ export class BookingDetailsComponent implements OnInit {
         );
 
         if (emailResult.success) {
+          console.log('Email notifications sent successfully');
           alert('Booking time updated and notifications sent to customer and groomer!');
         } else {
-          alert('Booking time updated, but there was an issue sending notification emails.');
+          console.error('Email notification failed:', emailResult.error);
+          alert('Booking time updated successfully, but there was an issue sending notification emails. The customer and groomer may not have been notified.');
         }
       } else {
+        console.warn('Could not fetch updated booking for email notification');
         alert('Booking time updated successfully!');
       }
 
@@ -1285,7 +1307,7 @@ export class BookingDetailsComponent implements OnInit {
 
     } catch (error) {
       console.error('Error changing booking time:', error);
-      alert('An unexpected error occurred. Please try again.');
+      alert('An unexpected error occurred while changing the booking time. Please check the console and try again.');
       this.savingTimeChange = false;
     }
   }

@@ -376,6 +376,34 @@ export class BookingService {
     newTimeEnd: string
   ): Promise<{ success: boolean; oldValues?: { scheduled_date: string; scheduled_time_start: string; scheduled_time_end: string } }> {
     try {
+      // Validate inputs
+      if (!newDate || !newTimeStart || !newTimeEnd) {
+        console.error('Missing required time change parameters:', { newDate, newTimeStart, newTimeEnd });
+        return { success: false };
+      }
+
+      // Validate time format (HH:MM:SS or HH:MM)
+      const timeRegex = /^\d{1,2}:\d{2}(:\d{2})?$/;
+      if (!timeRegex.test(newTimeStart) || !timeRegex.test(newTimeEnd)) {
+        console.error('Invalid time format:', { newTimeStart, newTimeEnd });
+        return { success: false };
+      }
+
+      // Ensure time has seconds (HH:MM:SS format)
+      const formatTime = (time: string): string => {
+        return time.includes(':') && time.split(':').length === 2 ? `${time}:00` : time;
+      };
+
+      const formattedStartTime = formatTime(newTimeStart);
+      const formattedEndTime = formatTime(newTimeEnd);
+
+      console.log('Changing booking time:', {
+        bookingId,
+        newDate,
+        newTimeStart: formattedStartTime,
+        newTimeEnd: formattedEndTime
+      });
+
       // 1. Fetch current booking to get old values (for email notification)
       const { data: currentBooking, error: fetchError } = await this.supabase
         .from('bookings')
@@ -399,8 +427,8 @@ export class BookingService {
         .from('bookings')
         .update({
           scheduled_date: newDate,
-          scheduled_time_start: newTimeStart,
-          scheduled_time_end: newTimeEnd,
+          scheduled_time_start: formattedStartTime,
+          scheduled_time_end: formattedEndTime,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId);
@@ -410,6 +438,7 @@ export class BookingService {
         return { success: false };
       }
 
+      console.log('Booking time updated successfully');
       return { success: true, oldValues };
     } catch (error) {
       console.error('Exception while changing booking time:', error);
