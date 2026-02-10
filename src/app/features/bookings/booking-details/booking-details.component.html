@@ -938,6 +938,36 @@
               {{ slot.label }}
             </button>
           </div>
+
+          <!-- Custom time option -->
+          <div class="custom-time-toggle">
+            <button (click)="toggleCustomTimeSlotForChange()" class="btn-custom-time-toggle">
+              {{ useCustomTimeSlotForChange ? 'Use Standard Slots' : 'Use Custom Time' }}
+            </button>
+          </div>
+
+          <!-- Custom time inputs -->
+          <div *ngIf="useCustomTimeSlotForChange" class="custom-time-inputs">
+            <div class="custom-time-row">
+              <input
+                type="text"
+                [(ngModel)]="customStartTimeForChange"
+                (blur)="onCustomStartTimeForChangeBlur()"
+                placeholder="Start (e.g., 9:30 AM)"
+                class="time-input-compact">
+              <span class="time-separator">to</span>
+              <input
+                type="text"
+                [(ngModel)]="customEndTimeForChange"
+                (blur)="onCustomEndTimeForChangeBlur()"
+                placeholder="End (e.g., 11:00 AM)"
+                class="time-input-compact">
+            </div>
+            <button (click)="toggleTimeHelpForChange()" class="btn-time-help">{{ showTimeHelpForChange ? 'Hide format help' : 'Time format help' }}</button>
+            <div *ngIf="showTimeHelpForChange" class="time-help-text">
+              Formats: "9:30 AM", "930am", "1:00 PM", "130pm"
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Reason</label>
@@ -945,7 +975,7 @@
         </div>
       </div>
       <div class="time-change-dialog-footer">
-        <button (click)="confirmTimeChange()" [disabled]="!newScheduledDate || !newTimeSlot || !timeChangeReason.trim() || savingTimeChange" class="btn-confirm-change">
+        <button (click)="confirmTimeChange()" [disabled]="!newScheduledDate || (!newTimeSlot && !isCustomTimeForChangeValid()) || !timeChangeReason.trim() || savingTimeChange" class="btn-confirm-change">
           {{ savingTimeChange ? 'Saving...' : 'Save & Notify' }}
         </button>
         <button (click)="closeTimeChangeModal()" class="btn-cancel-dialog">Cancel</button>
