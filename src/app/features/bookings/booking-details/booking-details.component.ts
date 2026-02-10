@@ -615,6 +615,12 @@ export class BookingDetailsComponent implements OnInit {
     this.router.navigate(['/bookings']);
   }
 
+  navigateToClient() {
+    if (this.booking?.client?.id) {
+      this.router.navigate(['/clients', this.booking.client.id]);
+    }
+  }
+
   // Groomer Assignment Methods
   async showGroomerAssignment() {
     if (!this.booking) return;

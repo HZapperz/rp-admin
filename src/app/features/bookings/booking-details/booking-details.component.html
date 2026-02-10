@@ -42,7 +42,7 @@
         <span class="chip-value">{{ formatDateShort(booking.scheduled_date) }}</span>
         <span class="chip-sub" *ngIf="booking.scheduled_time_start">{{ formatTime(booking.scheduled_time_start) }}</span>
       </div>
-      <div class="info-chip">
+      <div class="info-chip" (click)="navigateToClient()" style="cursor: pointer;" title="View client details">
         <span class="chip-icon">👤</span>
         <span class="chip-value">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</span>
       </div>
@@ -135,12 +135,12 @@
             </div>
             <div class="compact-body" *ngIf="booking.client">
               <div class="client-row">
-                <div class="avatar-small" *ngIf="!booking.client.avatar_url">
+                <div class="avatar-small" *ngIf="!booking.client.avatar_url" (click)="navigateToClient()" style="cursor: pointer;" title="View client details">
                   {{ booking.client.first_name[0] }}{{ booking.client.last_name[0] }}
                 </div>
-                <img *ngIf="booking.client.avatar_url" [src]="booking.client.avatar_url" alt="Client" class="avatar-img-small">
+                <img *ngIf="booking.client.avatar_url" [src]="booking.client.avatar_url" alt="Client" class="avatar-img-small" (click)="navigateToClient()" style="cursor: pointer;" title="View client details">
                 <div class="client-details">
-                  <span class="client-name">{{ booking.client.first_name }} {{ booking.client.last_name }}</span>
+                  <span class="client-name" (click)="navigateToClient()" style="cursor: pointer;" title="View client details">{{ booking.client.first_name }} {{ booking.client.last_name }}</span>
                   <div class="contact-icons">
                     <a [href]="'mailto:' + booking.client.email" class="contact-link" title="Email">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

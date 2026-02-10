@@ -357,6 +357,6 @@ export class ClientDetailComponent implements OnInit {
   // Navigate to Booking Detail
   // ============================================
   viewBooking(bookingId: string): void {
-    this.router.navigate(['/bookings', bookingId]);
+    this.router.navigate(['/bookings/details', bookingId]);
   }
 }
