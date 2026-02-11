@@ -31,6 +31,7 @@ export class DashboardComponent implements OnInit {
     revenue: { collected: 0, pending: 0 }
   };
 
+  kpiPeriod: 'week' | 'month' = 'week';
   isLoading = true;
   error: string | null = null;
 
@@ -74,24 +75,88 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  toggleKPIPeriod(period: 'week' | 'month'): void {
+    if (this.kpiPeriod !== period) {
+      this.kpiPeriod = period;
+      // Sync schedule view with KPI period
+      this.currentView = period;
+      this.currentDate = new Date(); // Reset to current period
+      this.generateScheduleSlots();
+      this.loadKPIs();
+    }
+  }
+
+  getKPIPeriodLabel(): string {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (this.kpiPeriod === 'week') {
+      const currentDateNormalized = new Date(this.currentDate);
+      currentDateNormalized.setHours(0, 0, 0, 0);
+
+      const startOfCurrentWeek = this.getStartOfWeek(now);
+      const startOfViewWeek = this.getStartOfWeek(currentDateNormalized);
+
+      // Check if viewing current week
+      if (startOfCurrentWeek.getTime() === startOfViewWeek.getTime()) {
+        return 'This week';
+      }
+
+      // Otherwise show date range
+      const endOfWeek = new Date(startOfViewWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+      return `${startOfViewWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    } else {
+      // Check if viewing current month
+      if (this.currentDate.getMonth() === now.getMonth() &&
+          this.currentDate.getFullYear() === now.getFullYear()) {
+        return 'This month';
+      }
+
+      // Otherwise show month name
+      return this.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+  }
+
   private async loadKPIs(): Promise<void> {
     try {
       // Get all bookings and calculate KPIs
       this.bookingService.getAllBookings().subscribe({
         next: (bookings) => {
-          // Get current month boundaries as YYYY-MM strings for comparison
-          const now = new Date();
-          const currentYear = now.getFullYear();
-          const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-          const monthPrefix = `${currentYear}-${currentMonth}`;
+          let filteredBookings: typeof bookings;
 
-          // Filter bookings for current month (excluding cancelled)
-          // Using string comparison to avoid timezone issues
-          const monthlyBookings = bookings.filter(b => {
-            if (b.status === 'cancelled') return false;
-            const bookingDateStr = b.scheduled_date.split('T')[0]; // Get YYYY-MM-DD
-            return bookingDateStr.startsWith(monthPrefix);
-          });
+          if (this.kpiPeriod === 'month') {
+            // Get month boundaries from currentDate
+            const currentYear = this.currentDate.getFullYear();
+            const currentMonth = String(this.currentDate.getMonth() + 1).padStart(2, '0');
+            const monthPrefix = `${currentYear}-${currentMonth}`;
+
+            // Filter bookings for the selected month (excluding cancelled)
+            filteredBookings = bookings.filter(b => {
+              if (b.status === 'cancelled') return false;
+              const bookingDateStr = b.scheduled_date.split('T')[0]; // Get YYYY-MM-DD
+              return bookingDateStr.startsWith(monthPrefix);
+            });
+          } else {
+            // Filter bookings for the selected week (Sunday to Saturday)
+            const startOfWeek = this.getStartOfWeek(this.currentDate);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+
+            const startDateStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+            const endDateStr = `${endOfWeek.getFullYear()}-${String(endOfWeek.getMonth() + 1).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
+
+            filteredBookings = bookings.filter(b => {
+              if (b.status === 'cancelled') return false;
+              const bookingDateStr = b.scheduled_date.split('T')[0];
+              return bookingDateStr >= startDateStr && bookingDateStr <= endDateStr;
+            });
+          }
+
+          // Use filteredBookings instead of monthlyBookings
+          const monthlyBookings = filteredBookings;
 
           // Separate completed vs pending/upcoming bookings
           const completedBookings = monthlyBookings.filter(b => b.status === 'completed');
@@ -178,6 +243,7 @@ export class DashboardComponent implements OnInit {
       );
     }
     this.generateScheduleSlots();
+    this.loadKPIs(); // Update KPIs for the new period
   }
 
   nextPeriod(): void {
@@ -195,11 +261,13 @@ export class DashboardComponent implements OnInit {
       );
     }
     this.generateScheduleSlots();
+    this.loadKPIs(); // Update KPIs for the new period
   }
 
   goToToday(): void {
     this.currentDate = new Date();
     this.generateScheduleSlots();
+    this.loadKPIs(); // Update KPIs for current period
   }
 
   private generateScheduleSlots(): void {

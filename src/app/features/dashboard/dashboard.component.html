@@ -13,6 +13,25 @@
   }
 
   @if (!isLoading && !error) {
+    <!-- KPI Period Toggle -->
+    <div class="kpi-header">
+      <h2>Overview</h2>
+      <div class="kpi-period-toggle">
+        <button
+          class="period-btn"
+          [class.active]="kpiPeriod === 'week'"
+          (click)="toggleKPIPeriod('week')">
+          This Week
+        </button>
+        <button
+          class="period-btn"
+          [class.active]="kpiPeriod === 'month'"
+          (click)="toggleKPIPeriod('month')">
+          This Month
+        </button>
+      </div>
+    </div>
+
     <!-- Stats Overview -->
     <div class="stats-overview">
       <!-- Appointments Card -->
@@ -39,7 +58,7 @@
             <div class="stat-label">Upcoming</div>
           </div>
         </div>
-        <div class="stat-period">This month</div>
+        <div class="stat-period">{{ getKPIPeriodLabel() }}</div>
       </div>
 
       <!-- Pets Card -->
@@ -67,7 +86,7 @@
             <div class="stat-label">Scheduled</div>
           </div>
         </div>
-        <div class="stat-period">This month</div>
+        <div class="stat-period">{{ getKPIPeriodLabel() }}</div>
       </div>
 
       <!-- Revenue Card -->
@@ -91,42 +110,22 @@
             <div class="stat-label">Pending</div>
           </div>
         </div>
-        <div class="stat-period">This month</div>
+        <div class="stat-period">{{ getKPIPeriodLabel() }}</div>
       </div>
+    </div>
+
+    <!-- Period Navigation Controls -->
+    <div class="period-navigation">
+      <button class="nav-btn" (click)="previousPeriod()" title="Previous {{ kpiPeriod }}">←</button>
+      <button class="today-btn" (click)="goToToday()">Today</button>
+      <button class="nav-btn" (click)="nextPeriod()" title="Next {{ kpiPeriod }}">→</button>
     </div>
 
     <!-- Schedule Section -->
     <div class="schedule-section">
       <div class="schedule-header">
         <h2>Schedule</h2>
-        <div class="schedule-controls">
-          <div class="view-toggle">
-            <button
-              class="view-btn"
-              [class.active]="currentView === 'day'"
-              (click)="changeView('day')">
-              Day
-            </button>
-            <button
-              class="view-btn"
-              [class.active]="currentView === 'week'"
-              (click)="changeView('week')">
-              Week
-            </button>
-            <button
-              class="view-btn"
-              [class.active]="currentView === 'month'"
-              (click)="changeView('month')">
-              Month
-            </button>
-          </div>
-          <div class="navigation-controls">
-            <button class="nav-btn" (click)="previousPeriod()">←</button>
-            <button class="today-btn" (click)="goToToday()">Today</button>
-            <button class="nav-btn" (click)="nextPeriod()">→</button>
-          </div>
-          <div class="period-label">{{ getPeriodLabel() }}</div>
-        </div>
+        <div class="period-label">{{ getPeriodLabel() }}</div>
       </div>
 
       <!-- Day View -->
