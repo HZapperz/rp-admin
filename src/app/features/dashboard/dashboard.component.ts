@@ -175,8 +175,15 @@ export class DashboardComponent implements OnInit {
           }, 0);
 
           // Calculate revenue - collected (completed) vs pending (confirmed + in_progress)
-          const revenueCollected = completedBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-          const revenuePending = pendingBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+          // Exclude tips from revenue calculation
+          const revenueCollected = completedBookings.reduce((sum, b) => {
+            const revenue = (b.total_amount || 0) - (b.tip_amount || 0);
+            return sum + revenue;
+          }, 0);
+          const revenuePending = pendingBookings.reduce((sum, b) => {
+            const revenue = (b.total_amount || 0) - (b.tip_amount || 0);
+            return sum + revenue;
+          }, 0);
 
           this.kpiCards = {
             bookings: {
