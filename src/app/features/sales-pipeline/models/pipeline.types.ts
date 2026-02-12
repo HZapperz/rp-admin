@@ -68,7 +68,7 @@ export interface PipelineLeadWithDetails extends PipelineLead {
   }>;
   payment_methods: Array<{
     id: string;
-    last_four: string;
+    last4: string;
     brand: string;
     is_default: boolean;
   }>;

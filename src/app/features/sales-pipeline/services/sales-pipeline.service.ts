@@ -139,7 +139,7 @@ export class SalesPipelineService {
       // Fetch payment methods
       const { data: paymentMethods } = await this.supabase
         .from('payment_methods')
-        .select('id, last_four, brand, is_default')
+        .select('id, last4, brand, is_default')
         .eq('user_id', lead.user_id);
 
       // Check for started bookings
@@ -153,7 +153,7 @@ export class SalesPipelineService {
         .from('sms_conversations')
         .select('id, status, unread_count, last_message_at')
         .eq('user_id', lead.user_id)
-        .single();
+        .maybeSingle();
 
       const completion_status = {
         profile_complete: !!(user.first_name && user.last_name && user.phone),
