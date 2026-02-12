@@ -239,6 +239,39 @@ export class BookingDetailsComponent implements OnInit {
 
       if (error) throw error;
 
+      // Send cancellation emails if status is cancelled
+      if (newStatus === 'cancelled') {
+        console.log('Sending cancellation emails...');
+
+        // Calculate refund amount based on cancellation policy
+        const scheduledDate = new Date(this.booking.scheduled_date);
+        const now = new Date();
+        const hoursUntilAppointment = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+        let refundAmount = 0;
+        if (hoursUntilAppointment >= 72) {
+          refundAmount = this.booking.total_amount; // Full refund
+        } else if (hoursUntilAppointment >= 24) {
+          refundAmount = this.booking.total_amount * 0.5; // 50% refund
+        }
+        // else: No refund (<24 hours)
+
+        const emailResult = await this.emailService.sendCancellationEmails(
+          this.booking,
+          'Cancelled by admin',
+          'admin',
+          refundAmount,
+          'admin@royalpawzusa.com'
+        );
+
+        if (emailResult.success) {
+          console.log('Cancellation emails sent successfully');
+        } else {
+          console.warn('Failed to send cancellation emails:', emailResult.error);
+          alert('Booking cancelled, but there was an issue sending notification emails.');
+        }
+      }
+
       // Reload booking to get updated data
       await this.loadBookingDetails(this.booking.id);
     } catch (err: any) {

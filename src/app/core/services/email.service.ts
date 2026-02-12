@@ -99,6 +99,37 @@ interface ServiceChangeEmailData {
   newBookingTotal?: number;
 }
 
+interface CancellationEmailData {
+  booking: {
+    id: string;
+    scheduled_date: string;
+    scheduled_time_start: string;
+    scheduled_time_end: string;
+    address: string;
+    city: string;
+    state: string;
+    total_amount: number;
+    service_name?: string;
+  };
+  client: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  groomer?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  pets: Array<{
+    name: string;
+  }>;
+  reason?: string;
+  cancelled_by?: string;
+  refund_amount?: number;
+  adminEmail?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -335,6 +366,98 @@ export class EmailService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred while sending email'
+      };
+    }
+  }
+
+  /**
+   * Send cancellation notification emails to client, groomer, and admin
+   */
+  async sendCancellationEmails(
+    booking: BookingWithDetails,
+    reason?: string,
+    cancelledBy?: string,
+    refundAmount?: number,
+    adminEmail?: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      // Validate required data
+      if (!booking.client || !booking.pets || booking.pets.length === 0) {
+        console.error('Missing required booking data for cancellation email', {
+          hasClient: !!booking.client,
+          hasPets: booking.pets && booking.pets.length > 0
+        });
+        return {
+          success: false,
+          error: 'Missing required booking data (client or pets)'
+        };
+      }
+
+      // Validate client email
+      if (!booking.client.email) {
+        console.error('Missing client email address');
+        return {
+          success: false,
+          error: 'Missing client email address'
+        };
+      }
+
+      // Prepare email data
+      const emailData: CancellationEmailData = {
+        booking: {
+          id: booking.id,
+          scheduled_date: booking.scheduled_date,
+          scheduled_time_start: booking.scheduled_time_start,
+          scheduled_time_end: booking.scheduled_time_end,
+          address: booking.address,
+          city: booking.city,
+          state: booking.state,
+          total_amount: booking.total_amount,
+          service_name: booking.service_name
+        },
+        client: {
+          first_name: booking.client.first_name,
+          last_name: booking.client.last_name,
+          email: booking.client.email
+        },
+        groomer: (booking.groomer && booking.groomer.email) ? {
+          first_name: booking.groomer.first_name,
+          last_name: booking.groomer.last_name,
+          email: booking.groomer.email
+        } : undefined,
+        pets: booking.pets.map(bp => ({
+          name: bp.pet?.name || 'Unknown Pet'
+        })),
+        reason: reason,
+        cancelled_by: cancelledBy,
+        refund_amount: refundAmount,
+        adminEmail: adminEmail
+      };
+
+      console.log('Sending cancellation emails...', {
+        bookingId: booking.id,
+        clientEmail: emailData.client.email,
+        groomerEmail: emailData.groomer?.email,
+        adminEmail: adminEmail,
+        reason: reason
+      });
+
+      // Send request to email service
+      const response = await firstValueFrom(
+        this.http.post<EmailResponse>(
+          `${this.emailApiUrl}/send-cancellation-emails`,
+          emailData
+        )
+      );
+
+      console.log('Cancellation email response:', response);
+      return response;
+
+    } catch (error) {
+      console.error('Error sending cancellation emails:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred while sending cancellation emails'
       };
     }
   }
