@@ -1,0 +1,101 @@
+<div class="lead-card" (click)="onViewDetail($event)" [class.has-unread]="hasUnreadMessages">
+  <!-- Unread indicator -->
+  @if (hasUnreadMessages) {
+    <div class="unread-badge">{{ lead.conversation?.unread_count }}</div>
+  }
+
+  <!-- Header with avatar and name -->
+  <div class="card-header">
+    <div class="avatar-container">
+      @if (lead.user.avatar_url && !failedAvatar) {
+        <img
+          [src]="lead.user.avatar_url"
+          [alt]="fullName"
+          class="avatar"
+          (error)="onAvatarError()"
+        />
+      } @else {
+        <div class="avatar-initials" [style.background-color]="stageColor">
+          {{ initials }}
+        </div>
+      }
+    </div>
+    <div class="user-info">
+      <h4 class="name">{{ fullName }}</h4>
+      <p class="phone">{{ formattedPhone || 'No phone' }}</p>
+    </div>
+  </div>
+
+  <!-- Pet names -->
+  <div class="pets-row">
+    <span class="material-icons pets-icon">pets</span>
+    <span class="pet-names">{{ petNames }}</span>
+  </div>
+
+  <!-- Completion progress -->
+  <div class="completion-section">
+    <div class="completion-header">
+      <span class="completion-label">Profile Completion</span>
+      <span class="completion-count">{{ completionCount }}/5</span>
+    </div>
+    <div class="completion-bar">
+      <div class="completion-fill" [style.width.%]="completionPercentage"></div>
+    </div>
+    <div class="completion-steps">
+      @for (step of getCompletionSteps(); track step.label) {
+        <div class="step" [class.done]="step.done" [title]="step.label">
+          <span class="material-icons">{{ step.done ? 'check_circle' : 'radio_button_unchecked' }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Days in stage -->
+  <div class="stage-days">
+    <span class="material-icons">schedule</span>
+    <span>{{ lead.days_in_stage }} {{ lead.days_in_stage === 1 ? 'day' : 'days' }} in stage</span>
+  </div>
+
+  <!-- Actions -->
+  <div class="card-actions">
+    <button class="action-btn sms-btn" (click)="onSendSms($event)" title="Send SMS">
+      <span class="material-icons">sms</span>
+    </button>
+    <button
+      class="action-btn call-btn"
+      (click)="onMakeCall($event)"
+      [disabled]="!lead.user.phone"
+      title="Call"
+    >
+      <span class="material-icons">phone</span>
+    </button>
+    <div class="move-menu-container">
+      <button class="action-btn move-btn" (click)="toggleMoveMenu($event)" title="Move to stage">
+        <span class="material-icons">arrow_drop_down</span>
+      </button>
+      @if (showMoveMenu) {
+        <div class="move-menu" (mouseleave)="closeMoveMenu()">
+          @for (stage of stages; track stage.stage) {
+            <button
+              class="move-option"
+              [class.current]="stage.stage === lead.pipeline_stage"
+              (click)="onMoveToStage(stage.stage, $event)"
+            >
+              <span class="stage-dot" [style.background-color]="stage.color"></span>
+              {{ stage.label }}
+            </button>
+          }
+          <hr class="menu-divider" />
+          <button class="move-option converted" (click)="onMoveToStage('CONVERTED', $event)">
+            <span class="stage-dot" style="background-color: #22c55e"></span>
+            Converted
+          </button>
+          <button class="move-option lost" (click)="onMoveToStage('LOST', $event)">
+            <span class="stage-dot" style="background-color: #6b7280"></span>
+            Lost
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>

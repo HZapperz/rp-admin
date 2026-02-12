@@ -1,0 +1,127 @@
+.stage-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  max-width: 320px;
+  height: 100%;
+  background: #f9fafb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.column-header {
+  padding: 12px 14px;
+  background: white;
+  border-top: 3px solid;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stage-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stage-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.lead-count {
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.stage-description {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.leads-container {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+
+  &.empty {
+    justify-content: center;
+    align-items: center;
+  }
+
+  // CDK drag-drop styles
+  &.cdk-drop-list-dragging .drag-item:not(.cdk-drag-placeholder) {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+  padding: 20px;
+
+  .material-icons {
+    font-size: 32px;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+.drag-item {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+// Drag preview styles
+.cdk-drag-preview {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  transform: rotate(2deg);
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Placeholder while dragging
+.drag-placeholder {
+  background: #e5e7eb;
+  border: 2px dashed #9ca3af;
+  border-radius: 8px;
+  min-height: 120px;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}

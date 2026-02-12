@@ -1,0 +1,112 @@
+<div class="opt-outs-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <button class="back-btn" (click)="goBack()">
+        <span class="material-icons">arrow_back</span>
+      </button>
+      <div class="header-text">
+        <h1>SMS Opt-Outs</h1>
+        <p>Manage numbers that have opted out of receiving SMS messages</p>
+      </div>
+    </div>
+    <button class="refresh-btn" (click)="loadOptOuts()" [disabled]="isLoading">
+      <span class="material-icons" [class.spinning]="isLoading">refresh</span>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading opt-outs...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error) {
+    <div class="error-container">
+      <span class="material-icons">error_outline</span>
+      <p>{{ error }}</p>
+      <button class="retry-btn" (click)="loadOptOuts()">Retry</button>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (!isLoading && !error) {
+    @if (optOuts.length === 0) {
+      <div class="empty-state">
+        <span class="material-icons">check_circle</span>
+        <h3>No Opt-Outs</h3>
+        <p>No one has opted out of SMS messages yet.</p>
+      </div>
+    } @else {
+      <div class="opt-outs-list">
+        <div class="list-header">
+          <span class="col-phone">Phone Number</span>
+          <span class="col-name">Name</span>
+          <span class="col-date">Opted Out</span>
+          <span class="col-reason">Reason</span>
+          <span class="col-action">Action</span>
+        </div>
+
+        @for (optOut of optOuts; track optOut.id) {
+          <div class="opt-out-row">
+            <div class="col-phone">
+              <span class="material-icons phone-icon">phone</span>
+              {{ formatPhone(optOut.phone_number) }}
+            </div>
+            <div class="col-name">
+              @if (optOut.user_name) {
+                {{ optOut.user_name }}
+              } @else {
+                <span class="unknown">Unknown</span>
+              }
+            </div>
+            <div class="col-date">
+              {{ formatDate(optOut.opted_out_at) }}
+            </div>
+            <div class="col-reason">
+              @if (optOut.reason) {
+                {{ optOut.reason }}
+              } @else {
+                <span class="unknown">Not specified</span>
+              }
+            </div>
+            <div class="col-action">
+              <button
+                class="restore-btn"
+                (click)="restoreOptIn(optOut)"
+                [disabled]="restoringPhone === optOut.phone_number"
+              >
+                @if (restoringPhone === optOut.phone_number) {
+                  <div class="btn-spinner"></div>
+                } @else {
+                  <span class="material-icons">undo</span>
+                  Restore
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="list-footer">
+        <p>{{ optOuts.length }} opted-out {{ optOuts.length === 1 ? 'number' : 'numbers' }}</p>
+      </div>
+    }
+  }
+
+  <!-- Info Banner -->
+  <div class="info-banner">
+    <span class="material-icons">info</span>
+    <div class="info-text">
+      <strong>About Opt-Outs</strong>
+      <p>
+        When someone replies "STOP" to an SMS, they are automatically added to this list.
+        Restoring opt-in allows you to send messages again, but use this feature responsibly
+        to comply with SMS regulations.
+      </p>
+    </div>
+  </div>
+</div>

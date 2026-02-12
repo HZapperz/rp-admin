@@ -1,0 +1,143 @@
+<div class="bulk-overlay" (click)="onClose()">
+  <div class="bulk-modal" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="modal-header">
+      <h3>Bulk SMS</h3>
+      <button class="close-btn" (click)="onClose()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Recipients Summary -->
+    <div class="recipients-summary">
+      <div class="summary-row">
+        <span class="material-icons">group</span>
+        <span>{{ leadsWithPhone.length }} recipients</span>
+      </div>
+      @if (leadsWithoutPhone.length > 0) {
+        <div class="summary-warning">
+          <span class="material-icons">warning</span>
+          <span>{{ leadsWithoutPhone.length }} leads have no phone number</span>
+        </div>
+      }
+    </div>
+
+    <!-- Recipients List (collapsed) -->
+    <details class="recipients-details">
+      <summary>View recipients</summary>
+      <div class="recipients-list">
+        @for (lead of leadsWithPhone; track lead.id) {
+          <div class="recipient-item">
+            <span class="recipient-name">{{ lead.user.first_name }} {{ lead.user.last_name }}</span>
+            <span class="recipient-phone">{{ formatPhone(lead.user.phone) }}</span>
+          </div>
+        }
+      </div>
+    </details>
+
+    <!-- Message Type Selection -->
+    @if (!results) {
+      <div class="message-type-section">
+        <h4>Message</h4>
+
+        <!-- Template Option -->
+        @if (selectedTemplate) {
+          <div class="selected-template">
+            <div class="template-info">
+              <span class="material-icons">description</span>
+              <div class="template-details">
+                <span class="template-name">{{ selectedTemplate.name }}</span>
+                <span class="template-preview">{{ selectedTemplate.content }}</span>
+              </div>
+            </div>
+            <button class="change-btn" (click)="clearTemplate()">Change</button>
+          </div>
+        } @else {
+          <!-- Template Button -->
+          <button class="option-btn" (click)="openTemplatePicker()">
+            <span class="material-icons">article</span>
+            <div class="option-text">
+              <span class="option-title">Use Template</span>
+              <span class="option-desc">Choose from pre-written messages</span>
+            </div>
+            <span class="material-icons arrow">chevron_right</span>
+          </button>
+
+          <!-- Custom Message -->
+          <div class="custom-message-section">
+            <label>Or write custom message:</label>
+            <textarea
+              [(ngModel)]="customMessage"
+              [placeholder]="placeholderText"
+              rows="3"
+            ></textarea>
+            <p class="custom-note">
+              <span class="material-icons">info</span>
+              {{ variableHintText }}
+            </p>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Results -->
+    @if (results) {
+      <div class="results-section">
+        <div class="result-icon" [class.success]="results.failed === 0" [class.partial]="results.failed > 0">
+          <span class="material-icons">{{ results.failed === 0 ? 'check_circle' : 'warning' }}</span>
+        </div>
+        <h4>{{ results.failed === 0 ? 'Messages Sent!' : 'Partially Sent' }}</h4>
+        <div class="result-stats">
+          <div class="stat success">
+            <span class="stat-value">{{ results.success }}</span>
+            <span class="stat-label">Sent</span>
+          </div>
+          @if (results.failed > 0) {
+            <div class="stat failed">
+              <span class="stat-value">{{ results.failed }}</span>
+              <span class="stat-label">Failed</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error) {
+      <div class="error-message">
+        <span class="material-icons">error</span>
+        {{ error }}
+      </div>
+    }
+
+    <!-- Actions -->
+    <div class="modal-actions">
+      @if (results) {
+        <button class="done-btn" (click)="sent.emit()">Done</button>
+      } @else {
+        <button class="cancel-btn" (click)="onClose()">Cancel</button>
+        <button
+          class="send-btn"
+          (click)="sendBulk()"
+          [disabled]="!canSend"
+        >
+          @if (isSending) {
+            <div class="btn-spinner"></div>
+            Sending to {{ leadsWithPhone.length }}...
+          } @else {
+            <span class="material-icons">send</span>
+            Send to {{ leadsWithPhone.length }}
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- Template Picker -->
+@if (showTemplatePicker) {
+  <app-template-picker
+    (selectTemplate)="onTemplateSelected($event)"
+    (close)="closeTemplatePicker()"
+  />
+}

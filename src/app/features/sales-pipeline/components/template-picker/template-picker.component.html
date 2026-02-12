@@ -1,0 +1,56 @@
+<div class="template-picker-overlay" (click)="onClose()">
+  <div class="template-picker" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="picker-header">
+      <h3>Choose a Template</h3>
+      <button class="close-btn" (click)="onClose()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Categories -->
+    <div class="category-tabs">
+      @for (cat of categories; track cat.id) {
+        <button
+          class="category-tab"
+          [class.active]="selectedCategory === cat.id"
+          (click)="setCategory(cat.id)"
+        >
+          {{ cat.label }}
+        </button>
+      }
+    </div>
+
+    <!-- Templates List -->
+    <div class="templates-list">
+      @if (isLoading) {
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Loading templates...</p>
+        </div>
+      } @else if (filteredTemplates.length === 0) {
+        <div class="empty">
+          <span class="material-icons">article</span>
+          <p>No templates in this category</p>
+        </div>
+      } @else {
+        @for (template of filteredTemplates; track template.id) {
+          <div class="template-card" (click)="onSelect(template)">
+            <div class="template-header">
+              <span class="material-icons category-icon">{{ getCategoryIcon(template.category) }}</span>
+              <h4 class="template-name">{{ template.name }}</h4>
+            </div>
+            <p class="template-preview">{{ getPreviewText(template) }}</p>
+            @if (template.variables.length > 0) {
+              <div class="template-variables">
+                @for (variable of template.variables; track variable) {
+                  <span class="variable-tag">{{ '{{' + variable + '}}' }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>

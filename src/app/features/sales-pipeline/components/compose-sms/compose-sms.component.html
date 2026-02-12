@@ -1,0 +1,110 @@
+<div class="compose-overlay" (click)="onClose()">
+  <div class="compose-modal" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="modal-header">
+      <h3>Send SMS</h3>
+      <button class="close-btn" (click)="onClose()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Recipient Info -->
+    <div class="recipient-info">
+      <div class="avatar">
+        @if (lead.user.avatar_url) {
+          <img [src]="lead.user.avatar_url" [alt]="lead.user.first_name" />
+        } @else {
+          <div class="avatar-initials">
+            {{ lead.user.first_name.charAt(0) }}{{ lead.user.last_name.charAt(0) }}
+          </div>
+        }
+      </div>
+      <div class="recipient-details">
+        <span class="name">{{ lead.user.first_name }} {{ lead.user.last_name }}</span>
+        <span class="phone">{{ formattedPhone }}</span>
+      </div>
+    </div>
+
+    <!-- Template Selection -->
+    @if (selectedTemplate) {
+      <div class="selected-template">
+        <span class="material-icons">description</span>
+        <span class="template-name">{{ selectedTemplate.name }}</span>
+        <button class="clear-template" (click)="clearTemplate()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    } @else {
+      <button class="template-btn" (click)="openTemplatePicker()">
+        <span class="material-icons">article</span>
+        Use Template
+      </button>
+    }
+
+    <!-- Message Input -->
+    <div class="message-input-container">
+      <textarea
+        [(ngModel)]="message"
+        placeholder="Type your message..."
+        rows="4"
+        (keydown)="onKeydown($event)"
+        [class.over-limit]="isOverLimit"
+      ></textarea>
+
+      <div class="input-footer">
+        <div class="character-count" [class.warning]="isOverLimit">
+          {{ characterCount }}/{{ maxLength }}
+          @if (segmentCount > 1) {
+            <span class="segment-count">({{ segmentCount }} segments)</span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    @if (error) {
+      <div class="error-message">
+        <span class="material-icons">error</span>
+        {{ error }}
+      </div>
+    }
+
+    <!-- No Phone Warning -->
+    @if (!lead.user.phone) {
+      <div class="warning-message">
+        <span class="material-icons">warning</span>
+        This lead has no phone number on file
+      </div>
+    }
+
+    <!-- Actions -->
+    <div class="modal-actions">
+      <button class="cancel-btn" (click)="onClose()">Cancel</button>
+      <button
+        class="send-btn"
+        (click)="sendMessage()"
+        [disabled]="!canSend"
+      >
+        @if (isSending) {
+          <div class="btn-spinner"></div>
+          Sending...
+        } @else {
+          <span class="material-icons">send</span>
+          Send
+        }
+      </button>
+    </div>
+
+    <!-- Keyboard shortcut hint -->
+    <p class="shortcut-hint">Press <kbd>Cmd</kbd>+<kbd>Enter</kbd> to send</p>
+  </div>
+</div>
+
+<!-- Template Picker Modal -->
+@if (showTemplatePicker) {
+  <app-template-picker
+    [lead]="lead"
+    (selectTemplate)="onTemplateSelected($event)"
+    (close)="closeTemplatePicker()"
+  />
+}

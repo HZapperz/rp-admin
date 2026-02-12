@@ -114,7 +114,7 @@ export interface Booking {
   tax_amount?: number;
   tax_rate?: number;
   // Time preference fields
-  shift_preference?: 'morning' | 'afternoon';
+  shift_preference?: 'morning' | 'afternoon' | 'evening';
   assigned_time_slot?: string;
   // Additional fields from database
   distance_miles?: number;
@@ -475,7 +475,7 @@ export interface Rebooking {
   groomer_id: string;
   type: RebookingType;
   preferred_date?: string;
-  preferred_time_slot?: 'morning' | 'afternoon';
+  preferred_time_slot?: 'morning' | 'afternoon' | 'evening';
   callback_weeks?: number;
   callback_date?: string;
   groomer_notes?: string;

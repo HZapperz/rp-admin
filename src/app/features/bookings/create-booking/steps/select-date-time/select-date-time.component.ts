@@ -350,9 +350,17 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
     if (this.selectedDate && start24 && end24) {
       const dateString = this.formatDateForAPI(this.selectedDate);
 
-      // Determine shift preference based on start hour (morning = before 12:00)
+      // Determine shift preference based on start hour
       const startHour = parseInt(start24.split(':')[0], 10);
-      const shiftPreference = startHour < 12 ? 'morning' : 'afternoon';
+      let shiftPreference: 'morning' | 'afternoon' | 'evening';
+
+      if (startHour < 12) {
+        shiftPreference = 'morning';
+      } else if (startHour < 17) {  // Before 5 PM
+        shiftPreference = 'afternoon';
+      } else {
+        shiftPreference = 'evening';  // 5 PM and later
+      }
 
       this.dateTimeSelected.emit({
         date: dateString,

@@ -1,0 +1,45 @@
+<div class="stage-column">
+  <!-- Column Header -->
+  <div class="column-header" [style.border-top-color]="stage.color">
+    <div class="header-content">
+      <div class="stage-info">
+        <span class="stage-dot" [style.background-color]="stage.color"></span>
+        <h3 class="stage-name">{{ stage.label }}</h3>
+        <span class="lead-count">{{ leadCount }}</span>
+      </div>
+      <p class="stage-description">{{ stage.description }}</p>
+    </div>
+  </div>
+
+  <!-- Drop Zone -->
+  <div
+    cdkDropList
+    [id]="dropListId"
+    [cdkDropListData]="leads"
+    [cdkDropListConnectedTo]="connectedDropLists"
+    (cdkDropListDropped)="onDrop($event)"
+    class="leads-container"
+    [class.empty]="leads.length === 0"
+  >
+    @if (leads.length === 0) {
+      <div class="empty-state">
+        <span class="material-icons">inbox</span>
+        <p>No leads</p>
+      </div>
+    }
+
+    @for (lead of leads; track lead.id) {
+      <div cdkDrag [cdkDragData]="lead" class="drag-item">
+        <app-lead-card
+          [lead]="lead"
+          (viewDetail)="onViewLead($event)"
+          (sendSms)="onSendSms($event)"
+          (makeCall)="onMakeCall($event)"
+          (moveToStage)="onMoveToStage($event)"
+        />
+        <!-- Drag placeholder -->
+        <div class="drag-placeholder" *cdkDragPlaceholder></div>
+      </div>
+    }
+  </div>
+</div>

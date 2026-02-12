@@ -1,0 +1,303 @@
+<div class="lead-detail-container">
+  <!-- Header -->
+  <div class="detail-header">
+    <button class="back-btn" (click)="goBack()">
+      <span class="material-icons">arrow_back</span>
+      Back to Pipeline
+    </button>
+  </div>
+
+  <!-- Loading -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading lead...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error) {
+    <div class="error-container">
+      <span class="material-icons">error_outline</span>
+      <p>{{ error }}</p>
+      <button class="retry-btn" (click)="loadLead()">Retry</button>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (!isLoading && !error && lead) {
+    <div class="detail-content">
+      <!-- Left Panel: Lead Info -->
+      <div class="info-panel">
+        <!-- Profile Card -->
+        <div class="profile-card">
+          <div class="avatar-large">
+            @if (lead.user.avatar_url) {
+              <img [src]="lead.user.avatar_url" [alt]="lead.user.first_name" />
+            } @else {
+              <div class="avatar-initials">
+                {{ lead.user.first_name.charAt(0) }}{{ lead.user.last_name.charAt(0) }}
+              </div>
+            }
+          </div>
+
+          <h2 class="lead-name">{{ lead.user.first_name }} {{ lead.user.last_name }}</h2>
+
+          <div class="contact-info">
+            @if (lead.user.phone) {
+              <a href="tel:{{ lead.user.phone }}" class="contact-item">
+                <span class="material-icons">phone</span>
+                {{ formatPhone(lead.user.phone) }}
+              </a>
+            }
+            @if (lead.user.email) {
+              <a href="mailto:{{ lead.user.email }}" class="contact-item">
+                <span class="material-icons">email</span>
+                {{ lead.user.email }}
+              </a>
+            }
+          </div>
+
+          <!-- Stage Badge -->
+          <div class="stage-section">
+            <div class="stage-badge" [style.background-color]="stageConfig?.bgColor" [style.color]="stageConfig?.color">
+              <span class="stage-dot" [style.background-color]="stageConfig?.color"></span>
+              {{ stageConfig?.label }}
+              <button class="change-stage-btn" (click)="toggleStageMenu()">
+                <span class="material-icons">expand_more</span>
+              </button>
+            </div>
+
+            @if (showStageMenu) {
+              <div class="stage-menu">
+                @for (stage of stages; track stage.stage) {
+                  <button
+                    class="stage-option"
+                    [class.current]="stage.stage === lead.pipeline_stage"
+                    (click)="changeStage(stage.stage)"
+                  >
+                    <span class="stage-dot" [style.background-color]="stage.color"></span>
+                    {{ stage.label }}
+                  </button>
+                }
+              </div>
+            }
+
+            <p class="days-in-stage">{{ lead.days_in_stage }} days in stage</p>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="quick-actions">
+            <button class="action-btn primary" (click)="openSmsModal()">
+              <span class="material-icons">sms</span>
+              Send SMS
+            </button>
+            <button class="action-btn" (click)="makeCall()" [disabled]="!lead.user.phone">
+              <span class="material-icons">phone</span>
+              Call
+            </button>
+            <button class="action-btn" (click)="viewClientProfile()">
+              <span class="material-icons">person</span>
+              Profile
+            </button>
+          </div>
+        </div>
+
+        <!-- Completion Status -->
+        <div class="section-card">
+          <h3>Profile Completion</h3>
+          <div class="completion-bar">
+            <div class="completion-fill" [style.width.%]="(completionCount / 5) * 100"></div>
+          </div>
+          <div class="completion-items">
+            <div class="completion-item" [class.done]="lead.completion_status.profile_complete">
+              <span class="material-icons">{{ lead.completion_status.profile_complete ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Profile Info
+            </div>
+            <div class="completion-item" [class.done]="lead.completion_status.has_pet">
+              <span class="material-icons">{{ lead.completion_status.has_pet ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Pet Added
+            </div>
+            <div class="completion-item" [class.done]="lead.completion_status.has_address">
+              <span class="material-icons">{{ lead.completion_status.has_address ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Address
+            </div>
+            <div class="completion-item" [class.done]="lead.completion_status.has_payment_method">
+              <span class="material-icons">{{ lead.completion_status.has_payment_method ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Payment Method
+            </div>
+            <div class="completion-item" [class.done]="lead.completion_status.has_started_booking">
+              <span class="material-icons">{{ lead.completion_status.has_started_booking ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Started Booking
+            </div>
+          </div>
+        </div>
+
+        <!-- Pets -->
+        @if (lead.pets.length > 0) {
+          <div class="section-card">
+            <h3>Pets</h3>
+            <div class="pets-list">
+              @for (pet of lead.pets; track pet.id) {
+                <div class="pet-item">
+                  <span class="material-icons">pets</span>
+                  <div class="pet-info">
+                    <span class="pet-name">{{ pet.name }}</span>
+                    <span class="pet-details">{{ pet.breed || 'Unknown breed' }} &bull; {{ pet.size_category || 'Unknown size' }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Activity Timeline -->
+        <div class="section-card">
+          <h3>Activity</h3>
+          <div class="timeline">
+            <div class="timeline-item">
+              <span class="material-icons">person_add</span>
+              <div class="timeline-content">
+                <span class="timeline-title">Signed up</span>
+                <span class="timeline-date">{{ formatDate(lead.user.created_at) }}</span>
+              </div>
+            </div>
+            @if (lead.last_sms_sent_at) {
+              <div class="timeline-item">
+                <span class="material-icons">sms</span>
+                <div class="timeline-content">
+                  <span class="timeline-title">Last SMS sent</span>
+                  <span class="timeline-date">{{ formatDate(lead.last_sms_sent_at) }}</span>
+                </div>
+              </div>
+            }
+            @if (lead.last_sms_replied_at) {
+              <div class="timeline-item">
+                <span class="material-icons">reply</span>
+                <div class="timeline-content">
+                  <span class="timeline-title">Last reply received</span>
+                  <span class="timeline-date">{{ formatDate(lead.last_sms_replied_at) }}</span>
+                </div>
+              </div>
+            }
+            @if (lead.last_call_at) {
+              <div class="timeline-item">
+                <span class="material-icons">phone</span>
+                <div class="timeline-content">
+                  <span class="timeline-title">Last call</span>
+                  <span class="timeline-date">{{ formatDate(lead.last_call_at) }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3>Notes</h3>
+            @if (!isEditingNotes) {
+              <button class="edit-btn" (click)="startEditNotes()">
+                <span class="material-icons">edit</span>
+              </button>
+            }
+          </div>
+          @if (isEditingNotes) {
+            <textarea
+              [(ngModel)]="notesInput"
+              placeholder="Add notes about this lead..."
+              rows="4"
+            ></textarea>
+            <div class="notes-actions">
+              <button class="cancel-btn" (click)="cancelEditNotes()">Cancel</button>
+              <button class="save-btn" (click)="saveNotes()" [disabled]="isSavingNotes">
+                {{ isSavingNotes ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
+          } @else {
+            <p class="notes-text">{{ lead.notes || 'No notes yet' }}</p>
+          }
+        </div>
+      </div>
+
+      <!-- Right Panel: Conversation -->
+      <div class="conversation-panel">
+        <div class="conversation-header">
+          <h3>Conversation</h3>
+          @if (conversation) {
+            <span class="conversation-status" [class]="'status-' + conversation.status">
+              {{ conversation.status }}
+            </span>
+          }
+        </div>
+
+        @if (!conversation) {
+          <div class="no-conversation">
+            <span class="material-icons">chat_bubble_outline</span>
+            <p>No conversation yet</p>
+            <button class="start-convo-btn" (click)="openSmsModal()">
+              Send First Message
+            </button>
+          </div>
+        } @else {
+          <!-- Messages -->
+          <div class="messages-container" #messagesContainer>
+            @for (message of messages; track message.id; let i = $index) {
+              @if (shouldShowDateDivider(message, i)) {
+                <div class="date-divider">
+                  <span>{{ formatMessageDate(message.created_at) }}</span>
+                </div>
+              }
+              <div class="message" [class]="getMessageClass(message)">
+                <div class="message-content">
+                  {{ message.content }}
+                </div>
+                <div class="message-meta">
+                  <span class="message-time">{{ formatTime(message.created_at) }}</span>
+                  @if (message.ai_intent && getIntentBadge(message.ai_intent)) {
+                    <span
+                      class="intent-badge"
+                      [style.background-color]="getIntentBadge(message.ai_intent)?.color"
+                    >
+                      {{ getIntentBadge(message.ai_intent)?.label }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Reply Input -->
+          <div class="reply-input">
+            <textarea
+              [(ngModel)]="replyMessage"
+              placeholder="Type a message..."
+              rows="2"
+              (keydown)="onKeydown($event)"
+            ></textarea>
+            <button
+              class="send-reply-btn"
+              (click)="sendReply()"
+              [disabled]="!replyMessage.trim() || isSendingReply"
+            >
+              @if (isSendingReply) {
+                <div class="btn-spinner"></div>
+              } @else {
+                <span class="material-icons">send</span>
+              }
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<!-- SMS Modal -->
+@if (showSmsModal && lead) {
+  <app-compose-sms
+    [lead]="lead"
+    (close)="closeSmsModal()"
+    (sent)="onSmsSent()"
+  />
+}

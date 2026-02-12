@@ -34,9 +34,9 @@ export const routes: Routes = [
           import('./features/clients/clients.routes').then(m => m.routes)
       },
       {
-        path: 'warm-leads',
+        path: 'sales-pipeline',
         loadChildren: () =>
-          import('./features/warm-leads/warm-leads.routes').then(m => m.routes)
+          import('./features/sales-pipeline/sales-pipeline.routes').then(m => m.routes)
       },
       {
         path: 'fill-schedule',
@@ -87,16 +87,6 @@ export const routes: Routes = [
         path: 'sessions',
         loadChildren: () =>
           import('./features/sessions/sessions.routes').then(m => m.routes)
-      },
-      {
-        path: 'sms-inbox',
-        loadChildren: () =>
-          import('./features/sms-inbox/sms-inbox.routes').then(m => m.routes)
-      },
-      {
-        path: 'outreach',
-        loadComponent: () =>
-          import('./features/outreach/outreach-list/outreach-list.component').then(m => m.OutreachListComponent)
       },
       {
         path: '',

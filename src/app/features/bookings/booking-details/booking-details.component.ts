@@ -637,10 +637,8 @@ export class BookingDetailsComponent implements OnInit {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Min date: Tomorrow (can't schedule for today or past)
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    this.minDate = tomorrow.toISOString().split('T')[0];
+    // Min date: Today (admins can schedule for same day)
+    this.minDate = today.toISOString().split('T')[0];
 
     // Max date: 90 days from today
     const maxDate = new Date(today);
@@ -1143,10 +1141,8 @@ export class BookingDetailsComponent implements OnInit {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Min date: Tomorrow
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    this.minDate = tomorrow.toISOString().split('T')[0];
+    // Min date: Today (admins can schedule for same day)
+    this.minDate = today.toISOString().split('T')[0];
 
     // Max date: 90 days from today
     const maxDate = new Date(today);

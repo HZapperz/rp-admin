@@ -1,0 +1,294 @@
+.lead-card {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 1px solid #e5e7eb;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+
+  &.has-unread {
+    border-left: 3px solid #3b82f6;
+  }
+}
+
+.unread-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.avatar-container {
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-initials {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phone {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.pets-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+
+  .pets-icon {
+    font-size: 16px;
+    color: #9ca3af;
+  }
+
+  .pet-names {
+    font-size: 12px;
+    color: #4b5563;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.completion-section {
+  margin-bottom: 10px;
+}
+
+.completion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.completion-label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.completion-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.completion-bar {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.completion-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.completion-steps {
+  display: flex;
+  gap: 4px;
+
+  .step {
+    .material-icons {
+      font-size: 14px;
+      color: #d1d5db;
+    }
+
+    &.done .material-icons {
+      color: #22c55e;
+    }
+  }
+}
+
+.stage-days {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 10px;
+
+  .material-icons {
+    font-size: 14px;
+  }
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  .material-icons {
+    font-size: 18px;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.sms-btn {
+  background: #eff6ff;
+  color: #3b82f6;
+
+  &:hover:not(:disabled) {
+    background: #dbeafe;
+  }
+}
+
+.call-btn {
+  background: #f0fdf4;
+  color: #22c55e;
+
+  &:hover:not(:disabled) {
+    background: #dcfce7;
+  }
+}
+
+.move-btn {
+  background: #f9fafb;
+  color: #6b7280;
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+  }
+}
+
+.move-menu-container {
+  position: relative;
+  flex: 1;
+}
+
+.move-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 140px;
+  padding: 4px;
+  z-index: 100;
+  margin-bottom: 4px;
+}
+
+.move-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  border-radius: 4px;
+  text-align: left;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &.current {
+    background: #eff6ff;
+    font-weight: 500;
+  }
+
+  &.converted {
+    color: #22c55e;
+  }
+
+  &.lost {
+    color: #6b7280;
+  }
+}
+
+.stage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.menu-divider {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 4px 0;
+}

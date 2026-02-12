@@ -1,0 +1,169 @@
+<div class="pipeline-container">
+  <!-- Header -->
+  <div class="pipeline-header">
+    <div class="header-left">
+      <h1 class="page-title">Sales Pipeline</h1>
+      <p class="page-subtitle">Manage and convert your leads</p>
+    </div>
+
+    <div class="header-actions">
+      <!-- Search -->
+      <div class="search-box">
+        <span class="material-icons search-icon">search</span>
+        <input
+          type="text"
+          placeholder="Search leads..."
+          [value]="searchTerm"
+          (input)="onSearch($event)"
+        />
+        @if (searchTerm) {
+          <button class="clear-search" (click)="clearSearch()">
+            <span class="material-icons">close</span>
+          </button>
+        }
+      </div>
+
+      <!-- Bulk actions -->
+      @if (selectionMode) {
+        <div class="bulk-actions">
+          <span class="selection-count">{{ selectedLeads.size }} selected</span>
+          <button class="action-btn bulk-sms-btn" (click)="openBulkSms()" [disabled]="selectedLeads.size === 0">
+            <span class="material-icons">send</span>
+            Send SMS
+          </button>
+          <button class="action-btn cancel-btn" (click)="toggleSelectionMode()">
+            Cancel
+          </button>
+        </div>
+      } @else {
+        <button class="action-btn select-btn" (click)="toggleSelectionMode()">
+          <span class="material-icons">checklist</span>
+          Select
+        </button>
+      }
+
+      <button class="action-btn opt-outs-btn" (click)="goToOptOuts()">
+        <span class="material-icons">block</span>
+        Opt-outs
+      </button>
+
+      <button class="action-btn refresh-btn" (click)="loadData()" [disabled]="isLoading">
+        <span class="material-icons" [class.spinning]="isLoading">refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Bar -->
+  @if (stats) {
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-value">{{ stats.total }}</span>
+        <span class="stat-label">Total Leads</span>
+      </div>
+      <div class="stat-item needs-attention" [class.highlight]="stats.needs_attention > 0">
+        <span class="stat-value">{{ stats.needs_attention }}</span>
+        <span class="stat-label">Need Attention</span>
+      </div>
+      <div class="stat-item converted">
+        <span class="stat-value">{{ stats.converted_this_week }}</span>
+        <span class="stat-label">Converted (7d)</span>
+      </div>
+      <div class="stat-item lost">
+        <span class="stat-value">{{ stats.lost_this_week }}</span>
+        <span class="stat-label">Lost (7d)</span>
+      </div>
+      @for (stage of activeStages; track stage.stage) {
+        <div class="stat-item stage-stat">
+          <span class="stage-indicator" [style.background-color]="stage.color"></span>
+          <span class="stat-value">{{ stats.by_stage[stage.stage] }}</span>
+          <span class="stat-label">{{ stage.label }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading pipeline...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error) {
+    <div class="error-container">
+      <span class="material-icons">error_outline</span>
+      <p>{{ error }}</p>
+      <button class="retry-btn" (click)="loadData()">Retry</button>
+    </div>
+  }
+
+  <!-- Kanban Board -->
+  @if (!isLoading && !error) {
+    <div class="kanban-board">
+      <!-- Active Stages -->
+      <div class="stages-container">
+        @for (stage of activeStages; track stage.stage) {
+          <app-stage-column
+            [stage]="stage"
+            [leads]="leadsByStage[stage.stage]"
+            [dropListId]="getDropListId(stage.stage)"
+            [connectedDropLists]="getConnectedLists(stage.stage)"
+            (leadDropped)="onLeadDropped($event)"
+            (viewLead)="onViewLead($event)"
+            (sendSms)="onSendSms($event)"
+            (makeCall)="onMakeCall($event)"
+            (moveToStage)="onMoveToStage($event)"
+          />
+        }
+      </div>
+
+      <!-- Toggle for Converted/Lost -->
+      <div class="end-stages-toggle">
+        <button class="toggle-btn" (click)="toggleConvertedLost()">
+          <span class="material-icons">{{ showConvertedLost ? 'expand_less' : 'expand_more' }}</span>
+          {{ showConvertedLost ? 'Hide' : 'Show' }} Converted & Lost
+          ({{ stats ? stats.by_stage['CONVERTED'] : 0 }} / {{ stats ? stats.by_stage['LOST'] : 0 }})
+        </button>
+      </div>
+
+      <!-- Converted and Lost Stages -->
+      @if (showConvertedLost) {
+        <div class="end-stages-container">
+          @for (stage of endStages; track stage.stage) {
+            <app-stage-column
+              [stage]="stage"
+              [leads]="leadsByStage[stage.stage]"
+              [dropListId]="getDropListId(stage.stage)"
+              [connectedDropLists]="getConnectedLists(stage.stage)"
+              (leadDropped)="onLeadDropped($event)"
+              (viewLead)="onViewLead($event)"
+              (sendSms)="onSendSms($event)"
+              (makeCall)="onMakeCall($event)"
+              (moveToStage)="onMoveToStage($event)"
+            />
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- SMS Compose Modal -->
+@if (showSmsModal && selectedLeadForSms) {
+  <app-compose-sms
+    [lead]="selectedLeadForSms"
+    (close)="closeSmsModal()"
+    (sent)="onSmsSent()"
+  />
+}
+
+<!-- Bulk SMS Modal -->
+@if (showBulkSmsModal) {
+  <app-bulk-sms
+    [leads]="getSelectedLeadsArray()"
+    (close)="closeBulkSmsModal()"
+    (sent)="onBulkSmsSent()"
+  />
+}
