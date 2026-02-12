@@ -112,63 +112,86 @@ export class SalesPipelineService {
   }
 
   private async enrichLeads(leads: PipelineLead[]): Promise<PipelineLeadWithDetails[]> {
+    if (leads.length === 0) return [];
+
+    const userIds = leads.map(l => l.user_id);
+
+    // Batch fetch all related data in parallel
+    const [usersResult, petsResult, addressesResult, paymentMethodsResult, bookingsResult, conversationsResult] = await Promise.all([
+      this.supabase
+        .from('users')
+        .select('id, first_name, last_name, email, phone, avatar_url, created_at')
+        .in('id', userIds),
+      this.supabase
+        .from('pets')
+        .select('id, name, breed, size_category, user_id')
+        .in('user_id', userIds),
+      this.supabase
+        .from('addresses')
+        .select('id, street, city, zip_code, is_default, user_id')
+        .in('user_id', userIds),
+      this.supabase
+        .from('payment_methods')
+        .select('id, last4, brand, is_default, user_id')
+        .in('user_id', userIds),
+      this.supabase
+        .from('bookings')
+        .select('client_id')
+        .in('client_id', userIds),
+      this.supabase
+        .from('sms_conversations')
+        .select('id, status, unread_count, last_message_at, user_id')
+        .in('user_id', userIds)
+    ]);
+
+    // Create lookup maps for O(1) access
+    const usersMap = new Map((usersResult.data || []).map(u => [u.id, u]));
+    const petsMap = new Map<string, any[]>();
+    const addressesMap = new Map<string, any[]>();
+    const paymentMethodsMap = new Map<string, any[]>();
+    const bookingsSet = new Set((bookingsResult.data || []).map(b => b.client_id));
+    const conversationsMap = new Map((conversationsResult.data || []).map(c => [c.user_id, c]));
+
+    // Group pets, addresses, payment methods by user_id
+    for (const pet of petsResult.data || []) {
+      if (!petsMap.has(pet.user_id)) petsMap.set(pet.user_id, []);
+      petsMap.get(pet.user_id)!.push(pet);
+    }
+    for (const addr of addressesResult.data || []) {
+      if (!addressesMap.has(addr.user_id)) addressesMap.set(addr.user_id, []);
+      addressesMap.get(addr.user_id)!.push(addr);
+    }
+    for (const pm of paymentMethodsResult.data || []) {
+      if (!paymentMethodsMap.has(pm.user_id)) paymentMethodsMap.set(pm.user_id, []);
+      paymentMethodsMap.get(pm.user_id)!.push(pm);
+    }
+
+    // Build enriched leads
     const enriched: PipelineLeadWithDetails[] = [];
 
     for (const lead of leads) {
-      // Fetch user details
-      const { data: user } = await this.supabase
-        .from('users')
-        .select('id, first_name, last_name, email, phone, avatar_url, created_at')
-        .eq('id', lead.user_id)
-        .single();
-
+      const user = usersMap.get(lead.user_id);
       if (!user) continue;
 
-      // Fetch pets
-      const { data: pets } = await this.supabase
-        .from('pets')
-        .select('id, name, breed, size_category')
-        .eq('user_id', lead.user_id);
-
-      // Fetch addresses
-      const { data: addresses } = await this.supabase
-        .from('addresses')
-        .select('id, street, city, zip_code, is_default')
-        .eq('user_id', lead.user_id);
-
-      // Fetch payment methods
-      const { data: paymentMethods } = await this.supabase
-        .from('payment_methods')
-        .select('id, last4, brand, is_default')
-        .eq('user_id', lead.user_id);
-
-      // Check for started bookings
-      const { count: bookingCount } = await this.supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('client_id', lead.user_id);
-
-      // Fetch conversation if exists
-      const { data: conversation } = await this.supabase
-        .from('sms_conversations')
-        .select('id, status, unread_count, last_message_at')
-        .eq('user_id', lead.user_id)
-        .maybeSingle();
+      const pets = petsMap.get(lead.user_id) || [];
+      const addresses = addressesMap.get(lead.user_id) || [];
+      const paymentMethods = paymentMethodsMap.get(lead.user_id) || [];
+      const conversation = conversationsMap.get(lead.user_id);
 
       const completion_status = {
         profile_complete: !!(user.first_name && user.last_name && user.phone),
-        has_pet: (pets?.length || 0) > 0,
-        has_address: (addresses?.length || 0) > 0,
-        has_payment_method: (paymentMethods?.length || 0) > 0,
-        has_started_booking: (bookingCount || 0) > 0
+        has_pet: pets.length > 0,
+        has_address: addresses.length > 0,
+        has_payment_method: paymentMethods.length > 0,
+        has_started_booking: bookingsSet.has(lead.user_id)
       };
 
       enriched.push({
         ...lead,
         user,
-        pets: pets || [],
-        addresses: addresses || [],
-        payment_methods: paymentMethods || [],
+        pets,
+        addresses,
+        payment_methods: paymentMethods,
         completion_status,
         conversation: conversation || undefined,
         days_in_stage: calculateDaysInStage(lead.stage_changed_at)

@@ -1,185 +1,161 @@
 .lead-card {
   background: white;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
+  border-radius: 6px;
   border: 1px solid #e5e7eb;
+  transition: all 0.15s ease;
+  overflow: hidden;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
+    border-color: #d1d5db;
   }
 
   &.has-unread {
     border-left: 3px solid #3b82f6;
   }
+
+  &.expanded {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
 }
 
-.unread-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: #ef4444;
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+// Compact row (always visible)
+.compact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+
+  &:hover {
+    background: #fafafa;
+  }
+}
+
+.avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.avatar-container {
+  color: white;
+  font-weight: 600;
+  font-size: 11px;
   flex-shrink: 0;
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.avatar-initials {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.user-info {
+.lead-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.name {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+.lead-name {
+  font-size: 13px;
+  font-weight: 500;
   color: #111827;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.phone {
-  margin: 2px 0 0 0;
-  font-size: 12px;
-  color: #6b7280;
+.lead-meta {
+  font-size: 11px;
+  color: #9ca3af;
+
+  .divider {
+    margin: 0 4px;
+    color: #d1d5db;
+  }
 }
 
-.pets-row {
+.status-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+}
+
+.complete-icon {
+  font-size: 16px;
+  color: #22c55e;
+}
+
+.expand-icon {
+  font-size: 18px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+// Expanded content
+.expanded-content {
+  padding: 0 10px 10px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.detail-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 10px;
-  padding: 6px 8px;
-  background: #f9fafb;
-  border-radius: 4px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: #4b5563;
 
-  .pets-icon {
-    font-size: 16px;
+  .material-icons {
+    font-size: 14px;
     color: #9ca3af;
   }
 
-  .pet-names {
-    font-size: 12px;
-    color: #4b5563;
+  .email-text {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 }
 
-.completion-section {
-  margin-bottom: 10px;
-}
-
-.completion-header {
+.completion-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  justify-content: space-between;
+  padding: 8px 0;
 }
 
-.completion-label {
+.completion-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.completion-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e5e7eb;
+
+  &.done {
+    background: #22c55e;
+  }
+}
+
+.completion-text {
   font-size: 11px;
   color: #6b7280;
+  font-weight: 500;
 }
 
-.completion-count {
-  font-size: 11px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.completion-bar {
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-
-.completion-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.completion-steps {
-  display: flex;
-  gap: 4px;
-
-  .step {
-    .material-icons {
-      font-size: 14px;
-      color: #d1d5db;
-    }
-
-    &.done .material-icons {
-      color: #22c55e;
-    }
-  }
-}
-
-.stage-days {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: #9ca3af;
-  margin-bottom: 10px;
-
-  .material-icons {
-    font-size: 14px;
-  }
-}
-
+// Actions
 .card-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  padding-top: 8px;
   border-top: 1px solid #f3f4f6;
-  padding-top: 10px;
 }
 
 .action-btn {
@@ -190,43 +166,23 @@
   padding: 6px;
   border: none;
   border-radius: 4px;
+  background: #f9fafb;
+  color: #6b7280;
   cursor: pointer;
   transition: all 0.15s ease;
 
   .material-icons {
-    font-size: 18px;
+    font-size: 16px;
+  }
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+    color: #374151;
   }
 
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-}
-
-.sms-btn {
-  background: #eff6ff;
-  color: #3b82f6;
-
-  &:hover:not(:disabled) {
-    background: #dbeafe;
-  }
-}
-
-.call-btn {
-  background: #f0fdf4;
-  color: #22c55e;
-
-  &:hover:not(:disabled) {
-    background: #dcfce7;
-  }
-}
-
-.move-btn {
-  background: #f9fafb;
-  color: #6b7280;
-
-  &:hover:not(:disabled) {
-    background: #f3f4f6;
   }
 }
 
@@ -240,9 +196,9 @@
   bottom: 100%;
   right: 0;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  min-width: 140px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 130px;
   padding: 4px;
   z-index: 100;
   margin-bottom: 4px;
@@ -251,13 +207,13 @@
 .move-option {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   color: #374151;
   border-radius: 4px;
   text-align: left;
@@ -270,19 +226,11 @@
     background: #eff6ff;
     font-weight: 500;
   }
-
-  &.converted {
-    color: #22c55e;
-  }
-
-  &.lost {
-    color: #6b7280;
-  }
 }
 
 .stage-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }

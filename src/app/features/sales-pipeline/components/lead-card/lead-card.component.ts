@@ -24,7 +24,7 @@ export class LeadCardComponent {
   @Output() moveToStage = new EventEmitter<{ lead: PipelineLeadWithDetails; stage: PipelineStage }>();
 
   showMoveMenu = false;
-  failedAvatar = false;
+  isExpanded = false;
 
   stages = PIPELINE_STAGES.filter(s => !['CONVERTED', 'LOST'].includes(s.stage));
 
@@ -63,8 +63,9 @@ export class LeadCardComponent {
     return getStageConfig(this.lead.pipeline_stage).color;
   }
 
-  onAvatarError(): void {
-    this.failedAvatar = true;
+  toggleExpand(event: Event): void {
+    event.stopPropagation();
+    this.isExpanded = !this.isExpanded;
   }
 
   onViewDetail(event: Event): void {
