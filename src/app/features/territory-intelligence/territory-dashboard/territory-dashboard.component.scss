@@ -1,0 +1,672 @@
+@use '../../../../theme/design-tokens' as *;
+@import 'leaflet/dist/leaflet.css';
+
+.territory-container {
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  height: calc(100vh - 64px); // Account for header
+  background-color: $gray-100;
+  gap: 0;
+  overflow: hidden;
+
+  @media (max-width: $breakpoint-lg) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}
+
+// ============================================================================
+// LEFT SIDEBAR - FILTERS
+// ============================================================================
+
+.territory-sidebar {
+  background-color: #ffffff;
+  border-right: 1px solid $gray-200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform $transition-base;
+
+  &.hidden {
+    transform: translateX(-100%);
+    position: absolute;
+    z-index: -1;
+
+    @media (max-width: $breakpoint-lg) {
+      display: none;
+    }
+  }
+
+  @media (max-width: $breakpoint-lg) {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    height: calc(100vh - 64px);
+    z-index: $z-index-fixed;
+    box-shadow: $shadow-lg;
+  }
+}
+
+.sidebar-header {
+  padding: $spacing-6;
+  border-bottom: 1px solid $gray-200;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 {
+    margin: 0;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+  }
+}
+
+.sidebar-content {
+  padding: $spacing-4;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.filter-group {
+  margin-bottom: $spacing-6;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.filter-label {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $gray-700;
+  margin-bottom: $spacing-3;
+}
+
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  cursor: pointer;
+  padding: $spacing-2;
+  border-radius: $radius-base;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: $gray-50;
+  }
+
+  input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  span {
+    font-size: $font-size-sm;
+    color: $gray-800;
+  }
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.range-inputs,
+.date-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+}
+
+.range-separator {
+  font-size: $font-size-xs;
+  color: $gray-500;
+  text-align: center;
+  padding: $spacing-1 0;
+}
+
+.input-field {
+  padding: $spacing-3;
+  border: 1px solid $gray-300;
+  border-radius: $radius-base;
+  font-size: $font-size-sm;
+  transition: border-color $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  }
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: $spacing-3;
+  background-color: $gray-100;
+  border: 1px solid $gray-300;
+  border-radius: $radius-base;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $gray-700;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background-color: $gray-200;
+    border-color: $gray-400;
+  }
+}
+
+.btn-block {
+  width: 100%;
+}
+
+// ============================================================================
+// CENTER - MAP AREA
+// ============================================================================
+
+.territory-map-container {
+  position: relative;
+  background-color: $gray-200;
+  overflow: hidden;
+}
+
+.map-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+// Leaflet marker pane transitions for smooth hover effects
+::ng-deep .leaflet-marker-pane {
+  .custom-marker {
+    transition: all 0.2s ease;
+
+    .marker-inner {
+      transition: opacity 0.2s ease, box-shadow 0.2s ease;
+    }
+  }
+}
+
+.map-controls {
+  position: absolute;
+  top: $spacing-4;
+  left: $spacing-4;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+  z-index: 10;
+}
+
+.btn-icon-lg {
+  width: 44px;
+  height: 44px;
+  background-color: #ffffff;
+  border: none;
+  border-radius: $radius-base;
+  box-shadow: $shadow-base;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-fast;
+
+  &:hover {
+    background-color: $gray-50;
+    box-shadow: $shadow-md;
+    transform: translateY(-1px);
+  }
+
+  .material-icons {
+    font-size: 24px;
+    color: $gray-700;
+  }
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  background-color: transparent;
+  border: none;
+  border-radius: $radius-base;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background-color: $gray-100;
+  }
+
+  .material-icons {
+    font-size: 20px;
+    color: $gray-600;
+  }
+}
+
+// Loading Overlay
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+
+  p {
+    margin-top: $spacing-4;
+    font-size: $font-size-base;
+    color: $gray-700;
+  }
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid $gray-200;
+  border-top-color: $primary-500;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Customer Detail Popup
+.detail-card {
+  position: absolute;
+  top: $spacing-4;
+  right: $spacing-4;
+  width: 360px;
+  max-width: calc(100% - 32px);
+  background-color: #ffffff;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-xl;
+  overflow: hidden;
+  z-index: 50;
+
+  @media (max-width: $breakpoint-md) {
+    width: calc(100% - 32px);
+  }
+}
+
+.detail-header {
+  padding: $spacing-6;
+  border-bottom: 1px solid $gray-200;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  h3 {
+    margin: 0 0 $spacing-2 0;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+  }
+}
+
+.detail-body {
+  padding: $spacing-6;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-4;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.detail-label {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $gray-600;
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+
+  .material-icons {
+    font-size: 18px;
+    color: $gray-500;
+  }
+}
+
+.detail-value {
+  font-size: $font-size-sm;
+  color: $gray-900;
+  text-align: right;
+}
+
+.detail-highlight {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+}
+
+.detail-divider {
+  height: 1px;
+  background-color: $gray-200;
+  margin: $spacing-4 0;
+}
+
+// Status Badges
+.status-badge {
+  display: inline-block;
+  padding: $spacing-1 $spacing-3;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.status-active {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &.status-warm_lead {
+    background-color: #fff3e0;
+    color: #e65100;
+  }
+
+  &.status-at_risk {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+
+  &.status-vip {
+    background-color: #fff8e1;
+    color: #f57f17;
+  }
+}
+
+// ============================================================================
+// RIGHT PANEL - METRICS
+// ============================================================================
+
+.territory-panel {
+  background-color: #ffffff;
+  border-left: 1px solid $gray-200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  @media (max-width: $breakpoint-lg) {
+    display: none;
+  }
+}
+
+.panel-header {
+  padding: $spacing-6;
+  border-bottom: 1px solid $gray-200;
+
+  h2 {
+    margin: 0;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+  }
+}
+
+.panel-content {
+  padding: $spacing-4;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.panel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-8 0;
+
+  p {
+    margin-top: $spacing-4;
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+}
+
+.spinner-sm {
+  width: 32px;
+  height: 32px;
+  border: 3px solid $gray-200;
+  border-top-color: $primary-500;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.metrics-container {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
+
+// Stat Cards
+.stat-card {
+  background-color: $gray-50;
+  border-radius: $radius-lg;
+  padding: $spacing-4;
+  display: flex;
+  gap: $spacing-4;
+  transition: all $transition-fast;
+
+  &:hover {
+    background-color: #ffffff;
+    box-shadow: $shadow-sm;
+  }
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: $radius-base;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .material-icons {
+    font-size: 24px;
+  }
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  color: $gray-600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: $spacing-1;
+}
+
+.stat-value {
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-bold;
+  color: $gray-900;
+  line-height: $line-height-tight;
+}
+
+.stat-change {
+  display: flex;
+  align-items: center;
+  gap: $spacing-1;
+  margin-top: $spacing-2;
+
+  span {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+
+    &.positive {
+      color: $success;
+    }
+
+    &.negative {
+      color: $error;
+    }
+  }
+}
+
+.stat-change-label {
+  font-size: $font-size-xs;
+  color: $gray-500;
+}
+
+// Panel Sections
+.panel-section {
+  margin-top: $spacing-6;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.section-title {
+  margin: 0 0 $spacing-4 0;
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  color: $gray-900;
+}
+
+// ZIP Code List
+.zip-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+}
+
+.zip-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  padding: $spacing-3;
+  background-color: $gray-50;
+  border-radius: $radius-base;
+  transition: all $transition-fast;
+
+  &:hover {
+    background-color: $gray-100;
+  }
+}
+
+.zip-rank {
+  width: 28px;
+  height: 28px;
+  background-color: $primary-500;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  flex-shrink: 0;
+}
+
+.zip-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.zip-code {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $gray-900;
+}
+
+.zip-location {
+  font-size: $font-size-xs;
+  color: $gray-600;
+}
+
+.zip-stats {
+  text-align: right;
+}
+
+.zip-revenue {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $gray-900;
+}
+
+.zip-customers {
+  font-size: $font-size-xs;
+  color: $gray-600;
+}
+
+// Legend
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px $gray-300;
+}
+
+.legend-label {
+  font-size: $font-size-sm;
+  color: $gray-700;
+}
+
+// ============================================================================
+// RESPONSIVE
+// ============================================================================
+
+@media (max-width: $breakpoint-lg) {
+  .territory-container {
+    grid-template-columns: 1fr;
+  }
+
+  .territory-sidebar {
+    width: 300px;
+    max-width: 80vw;
+  }
+
+  .territory-panel {
+    display: none;
+  }
+}

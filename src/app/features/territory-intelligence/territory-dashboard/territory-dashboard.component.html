@@ -1,0 +1,265 @@
+<div class="territory-container">
+  <!-- Left Sidebar - Filters -->
+  <aside class="territory-sidebar" [class.hidden]="!showFilters">
+    <div class="sidebar-header">
+      <h2>Filters</h2>
+      <button class="btn-icon" (click)="toggleFilters()" title="Close filters">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="sidebar-content">
+      <!-- Status Filter -->
+      <div class="filter-group">
+        <label class="filter-label">Customer Status</label>
+        <div class="filter-options">
+          <label class="checkbox-label" *ngFor="let option of statusOptions">
+            <input
+              type="checkbox"
+              [checked]="isStatusSelected(option.value)"
+              (change)="onStatusFilterChange(option.value, $event)"
+            />
+            <span class="status-indicator" [style.background-color]="option.color"></span>
+            <span>{{ option.label }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- LTV Range Filter -->
+      <div class="filter-group">
+        <label class="filter-label">Lifetime Value Range</label>
+        <div class="range-inputs">
+          <input
+            type="number"
+            class="input-field"
+            placeholder="Min ($)"
+            [(ngModel)]="filters.min_ltv"
+            (change)="loadTerritoryData()"
+          />
+          <span class="range-separator">to</span>
+          <input
+            type="number"
+            class="input-field"
+            placeholder="Max ($)"
+            [(ngModel)]="filters.max_ltv"
+            (change)="loadTerritoryData()"
+          />
+        </div>
+      </div>
+
+      <!-- Date Range Filter -->
+      <div class="filter-group">
+        <label class="filter-label">Date Range</label>
+        <div class="date-inputs">
+          <input
+            type="date"
+            class="input-field"
+            [(ngModel)]="filters.date_range!.start"
+            (change)="loadTerritoryData()"
+          />
+          <span class="range-separator">to</span>
+          <input
+            type="date"
+            class="input-field"
+            [(ngModel)]="filters.date_range!.end"
+            (change)="loadTerritoryData()"
+          />
+        </div>
+      </div>
+
+      <!-- Clear Filters Button -->
+      <button class="btn-secondary btn-block" (click)="clearFilters()">
+        Clear All Filters
+      </button>
+    </div>
+  </aside>
+
+  <!-- Center - Map Area -->
+  <main class="territory-map-container">
+    <!-- Map Controls -->
+    <div class="map-controls">
+      <button class="btn-icon-lg" (click)="toggleFilters()" *ngIf="!showFilters" title="Show filters">
+        <span class="material-icons">filter_list</span>
+      </button>
+      <button class="btn-icon-lg" (click)="resetMapView()" title="Reset view">
+        <span class="material-icons">my_location</span>
+      </button>
+      <button class="btn-icon-lg" (click)="toggleViewMode()" title="Toggle view mode">
+        <span class="material-icons">{{ viewMode === 'markers' ? 'layers' : 'place' }}</span>
+      </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Loading territory data...</p>
+    </div>
+
+    <!-- Map Container -->
+    <div class="map-canvas"
+         leaflet
+         [leafletOptions]="mapOptions"
+         (leafletMapReady)="onMapReady($event)">
+    </div>
+
+    <!-- Customer Detail Popup -->
+    <div class="detail-card" *ngIf="selectedCustomer" [@slideIn]>
+      <div class="detail-header">
+        <div>
+          <h3>{{ selectedCustomer.name }}</h3>
+          <span [class]="getStatusBadgeClass(selectedCustomer.status)">
+            {{ getStatusLabel(selectedCustomer.status) }}
+          </span>
+        </div>
+        <button class="btn-icon" (click)="closeCustomerDetail()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <div class="detail-body">
+        <div class="detail-row">
+          <span class="detail-label">
+            <span class="material-icons">email</span>
+            Email
+          </span>
+          <span class="detail-value">{{ selectedCustomer.email || 'N/A' }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">
+            <span class="material-icons">phone</span>
+            Phone
+          </span>
+          <span class="detail-value">{{ selectedCustomer.phone || 'N/A' }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">
+            <span class="material-icons">home</span>
+            Address
+          </span>
+          <span class="detail-value">
+            {{ selectedCustomer.address }}<br />
+            {{ selectedCustomer.city }}, {{ selectedCustomer.state }} {{ selectedCustomer.zip_code }}
+          </span>
+        </div>
+
+        <div class="detail-divider"></div>
+
+        <div class="detail-row">
+          <span class="detail-label">Lifetime Value</span>
+          <span class="detail-value detail-highlight">{{ formatCurrency(selectedCustomer.lifetime_value) }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Total Bookings</span>
+          <span class="detail-value">{{ selectedCustomer.total_bookings }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Last Booking</span>
+          <span class="detail-value">{{ formatDate(selectedCustomer.last_booking_date) }}</span>
+        </div>
+
+        <div class="detail-row" *ngIf="selectedCustomer.next_booking_date">
+          <span class="detail-label">Next Booking</span>
+          <span class="detail-value">{{ formatDate(selectedCustomer.next_booking_date) }}</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right Panel - Metrics -->
+  <aside class="territory-panel">
+    <div class="panel-header">
+      <h2>Territory Insights</h2>
+    </div>
+
+    <div class="panel-content">
+      <!-- Loading State -->
+      <div *ngIf="loading" class="panel-loading">
+        <div class="spinner-sm"></div>
+        <p>Loading...</p>
+      </div>
+
+      <!-- Metrics -->
+      <div *ngIf="!loading && territoryMetrics" class="metrics-container">
+        <!-- Total Customers -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color: #e3f2fd;">
+            <span class="material-icons" style="color: #2196f3;">people</span>
+          </div>
+          <div class="stat-content">
+            <div class="stat-label">Total Customers</div>
+            <div class="stat-value">{{ territoryMetrics.total_customers }}</div>
+            <div class="stat-change" *ngIf="territoryMetrics.period_comparison.customers_change_percent !== 0">
+              <span [class.positive]="territoryMetrics.period_comparison.customers_change_percent > 0"
+                    [class.negative]="territoryMetrics.period_comparison.customers_change_percent < 0">
+                {{ territoryMetrics.period_comparison.customers_change_percent > 0 ? '+' : '' }}{{ territoryMetrics.period_comparison.customers_change_percent }}%
+              </span>
+              <span class="stat-change-label">vs previous period</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Revenue -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color: #fff8e1;">
+            <span class="material-icons" style="color: #ffc107;">attach_money</span>
+          </div>
+          <div class="stat-content">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value">{{ formatCurrency(territoryMetrics.total_revenue) }}</div>
+            <div class="stat-change" *ngIf="territoryMetrics.period_comparison.revenue_change_percent !== 0">
+              <span [class.positive]="territoryMetrics.period_comparison.revenue_change_percent > 0"
+                    [class.negative]="territoryMetrics.period_comparison.revenue_change_percent < 0">
+                {{ territoryMetrics.period_comparison.revenue_change_percent > 0 ? '+' : '' }}{{ territoryMetrics.period_comparison.revenue_change_percent }}%
+              </span>
+              <span class="stat-change-label">vs previous period</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Avg Bookings -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color: #e8f5e9;">
+            <span class="material-icons" style="color: #4caf50;">event_available</span>
+          </div>
+          <div class="stat-content">
+            <div class="stat-label">Avg Bookings/Customer</div>
+            <div class="stat-value">{{ territoryMetrics.avg_bookings_per_customer }}</div>
+          </div>
+        </div>
+
+        <!-- Top ZIP Codes -->
+        <div class="panel-section">
+          <h3 class="section-title">Top ZIP Codes</h3>
+          <div class="zip-list">
+            <div class="zip-item" *ngFor="let zip of territoryMetrics.top_zip_codes; let i = index">
+              <div class="zip-rank">#{{ i + 1 }}</div>
+              <div class="zip-info">
+                <div class="zip-code">{{ zip.zip_code }}</div>
+                <div class="zip-location">{{ zip.city }}, {{ zip.state }}</div>
+              </div>
+              <div class="zip-stats">
+                <div class="zip-revenue">{{ formatCurrency(zip.total_revenue) }}</div>
+                <div class="zip-customers">{{ zip.customer_count }} customers</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="panel-section">
+          <h3 class="section-title">Status Legend</h3>
+          <div class="legend">
+            <div class="legend-item" *ngFor="let option of statusOptions">
+              <span class="legend-color" [style.background-color]="option.color"></span>
+              <span class="legend-label">{{ option.label }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>

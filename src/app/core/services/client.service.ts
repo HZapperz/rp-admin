@@ -104,6 +104,9 @@ export interface Address {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  // Geocoding fields for territory mapping
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface PaymentMethod {

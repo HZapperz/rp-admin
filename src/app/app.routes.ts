@@ -54,6 +54,11 @@ export const routes: Routes = [
           import('./features/analytics/analytics.routes').then(m => m.routes)
       },
       {
+        path: 'territory',
+        loadChildren: () =>
+          import('./features/territory-intelligence/territory-intelligence.routes').then(m => m.routes)
+      },
+      {
         path: 'reports',
         loadChildren: () =>
           import('./features/reports/reports.routes').then(m => m.routes)

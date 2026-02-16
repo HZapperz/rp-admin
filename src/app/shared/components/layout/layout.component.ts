@@ -43,11 +43,12 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },
     { label: 'Services', route: '/services', icon: 'spa' },
     { label: 'Analytics', route: '/analytics', icon: 'analytics' },
+    { label: 'Territory', route: '/territory', icon: 'map' },
     { label: 'Reports', route: '/reports', icon: 'assessment' },
     { label: 'Sessions', route: '/sessions', icon: 'videocam' },
     { label: 'Promotions', route: '/promotions', icon: 'card_giftcard' },
     { label: 'Complaints', route: '/complaints', icon: 'feedback' },
-    { label: 'Service Areas', route: '/service-areas', icon: 'map' },
+    { label: 'Service Areas', route: '/service-areas', icon: 'location_on' },
     { label: 'Settings', route: '/profile', icon: 'settings' },
   ];
 

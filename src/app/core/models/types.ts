@@ -318,6 +318,12 @@ export interface Address {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  // Geocoding fields for territory mapping
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  state?: string;
+  zip_code?: string;
 }
 
 // Service Area Types
@@ -505,4 +511,55 @@ export interface RebookingWithDetails extends Rebooking {
     scheduled_date: string;
   };
   pets?: Array<{ name: string }>;
+}
+
+// Territory Intelligence Types
+export interface TerritoryCustomer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  zip_code: string;
+  latitude: number;
+  longitude: number;
+  lifetime_value: number;
+  total_bookings: number;
+  last_booking_date?: string;
+  next_booking_date?: string;
+  status: 'active' | 'warm_lead' | 'at_risk' | 'vip';
+  address: string;
+  city: string;
+  state: string;
+}
+
+export interface ZipCodeMetrics {
+  zip_code: string;
+  city: string;
+  state: string;
+  customer_count: number;
+  total_revenue: number;
+  booking_count: number;
+  avg_ltv: number;
+  latitude: number;
+  longitude: number;
+}
+
+export interface TerritoryFilters {
+  status?: ('active' | 'warm_lead' | 'at_risk' | 'vip')[];
+  service_tiers?: string[];
+  date_range?: { start: string; end: string };
+  frequency?: string[];
+  min_ltv?: number;
+  max_ltv?: number;
+}
+
+export interface TerritoryMetrics {
+  total_customers: number;
+  total_revenue: number;
+  avg_bookings_per_customer: number;
+  top_zip_codes: ZipCodeMetrics[];
+  period_comparison: {
+    customers_change_percent: number;
+    revenue_change_percent: number;
+  };
 }
