@@ -7,6 +7,7 @@ import { KPIData, BookingWithDetails } from '../../core/models/types';
 import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
 import { BusinessSettingsService, OperatingDay, OperatingHours } from '../../core/services/business-settings.service';
 
+
 type ScheduleView = 'day' | 'week' | 'month';
 
 interface DaySlot {

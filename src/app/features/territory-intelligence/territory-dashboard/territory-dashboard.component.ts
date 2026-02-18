@@ -2,12 +2,15 @@ import {
   Component,
   OnInit,
   OnDestroy,
-  inject
+  inject,
+  ElementRef,
+  ViewChild,
+  AfterViewInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import * as L from 'leaflet';
-import { LeafletModule } from '@asymmetrik/ngx-leaflet';
+import mapboxgl from 'mapbox-gl';
+import { environment } from '../../../../environments/environment';
 import { TerritoryService } from '../../../core/services/territory.service';
 import {
   TerritoryCustomer,
@@ -19,25 +22,15 @@ import {
 @Component({
   selector: 'app-territory-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, LeafletModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './territory-dashboard.component.html',
   styleUrl: './territory-dashboard.component.scss'
 })
-export class TerritoryDashboardComponent implements OnInit, OnDestroy {
+export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   private territoryService = inject(TerritoryService);
-  map: L.Map | null = null;
-  mapOptions: L.MapOptions = {
-    center: L.latLng(29.7604, -95.3698), // Houston, TX
-    zoom: 10,
-    layers: [
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-      })
-    ]
-  };
-  private markers: L.Marker[] = [];
-  private heatmapLayer: string | null = null;
+  @ViewChild('mapCanvas') mapCanvas!: ElementRef<HTMLDivElement>;
+  map: mapboxgl.Map | null = null;
+  private mapMarkers: mapboxgl.Marker[] = [];
 
   // State
   customers: TerritoryCustomer[] = [];
@@ -70,6 +63,10 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadTerritoryData();
+  }
+
+  ngAfterViewInit(): void {
+    this.initMap();
   }
 
   ngOnDestroy(): void {
@@ -121,16 +118,26 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Callback when Leaflet map is ready
+   * Initialize mapbox-gl map
    */
-  onMapReady(map: L.Map): void {
-    this.map = map;
+  private initMap(): void {
+    if (!this.mapCanvas?.nativeElement) return;
 
-    // Add scale control
-    L.control.scale({ position: 'bottomleft' }).addTo(map);
+    (mapboxgl as any).accessToken = environment.mapboxAccessToken;
 
-    // Render markers once map is ready
-    this.renderCustomerMarkers();
+    this.map = new mapboxgl.Map({
+      container: this.mapCanvas.nativeElement,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [-95.3698, 29.7604], // Houston, TX [lng, lat]
+      zoom: 10
+    });
+
+    this.map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+    this.map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+    this.map.on('load', () => {
+      this.renderCustomerMarkers();
+    });
   }
 
   /**
@@ -139,67 +146,40 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy {
   private renderCustomerMarkers(): void {
     if (!this.map || this.viewMode === 'heatmap') return;
 
-    // Clear existing markers
     this.clearMarkers();
 
-    // Create markers for each customer
     this.customers.forEach(customer => {
       const markerColor = this.getStatusColor(customer.status);
       const markerSize = this.getMarkerSize(customer.lifetime_value);
 
-      // Create custom icon with divIcon
-      const customIcon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-inner" style="
-          width: ${markerSize}px;
-          height: ${markerSize}px;
-          background-color: ${markerColor};
-          border-radius: 50%;
-          border: 2px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          cursor: pointer;
-        "></div>`,
-        iconSize: [markerSize, markerSize],
-        iconAnchor: [markerSize / 2, markerSize / 2] // Center anchor
+      const el = document.createElement('div');
+      el.className = 'custom-marker';
+      el.style.width = `${markerSize}px`;
+      el.style.height = `${markerSize}px`;
+      el.style.backgroundColor = markerColor;
+      el.style.borderRadius = '50%';
+      el.style.border = '2px solid white';
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+      el.style.cursor = 'pointer';
+      el.style.transition = 'opacity 0.2s ease, box-shadow 0.2s ease';
+
+      el.addEventListener('mouseenter', () => {
+        el.style.opacity = '0.8';
+        el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
       });
-
-      // Create marker
-      const marker = L.marker(
-        [customer.latitude, customer.longitude],
-        { icon: customIcon }
-      );
-
-      // Add hover effect (no transform, just opacity + shadow)
-      marker.on('mouseover', () => {
-        const markerEl = marker.getElement();
-        if (markerEl) {
-          const inner = markerEl.querySelector('.marker-inner') as HTMLElement;
-          if (inner) {
-            inner.style.opacity = '0.8';
-            inner.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-          }
-        }
+      el.addEventListener('mouseleave', () => {
+        el.style.opacity = '1';
+        el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
       });
-
-      marker.on('mouseout', () => {
-        const markerEl = marker.getElement();
-        if (markerEl) {
-          const inner = markerEl.querySelector('.marker-inner') as HTMLElement;
-          if (inner) {
-            inner.style.opacity = '1';
-            inner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-          }
-        }
-      });
-
-      // Add click handler
-      marker.on('click', () => {
+      el.addEventListener('click', () => {
         this.onCustomerClick(customer);
       });
 
-      // Add to map
-      marker.addTo(this.map!);
-      this.markers.push(marker);
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([customer.longitude, customer.latitude])
+        .addTo(this.map!);
+
+      this.mapMarkers.push(marker);
     });
   }
 
@@ -231,8 +211,8 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy {
    * Clear all markers from the map
    */
   private clearMarkers(): void {
-    this.markers.forEach(marker => marker.remove());
-    this.markers = [];
+    this.mapMarkers.forEach(marker => marker.remove());
+    this.mapMarkers = [];
   }
 
   /**
@@ -241,10 +221,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy {
   onCustomerClick(customer: TerritoryCustomer): void {
     this.selectedCustomer = customer;
 
-    // Fly to customer location
     if (this.map) {
-      this.map.flyTo([customer.latitude, customer.longitude], 14, {
-        duration: 1.0 // Duration in seconds
+      this.map.flyTo({
+        center: [customer.longitude, customer.latitude],
+        zoom: 14,
+        duration: 1000
       });
     }
   }
@@ -305,8 +286,10 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy {
    */
   resetMapView(): void {
     if (this.map) {
-      this.map.flyTo([29.7604, -95.3698], 10, {
-        duration: 1.0 // Duration in seconds
+      this.map.flyTo({
+        center: [-95.3698, 29.7604],
+        zoom: 10,
+        duration: 1000
       });
     }
   }

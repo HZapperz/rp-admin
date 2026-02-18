@@ -1,12 +1,13 @@
 /**
  * Sales Pipeline Service
  *
- * Handles all pipeline operations including lead management, SMS sending, and opt-out management.
+ * Handles all pipeline operations including lead management, SMS sending,
+ * activity logging, smart prioritization, nudges, and automation.
  */
 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject, from, forkJoin, of } from 'rxjs';
+import { Observable, BehaviorSubject, from, of } from 'rxjs';
 import { map, tap, catchError, switchMap } from 'rxjs/operators';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../../environments/environment';
@@ -21,8 +22,17 @@ import {
   SMSTemplate,
   OptOut,
   BulkSMSRequest,
+  ContactActivity,
+  ContactActivityType,
+  ContactOutcome,
+  SuggestedAction,
+  PipelineNudge,
+  PipelineAutomation,
   calculateDaysInStage,
-  PIPELINE_STAGES
+  getCompletionCount,
+  getCompletionPercentage,
+  PIPELINE_STAGES,
+  PRIORITY_THRESHOLDS
 } from '../models/pipeline.types';
 import { SMSConversation, SMSMessage } from '../../../core/services/sms.service';
 
@@ -50,9 +60,6 @@ export class SalesPipelineService {
 
   // ==================== LEAD MANAGEMENT ====================
 
-  /**
-   * Get all pipeline leads with full details
-   */
   getLeads(filters?: PipelineFilters): Observable<PipelineLeadWithDetails[]> {
     return from(this.fetchLeads(filters)).pipe(
       tap(leads => this.leadsSubject.next(leads))
@@ -63,10 +70,9 @@ export class SalesPipelineService {
     let query = this.supabase
       .from('sales_pipeline_leads')
       .select('*')
-      .order('priority', { ascending: false })
+      .order('priority_score', { ascending: false })
       .order('stage_changed_at', { ascending: true });
 
-    // Apply filters
     if (filters?.stages && filters.stages.length > 0) {
       query = query.in('pipeline_stage', filters.stages);
     }
@@ -80,10 +86,8 @@ export class SalesPipelineService {
     const { data: leads, error } = await query;
     if (error) throw error;
 
-    // Enrich leads with user details
     const enrichedLeads = await this.enrichLeads(leads || []);
 
-    // Apply client-side filters
     let filtered = enrichedLeads;
 
     if (filters?.searchTerm) {
@@ -108,6 +112,15 @@ export class SalesPipelineService {
       );
     }
 
+    if (filters?.priorityLevel) {
+      filtered = filtered.filter(lead => {
+        const score = lead.priority_score;
+        if (filters.priorityLevel === 'high') return score >= PRIORITY_THRESHOLDS.high;
+        if (filters.priorityLevel === 'medium') return score >= PRIORITY_THRESHOLDS.medium && score < PRIORITY_THRESHOLDS.high;
+        return score < PRIORITY_THRESHOLDS.medium;
+      });
+    }
+
     return filtered;
   }
 
@@ -115,9 +128,10 @@ export class SalesPipelineService {
     if (leads.length === 0) return [];
 
     const userIds = leads.map(l => l.user_id);
+    const leadIds = leads.map(l => l.id);
 
     // Batch fetch all related data in parallel
-    const [usersResult, petsResult, addressesResult, paymentMethodsResult, bookingsResult, conversationsResult] = await Promise.all([
+    const [usersResult, petsResult, addressesResult, paymentMethodsResult, bookingsResult, conversationsResult, activitiesResult] = await Promise.all([
       this.supabase
         .from('users')
         .select('id, first_name, last_name, email, phone, avatar_url, created_at')
@@ -141,18 +155,24 @@ export class SalesPipelineService {
       this.supabase
         .from('sms_conversations')
         .select('id, status, unread_count, last_message_at, user_id')
-        .in('user_id', userIds)
+        .in('user_id', userIds),
+      this.supabase
+        .from('contact_activities')
+        .select('*')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false })
+        .limit(500)
     ]);
 
-    // Create lookup maps for O(1) access
+    // Create lookup maps
     const usersMap = new Map((usersResult.data || []).map(u => [u.id, u]));
     const petsMap = new Map<string, any[]>();
     const addressesMap = new Map<string, any[]>();
     const paymentMethodsMap = new Map<string, any[]>();
     const bookingsSet = new Set((bookingsResult.data || []).map(b => b.client_id));
     const conversationsMap = new Map((conversationsResult.data || []).map(c => [c.user_id, c]));
+    const activitiesMap = new Map<string, ContactActivity[]>();
 
-    // Group pets, addresses, payment methods by user_id
     for (const pet of petsResult.data || []) {
       if (!petsMap.has(pet.user_id)) petsMap.set(pet.user_id, []);
       petsMap.get(pet.user_id)!.push(pet);
@@ -164,6 +184,10 @@ export class SalesPipelineService {
     for (const pm of paymentMethodsResult.data || []) {
       if (!paymentMethodsMap.has(pm.user_id)) paymentMethodsMap.set(pm.user_id, []);
       paymentMethodsMap.get(pm.user_id)!.push(pm);
+    }
+    for (const activity of activitiesResult.data || []) {
+      if (!activitiesMap.has(activity.lead_id)) activitiesMap.set(activity.lead_id, []);
+      activitiesMap.get(activity.lead_id)!.push(activity);
     }
 
     // Build enriched leads
@@ -177,6 +201,7 @@ export class SalesPipelineService {
       const addresses = addressesMap.get(lead.user_id) || [];
       const paymentMethods = paymentMethodsMap.get(lead.user_id) || [];
       const conversation = conversationsMap.get(lead.user_id);
+      const activities = activitiesMap.get(lead.id) || [];
 
       const completion_status = {
         profile_complete: !!(user.first_name && user.last_name && user.phone),
@@ -186,24 +211,286 @@ export class SalesPipelineService {
         has_started_booking: bookingsSet.has(lead.user_id)
       };
 
+      const daysInStage = calculateDaysInStage(lead.stage_changed_at);
+
+      // Compute priority score
+      const priorityScore = this.calculatePriorityScore(lead, user, completion_status, conversation, activities);
+
+      // Compute suggested action
+      const suggestedAction = this.computeSuggestedAction(lead, completion_status, conversation, daysInStage);
+
       enriched.push({
         ...lead,
+        priority_score: priorityScore,
         user,
         pets,
         addresses,
         payment_methods: paymentMethods,
         completion_status,
         conversation: conversation || undefined,
-        days_in_stage: calculateDaysInStage(lead.stage_changed_at)
+        activities,
+        computed_suggested_action: suggestedAction,
+        days_in_stage: daysInStage
       });
     }
+
+    // Sort by priority_score descending
+    enriched.sort((a, b) => b.priority_score - a.priority_score);
 
     return enriched;
   }
 
-  /**
-   * Get leads grouped by stage for Kanban view
-   */
+  // ==================== SMART PRIORITY SCORING ====================
+
+  private calculatePriorityScore(
+    lead: PipelineLead,
+    user: any,
+    completionStatus: PipelineLeadWithDetails['completion_status'],
+    conversation: any,
+    activities: ContactActivity[]
+  ): number {
+    let score = 0;
+
+    // Profile completeness: 0-25 points (5 per step)
+    const completionChecks = [
+      completionStatus.profile_complete,
+      completionStatus.has_pet,
+      completionStatus.has_address,
+      completionStatus.has_payment_method,
+      completionStatus.has_started_booking
+    ];
+    score += completionChecks.filter(Boolean).length * 5;
+
+    // Signup recency: 0-20 points
+    const daysSinceSignup = Math.floor(
+      (Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysSinceSignup < 3) score += 20;
+    else if (daysSinceSignup < 7) score += 15;
+    else if (daysSinceSignup < 14) score += 10;
+    else if (daysSinceSignup < 30) score += 5;
+
+    // Engagement: 0-20 points
+    if (lead.last_sms_replied_at) score += 10;
+    if (conversation && conversation.unread_count > 0) score += 10;
+    else if (conversation) score += 5;
+
+    // Stage staleness: 0-15 points (fresher = higher score)
+    const daysInStage = calculateDaysInStage(lead.stage_changed_at);
+    if (daysInStage < 2) score += 15;
+    else if (daysInStage < 5) score += 10;
+    else if (daysInStage < 10) score += 5;
+
+    // Stage bonus: +5 for BOOKED (close to converting)
+    if (lead.pipeline_stage === 'BOOKED') score += 5;
+
+    // Geo boost: +10
+    if (lead.geo_boost) score += 10;
+
+    // Historical similarity: +10 if completion >= 80%
+    if (getCompletionPercentage(completionStatus) >= 80) score += 10;
+
+    return Math.min(score, 100);
+  }
+
+  // ==================== SUGGESTED ACTIONS ====================
+
+  private computeSuggestedAction(
+    lead: PipelineLead,
+    completionStatus: PipelineLeadWithDetails['completion_status'],
+    conversation: any,
+    daysInStage: number
+  ): SuggestedAction | null {
+    const completionPct = getCompletionPercentage(completionStatus);
+
+    // High completion leads — push to convert regardless of stage
+    if (completionPct >= 80 && !['CONVERTED', 'LOST', 'DORMANT', 'BOOKED'].includes(lead.pipeline_stage)) {
+      return {
+        action: 'Ready to convert — offer to book',
+        reason: 'Profile is 80%+ complete',
+        icon: 'star',
+        priority: 'high'
+      };
+    }
+
+    switch (lead.pipeline_stage) {
+      case 'NEW':
+        if (!lead.last_sms_sent_at) {
+          return { action: 'Send welcome SMS', reason: 'New lead, no contact yet', icon: 'sms', priority: 'high' };
+        }
+        return { action: 'Follow up or move to Texted', reason: 'SMS sent but still in New', icon: 'forward', priority: 'medium' };
+
+      case 'TEXTED':
+        if (daysInStage >= 5) {
+          return { action: 'Move to No Response or call', reason: `${daysInStage} days with no reply`, icon: 'phone', priority: 'high' };
+        }
+        if (daysInStage >= 3) {
+          return { action: 'Send follow-up SMS', reason: `${daysInStage} days since first text`, icon: 'sms', priority: 'medium' };
+        }
+        return { action: 'Wait for reply', reason: 'Recently texted', icon: 'hourglass_empty', priority: 'low' };
+
+      case 'NO_RESPONSE':
+        return { action: 'Call this lead', reason: 'SMS didn\'t work, try calling', icon: 'phone', priority: 'high' };
+
+      case 'NEEDS_CALL':
+        return { action: 'Make the call', reason: 'Flagged for phone follow-up', icon: 'phone_in_talk', priority: 'high' };
+
+      case 'CALLED':
+        if (lead.last_call_at) {
+          const daysSinceCall = Math.floor(
+            (Date.now() - new Date(lead.last_call_at).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysSinceCall >= 3) {
+            return { action: 'Follow up again', reason: `${daysSinceCall} days since last call`, icon: 'phone_callback', priority: 'medium' };
+          }
+        }
+        return { action: 'Check if ready to book', reason: 'Call made, await response', icon: 'event_available', priority: 'low' };
+
+      case 'BOOKED':
+        if (!completionStatus.has_payment_method) {
+          return { action: 'Remind to add payment method', reason: 'Booking created but no payment on file', icon: 'credit_card', priority: 'high' };
+        }
+        return { action: 'Confirm booking details', reason: 'Has a pending/confirmed booking', icon: 'event_available', priority: 'medium' };
+
+      case 'DORMANT':
+        return { action: 'Review — reactivate or archive', reason: 'No activity for 30+ days', icon: 'restore', priority: 'low' };
+
+      default:
+        return null;
+    }
+  }
+
+  // ==================== NUDGES ====================
+
+  getNudges(leads: PipelineLeadWithDetails[]): PipelineNudge[] {
+    const nudges: PipelineNudge[] = [];
+
+    // New leads not contacted
+    const uncontactedNew = leads.filter(l => l.pipeline_stage === 'NEW' && !l.last_sms_sent_at);
+    if (uncontactedNew.length > 0) {
+      nudges.push({
+        message: `${uncontactedNew.length} new lead${uncontactedNew.length > 1 ? 's' : ''} haven't been contacted`,
+        count: uncontactedNew.length,
+        stage: 'NEW',
+        icon: 'notification_important',
+        severity: 'warning'
+      });
+    }
+
+    // No Response leads stuck for 7+ days
+    const staleNoResponse = leads.filter(l => l.pipeline_stage === 'NO_RESPONSE' && l.days_in_stage >= 7);
+    if (staleNoResponse.length > 0) {
+      nudges.push({
+        message: `${staleNoResponse.length} lead${staleNoResponse.length > 1 ? 's' : ''} in No Response for 7+ days`,
+        count: staleNoResponse.length,
+        stage: 'NO_RESPONSE',
+        icon: 'warning',
+        severity: 'error'
+      });
+    }
+
+    // Booked leads stuck for 5+ days
+    const staleBooked = leads.filter(l => l.pipeline_stage === 'BOOKED' && l.days_in_stage >= 5);
+    if (staleBooked.length > 0) {
+      nudges.push({
+        message: `${staleBooked.length} booked lead${staleBooked.length > 1 ? 's' : ''} pending for 5+ days — confirm or follow up`,
+        count: staleBooked.length,
+        stage: 'BOOKED',
+        icon: 'event_busy',
+        severity: 'warning'
+      });
+    }
+
+    // Dormant leads
+    const dormant = leads.filter(l => l.pipeline_stage === 'DORMANT');
+    if (dormant.length > 0) {
+      nudges.push({
+        message: `${dormant.length} dormant lead${dormant.length > 1 ? 's' : ''} — review or archive`,
+        count: dormant.length,
+        stage: 'DORMANT',
+        icon: 'hotel',
+        severity: 'info'
+      });
+    }
+
+    // Unread SMS replies
+    const unreadReplies = leads.filter(l => l.conversation && l.conversation.unread_count > 0);
+    if (unreadReplies.length > 0) {
+      nudges.push({
+        message: `${unreadReplies.length} unread SMS repl${unreadReplies.length > 1 ? 'ies' : 'y'}`,
+        count: unreadReplies.length,
+        stage: null,
+        icon: 'mark_chat_unread',
+        severity: 'warning'
+      });
+    }
+
+    return nudges;
+  }
+
+  // ==================== ACTIVITY LOGGING ====================
+
+  logActivity(
+    leadId: string,
+    userId: string | null,
+    activityType: ContactActivityType,
+    outcome?: ContactOutcome | null,
+    notes?: string,
+    metadata?: Record<string, any>
+  ): Observable<ContactActivity> {
+    return from(this.doLogActivity(leadId, userId, activityType, outcome, notes, metadata));
+  }
+
+  private async doLogActivity(
+    leadId: string,
+    userId: string | null,
+    activityType: ContactActivityType,
+    outcome?: ContactOutcome | null,
+    notes?: string,
+    metadata?: Record<string, any>
+  ): Promise<ContactActivity> {
+    const { data, error } = await this.supabase
+      .from('contact_activities')
+      .insert({
+        lead_id: leadId,
+        user_id: userId,
+        activity_type: activityType,
+        outcome: outcome || null,
+        notes: notes || null,
+        metadata: metadata || {}
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update last_activity_at on the lead
+    await this.supabase
+      .from('sales_pipeline_leads')
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq('id', leadId);
+
+    return data;
+  }
+
+  getActivities(leadId: string): Observable<ContactActivity[]> {
+    return from(this.fetchActivities(leadId));
+  }
+
+  private async fetchActivities(leadId: string): Promise<ContactActivity[]> {
+    const { data, error } = await this.supabase
+      .from('contact_activities')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  // ==================== KANBAN VIEW ====================
+
   getLeadsByStage(filters?: PipelineFilters): Observable<Record<PipelineStage, PipelineLeadWithDetails[]>> {
     return this.getLeads(filters).pipe(
       map(leads => {
@@ -213,12 +500,16 @@ export class SalesPipelineService {
           'NO_RESPONSE': [],
           'NEEDS_CALL': [],
           'CALLED': [],
+          'BOOKED': [],
           'CONVERTED': [],
-          'LOST': []
+          'LOST': [],
+          'DORMANT': []
         };
 
         for (const lead of leads) {
-          grouped[lead.pipeline_stage].push(lead);
+          if (grouped[lead.pipeline_stage]) {
+            grouped[lead.pipeline_stage].push(lead);
+          }
         }
 
         return grouped;
@@ -226,9 +517,8 @@ export class SalesPipelineService {
     );
   }
 
-  /**
-   * Get a single lead by ID
-   */
+  // ==================== SINGLE LEAD ====================
+
   getLead(leadId: string): Observable<PipelineLeadWithDetails | null> {
     return from(this.fetchLead(leadId));
   }
@@ -246,9 +536,6 @@ export class SalesPipelineService {
     return enriched[0] || null;
   }
 
-  /**
-   * Get lead by user ID
-   */
   getLeadByUserId(userId: string): Observable<PipelineLeadWithDetails | null> {
     return from(this.fetchLeadByUserId(userId));
   }
@@ -266,9 +553,8 @@ export class SalesPipelineService {
     return enriched[0] || null;
   }
 
-  /**
-   * Create a new pipeline lead
-   */
+  // ==================== LEAD CRUD ====================
+
   createLead(dto: CreatePipelineLeadDto): Observable<PipelineLead> {
     return from(this.doCreateLead(dto));
   }
@@ -282,7 +568,9 @@ export class SalesPipelineService {
         priority: dto.priority || 5,
         notes: dto.notes,
         assigned_admin_id: dto.assigned_admin_id,
-        stage_changed_at: new Date().toISOString()
+        geo_boost: dto.geo_boost || false,
+        stage_changed_at: new Date().toISOString(),
+        last_activity_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -291,15 +579,11 @@ export class SalesPipelineService {
     return data as PipelineLead;
   }
 
-  /**
-   * Update a pipeline lead
-   */
   updateLead(leadId: string, dto: UpdatePipelineLeadDto): Observable<PipelineLead> {
     return from(this.doUpdateLead(leadId, dto));
   }
 
   private async doUpdateLead(leadId: string, dto: UpdatePipelineLeadDto): Promise<PipelineLead> {
-    // If stage is changing, update stage_changed_at
     const updateData: any = { ...dto };
     if (dto.pipeline_stage) {
       updateData.stage_changed_at = new Date().toISOString();
@@ -316,24 +600,34 @@ export class SalesPipelineService {
     return data as PipelineLead;
   }
 
-  /**
-   * Move lead to a different stage
-   */
   moveToStage(leadId: string, newStage: PipelineStage, lostReason?: string): Observable<PipelineLead> {
     const updates: UpdatePipelineLeadDto = {
-      pipeline_stage: newStage
+      pipeline_stage: newStage,
+      last_activity_at: new Date().toISOString()
     };
 
     if (newStage === 'LOST' && lostReason) {
       updates.lost_reason = lostReason;
     }
 
+    // Log the stage change as an activity
+    this.supabase
+      .from('sales_pipeline_leads')
+      .select('user_id, pipeline_stage')
+      .eq('id', leadId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          this.doLogActivity(leadId, data.user_id, 'STAGE_CHANGE', null,
+            `Moved from ${data.pipeline_stage} to ${newStage}`,
+            { from_stage: data.pipeline_stage, to_stage: newStage }
+          );
+        }
+      });
+
     return this.updateLead(leadId, updates);
   }
 
-  /**
-   * Delete a pipeline lead
-   */
   deleteLead(leadId: string): Observable<boolean> {
     return from(this.doDeleteLead(leadId));
   }
@@ -350,9 +644,6 @@ export class SalesPipelineService {
 
   // ==================== STATISTICS ====================
 
-  /**
-   * Get pipeline statistics
-   */
   getStats(): Observable<PipelineStats> {
     return from(this.fetchStats()).pipe(
       tap(stats => this.statsSubject.next(stats))
@@ -362,7 +653,7 @@ export class SalesPipelineService {
   private async fetchStats(): Promise<PipelineStats> {
     const { data: leads, error } = await this.supabase
       .from('sales_pipeline_leads')
-      .select('pipeline_stage, stage_changed_at');
+      .select('pipeline_stage, stage_changed_at, converted_booking_id');
 
     if (error) throw error;
 
@@ -377,40 +668,59 @@ export class SalesPipelineService {
         'NO_RESPONSE': 0,
         'NEEDS_CALL': 0,
         'CALLED': 0,
+        'BOOKED': 0,
         'CONVERTED': 0,
-        'LOST': 0
+        'LOST': 0,
+        'DORMANT': 0
       },
       needs_attention: 0,
       converted_this_week: 0,
-      lost_this_week: 0
+      lost_this_week: 0,
+      dormant_count: 0,
+      avg_days_to_convert: 0,
+      nudges: []
     };
 
+    let convertedDaysTotal = 0;
+    let convertedCount = 0;
+
     for (const lead of leads || []) {
-      stats.by_stage[lead.pipeline_stage as PipelineStage]++;
+      const stage = lead.pipeline_stage as PipelineStage;
+      if (stats.by_stage[stage] !== undefined) {
+        stats.by_stage[stage]++;
+      }
 
       const stageChanged = new Date(lead.stage_changed_at);
+      const daysInStage = calculateDaysInStage(lead.stage_changed_at);
 
-      // Count needs attention (no response leads older than 3 days)
-      if (lead.pipeline_stage === 'NO_RESPONSE' ||
-          (lead.pipeline_stage === 'TEXTED' && calculateDaysInStage(lead.stage_changed_at) >= 5)) {
+      // Needs attention
+      if (stage === 'NO_RESPONSE' ||
+          (stage === 'TEXTED' && daysInStage >= 5) ||
+          (stage === 'BOOKED' && daysInStage >= 7)) {
         stats.needs_attention++;
       }
 
-      // Count conversions/losses this week
+      // Conversions/losses this week
       if (stageChanged >= oneWeekAgo) {
-        if (lead.pipeline_stage === 'CONVERTED') stats.converted_this_week++;
-        if (lead.pipeline_stage === 'LOST') stats.lost_this_week++;
+        if (stage === 'CONVERTED') stats.converted_this_week++;
+        if (stage === 'LOST') stats.lost_this_week++;
+      }
+
+      // Track conversion time
+      if (stage === 'CONVERTED' && lead.converted_booking_id) {
+        convertedDaysTotal += daysInStage;
+        convertedCount++;
       }
     }
+
+    stats.dormant_count = stats.by_stage['DORMANT'];
+    stats.avg_days_to_convert = convertedCount > 0 ? Math.round(convertedDaysTotal / convertedCount) : 0;
 
     return stats;
   }
 
   // ==================== SMS OPERATIONS ====================
 
-  /**
-   * Send SMS to a lead
-   */
   sendSMS(leadId: string, content: string): Observable<any> {
     return this.getLead(leadId).pipe(
       switchMap(lead => {
@@ -418,29 +728,29 @@ export class SalesPipelineService {
           throw new Error('Lead not found or has no phone number');
         }
 
-        // Call Python SMS service
         return this.http.post(`${this.smsServiceUrl}/send/sms`, {
           to: lead.user.phone,
           body: content
         }, { headers: this.getSmsServiceHeaders() }).pipe(
           tap(() => {
-            // Update last_sms_sent_at and move to TEXTED if NEW
+            // Update lead and log activity
             const updates: UpdatePipelineLeadDto = {
-              last_sms_sent_at: new Date().toISOString()
+              last_sms_sent_at: new Date().toISOString(),
+              last_activity_at: new Date().toISOString()
             };
             if (lead.pipeline_stage === 'NEW') {
               updates.pipeline_stage = 'TEXTED';
             }
             this.updateLead(leadId, updates).subscribe();
+
+            // Log activity
+            this.doLogActivity(leadId, lead.user_id, 'SMS_SENT', null, content, { message_length: content.length });
           })
         );
       })
     );
   }
 
-  /**
-   * Send templated SMS to a lead
-   */
   sendTemplateSMS(leadId: string, templateId: string, variables?: Record<string, string>): Observable<any> {
     return this.getLead(leadId).pipe(
       switchMap(lead => {
@@ -455,21 +765,22 @@ export class SalesPipelineService {
         }, { headers: this.getSmsServiceHeaders() }).pipe(
           tap(() => {
             const updates: UpdatePipelineLeadDto = {
-              last_sms_sent_at: new Date().toISOString()
+              last_sms_sent_at: new Date().toISOString(),
+              last_activity_at: new Date().toISOString()
             };
             if (lead.pipeline_stage === 'NEW') {
               updates.pipeline_stage = 'TEXTED';
             }
             this.updateLead(leadId, updates).subscribe();
+
+            this.doLogActivity(leadId, lead.user_id, 'SMS_SENT', null,
+              `Template: ${templateId}`, { template_id: templateId });
           })
         );
       })
     );
   }
 
-  /**
-   * Send bulk SMS to multiple leads
-   */
   sendBulkSMS(request: BulkSMSRequest): Observable<any> {
     return from(this.doBulkSMS(request));
   }
@@ -495,11 +806,13 @@ export class SalesPipelineService {
           }, { headers: this.getSmsServiceHeaders() }).toPromise();
         }
 
-        // Update lead
         await this.doUpdateLead(leadId, {
           last_sms_sent_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
           pipeline_stage: lead.pipeline_stage === 'NEW' ? 'TEXTED' : lead.pipeline_stage
         });
+
+        await this.doLogActivity(leadId, lead.user_id, 'SMS_SENT', null, 'Bulk SMS', { bulk: true });
 
         results.push({ leadId, success: true, response });
       } catch (error) {
@@ -510,15 +823,13 @@ export class SalesPipelineService {
     return results;
   }
 
-  /**
-   * Get conversation for a lead
-   */
+  // ==================== CONVERSATIONS ====================
+
   getConversation(userId: string): Observable<{ conversation: SMSConversation | null; messages: SMSMessage[] }> {
     return from(this.fetchConversation(userId));
   }
 
   private async fetchConversation(userId: string): Promise<{ conversation: SMSConversation | null; messages: SMSMessage[] }> {
-    // Get conversation by user_id
     const { data: conversation, error: convError } = await this.supabase
       .from('sms_conversations')
       .select('*')
@@ -529,7 +840,6 @@ export class SalesPipelineService {
       return { conversation: null, messages: [] };
     }
 
-    // Get messages
     const { data: messages, error: msgError } = await this.supabase
       .from('sms_messages')
       .select('*')
@@ -538,7 +848,6 @@ export class SalesPipelineService {
 
     if (msgError) throw msgError;
 
-    // Mark as read
     await this.supabase
       .from('sms_conversations')
       .update({ unread_count: 0 })
@@ -550,15 +859,11 @@ export class SalesPipelineService {
     };
   }
 
-  /**
-   * Send reply to a conversation
-   */
   sendReply(conversationId: string, content: string): Observable<any> {
     return from(this.doSendReply(conversationId, content));
   }
 
   private async doSendReply(conversationId: string, content: string): Promise<any> {
-    // Get conversation to find phone number
     const { data: conversation } = await this.supabase
       .from('sms_conversations')
       .select('phone_number, user_id')
@@ -567,13 +872,11 @@ export class SalesPipelineService {
 
     if (!conversation) throw new Error('Conversation not found');
 
-    // Send via SMS service
     const response = await this.http.post(`${this.smsServiceUrl}/send/sms`, {
       to: conversation.phone_number,
       body: content
     }, { headers: this.getSmsServiceHeaders() }).toPromise();
 
-    // Update conversation
     await this.supabase
       .from('sms_conversations')
       .update({
@@ -582,7 +885,7 @@ export class SalesPipelineService {
       })
       .eq('id', conversationId);
 
-    // Update lead's last_sms_sent_at if lead exists
+    // Update lead and log activity
     if (conversation.user_id) {
       const { data: lead } = await this.supabase
         .from('sales_pipeline_leads')
@@ -592,88 +895,43 @@ export class SalesPipelineService {
 
       if (lead) {
         await this.doUpdateLead(lead.id, {
-          last_sms_sent_at: new Date().toISOString()
+          last_sms_sent_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString()
         });
+        await this.doLogActivity(lead.id, conversation.user_id, 'SMS_SENT', null, content);
       }
     }
 
     return response;
   }
 
-  // ==================== SMS TEMPLATES ====================
+  // ==================== SMS TEMPLATES (DB-BACKED) ====================
 
-  /**
-   * Get available SMS templates
-   */
   getTemplates(): Observable<SMSTemplate[]> {
-    // For now, return hardcoded templates. Can be moved to database later.
-    const templates: SMSTemplate[] = [
-      {
-        id: 'welcome',
-        name: 'Welcome Message',
-        content: 'Hi {{first_name}}! Welcome to Royal Pawz mobile grooming. Ready to pamper your fur baby? Book your first appointment at royalpawzusa.com or reply with questions!',
-        category: 'welcome',
-        variables: ['first_name']
-      },
-      {
-        id: 'follow_up_1',
-        name: 'First Follow-up',
-        content: 'Hi {{first_name}}! Just checking in - noticed you started signing up for Royal Pawz. Need any help completing your profile? We\'d love to get {{pet_name}} looking fabulous!',
-        category: 'follow_up',
-        variables: ['first_name', 'pet_name']
-      },
-      {
-        id: 'follow_up_2',
-        name: 'Second Follow-up',
-        content: 'Hey {{first_name}}! Your pup deserves the royal treatment. Book now and get 15% off your first groom with code NEWPUP15. Questions? Just reply!',
-        category: 'follow_up',
-        variables: ['first_name']
-      },
-      {
-        id: 'no_response',
-        name: 'No Response Follow-up',
-        content: 'Hi {{first_name}}, we haven\'t heard from you! Still interested in mobile grooming for {{pet_name}}? Reply YES and we\'ll help you get started.',
-        category: 'follow_up',
-        variables: ['first_name', 'pet_name']
-      },
-      {
-        id: 'incomplete_profile',
-        name: 'Incomplete Profile Reminder',
-        content: 'Hi {{first_name}}! Your Royal Pawz profile is almost complete. Just add {{missing_step}} to book your first appointment. Need help? Reply here!',
-        category: 'reminder',
-        variables: ['first_name', 'missing_step']
-      },
-      {
-        id: 'abandoned_booking',
-        name: 'Abandoned Booking',
-        content: 'Hi {{first_name}}! Looks like you didn\'t finish booking. Your slot is still available - complete your booking now before it fills up! royalpawzusa.com',
-        category: 'reminder',
-        variables: ['first_name']
-      },
-      {
-        id: 'promo_first_time',
-        name: 'First-Time Promo',
-        content: '{{first_name}}, exclusive offer just for you! Get 20% off your first Royal Pawz groom. Use code FIRST20 at checkout. Book now: royalpawzusa.com',
-        category: 'promo',
-        variables: ['first_name']
-      },
-      {
-        id: 'seasonal_promo',
-        name: 'Seasonal Promo',
-        content: 'Hi {{first_name}}! Spring grooming special: Book this week and get a free de-shedding treatment for {{pet_name}}! Reply BOOK or visit royalpawzusa.com',
-        category: 'promo',
-        variables: ['first_name', 'pet_name']
-      }
-    ];
+    return from(this.fetchTemplates());
+  }
 
-    return of(templates);
+  private async fetchTemplates(): Promise<SMSTemplate[]> {
+    const { data, error } = await this.supabase
+      .from('sms_templates')
+      .select('id, name, content, category, variables')
+      .eq('user_type', 'pipeline')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map(t => ({
+      id: t.id,
+      name: t.name.replace('pipeline_', '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+      content: t.content,
+      category: t.category,
+      variables: t.variables || []
+    }));
   }
 
   // ==================== OPT-OUT MANAGEMENT ====================
 
-  /**
-   * Get all opted-out numbers
-   */
   getOptOuts(): Observable<OptOut[]> {
     return from(this.fetchOptOuts());
   }
@@ -686,12 +944,10 @@ export class SalesPipelineService {
 
     if (error) throw error;
 
-    // Enrich with user names
     const enriched: OptOut[] = [];
     for (const optOut of data || []) {
       let userName: string | null = null;
 
-      // Try to find user by phone
       const { data: user } = await this.supabase
         .from('users')
         .select('first_name, last_name')
@@ -714,9 +970,6 @@ export class SalesPipelineService {
     return enriched;
   }
 
-  /**
-   * Restore opt-in for a phone number
-   */
   restoreOptIn(phoneNumber: string): Observable<boolean> {
     return this.http.post<any>(
       `${this.smsServiceUrl}/opt-outs/${encodeURIComponent(phoneNumber)}/restore`,
@@ -728,74 +981,127 @@ export class SalesPipelineService {
     );
   }
 
-  // ==================== AUTOMATION ====================
+  // ==================== AUTOMATION ENGINE ====================
 
-  /**
-   * Run automation check (typically called by a cron job)
-   * - Move leads to NO_RESPONSE after 5 days with no reply
-   */
   runAutomationCheck(): Observable<any> {
     return from(this.doAutomationCheck());
   }
 
   private async doAutomationCheck(): Promise<any> {
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-
-    // Find TEXTED leads with no reply for 5+ days
-    const { data: staleLeads } = await this.supabase
-      .from('sales_pipeline_leads')
-      .select('id, user_id')
-      .eq('pipeline_stage', 'TEXTED')
-      .lt('stage_changed_at', fiveDaysAgo.toISOString())
-      .is('last_sms_replied_at', null);
+    // Fetch active automations from DB
+    const { data: automations } = await this.supabase
+      .from('pipeline_automations')
+      .select('*')
+      .eq('is_active', true);
 
     const results: any[] = [];
 
-    for (const lead of staleLeads || []) {
+    for (const automation of automations || []) {
       try {
-        await this.doUpdateLead(lead.id, { pipeline_stage: 'NO_RESPONSE' });
+        switch (automation.trigger_type) {
+          case 'TIME_IN_STAGE': {
+            const { stage, days } = automation.trigger_config;
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - days);
 
-        // Log automation
-        await this.supabase
-          .from('pipeline_automation_logs')
-          .insert({
-            lead_id: lead.id,
-            automation_type: 'auto_no_response',
-            status: 'success',
-            metadata: { reason: '5 days no reply after texted' }
-          });
+            const { data: staleLeads } = await this.supabase
+              .from('sales_pipeline_leads')
+              .select('id, user_id')
+              .eq('pipeline_stage', stage)
+              .lt('stage_changed_at', cutoff.toISOString())
+              .is('last_sms_replied_at', null);
 
-        results.push({ leadId: lead.id, success: true });
+            for (const lead of staleLeads || []) {
+              const toStage = automation.action_config.to_stage;
+              await this.doUpdateLead(lead.id, { pipeline_stage: toStage, last_activity_at: new Date().toISOString() });
+              await this.doLogActivity(lead.id, lead.user_id, 'AUTO_ACTION', null,
+                `Auto: ${automation.name} — moved to ${toStage}`,
+                { automation_id: automation.id, from_stage: stage, to_stage: toStage }
+              );
+              results.push({ leadId: lead.id, automation: automation.name, success: true });
+            }
+            break;
+          }
+
+          case 'NO_ACTIVITY': {
+            const { days } = automation.trigger_config;
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - days);
+
+            const { data: inactiveLeads } = await this.supabase
+              .from('sales_pipeline_leads')
+              .select('id, user_id, pipeline_stage')
+              .not('pipeline_stage', 'in', '("CONVERTED","LOST","DORMANT")')
+              .or(`last_activity_at.is.null,last_activity_at.lt.${cutoff.toISOString()}`);
+
+            for (const lead of inactiveLeads || []) {
+              const toStage = automation.action_config.to_stage;
+              await this.doUpdateLead(lead.id, { pipeline_stage: toStage, last_activity_at: new Date().toISOString() });
+              await this.doLogActivity(lead.id, lead.user_id, 'AUTO_ACTION', null,
+                `Auto: ${automation.name} — moved to ${toStage}`,
+                { automation_id: automation.id, from_stage: lead.pipeline_stage, to_stage: toStage }
+              );
+              results.push({ leadId: lead.id, automation: automation.name, success: true });
+            }
+            break;
+          }
+        }
       } catch (error) {
-        // Log failure
         await this.supabase
           .from('pipeline_automation_logs')
           .insert({
-            lead_id: lead.id,
-            automation_type: 'auto_no_response',
+            lead_id: null,
+            automation_type: automation.name,
             status: 'failed',
-            error_message: String(error)
+            error_message: String(error),
+            metadata: { automation_id: automation.id }
           });
-
-        results.push({ leadId: lead.id, success: false, error });
+        results.push({ automation: automation.name, success: false, error });
       }
     }
 
     return results;
   }
 
+  // ==================== CALL LOGGING ====================
+
+  logCall(leadId: string, userId: string, outcome: ContactOutcome, notes?: string): Observable<ContactActivity> {
+    return from(this.doLogCall(leadId, userId, outcome, notes));
+  }
+
+  private async doLogCall(leadId: string, userId: string, outcome: ContactOutcome, notes?: string): Promise<ContactActivity> {
+    // Log the activity
+    const activity = await this.doLogActivity(leadId, userId, 'CALLED', outcome, notes, { outcome });
+
+    // Update the lead
+    const updates: UpdatePipelineLeadDto = {
+      last_call_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString()
+    };
+
+    // Auto-advance stage based on outcome
+    const { data: lead } = await this.supabase
+      .from('sales_pipeline_leads')
+      .select('pipeline_stage')
+      .eq('id', leadId)
+      .single();
+
+    if (lead && ['NEEDS_CALL', 'NO_RESPONSE'].includes(lead.pipeline_stage)) {
+      updates.pipeline_stage = 'CALLED';
+    }
+
+    await this.doUpdateLead(leadId, updates);
+
+    return activity;
+  }
+
   // ==================== DATA MIGRATION ====================
 
-  /**
-   * Populate pipeline from existing warm leads (one-time migration)
-   */
   migrateWarmLeads(): Observable<any> {
     return from(this.doMigrateWarmLeads());
   }
 
   private async doMigrateWarmLeads(): Promise<any> {
-    // Get all clients who haven't completed a booking
     const { data: users, error: usersError } = await this.supabase
       .from('users')
       .select('id, created_at')
@@ -806,7 +1112,6 @@ export class SalesPipelineService {
     const results: any[] = [];
 
     for (const user of users || []) {
-      // Check if user has any completed bookings
       const { count: completedBookings } = await this.supabase
         .from('bookings')
         .select('*', { count: 'exact', head: true })
@@ -815,7 +1120,6 @@ export class SalesPipelineService {
 
       if ((completedBookings || 0) > 0) continue;
 
-      // Check if already in pipeline
       const { data: existing } = await this.supabase
         .from('sales_pipeline_leads')
         .select('id')
@@ -824,7 +1128,6 @@ export class SalesPipelineService {
 
       if (existing) continue;
 
-      // Check if user has been texted (has conversation)
       const { data: conversation } = await this.supabase
         .from('sms_conversations')
         .select('id')
@@ -856,9 +1159,6 @@ export class SalesPipelineService {
     });
   }
 
-  /**
-   * Format phone number for display
-   */
   formatPhone(phone: string | null): string {
     if (!phone) return '';
     const cleaned = phone.replace(/\D/g, '');
@@ -871,9 +1171,6 @@ export class SalesPipelineService {
     return phone;
   }
 
-  /**
-   * Get template with variables replaced
-   */
   interpolateTemplate(template: SMSTemplate, lead: PipelineLeadWithDetails): string {
     let content = template.content;
 

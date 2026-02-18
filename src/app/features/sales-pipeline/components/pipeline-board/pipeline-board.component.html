@@ -23,6 +23,30 @@
         }
       </div>
 
+      <!-- Priority Filter -->
+      <div class="priority-filter">
+        <button
+          class="filter-chip"
+          [class.active]="priorityFilter === 'all'"
+          (click)="onPriorityFilterChange('all')"
+        >All</button>
+        <button
+          class="filter-chip high"
+          [class.active]="priorityFilter === 'high'"
+          (click)="onPriorityFilterChange('high')"
+        >High</button>
+        <button
+          class="filter-chip medium"
+          [class.active]="priorityFilter === 'medium'"
+          (click)="onPriorityFilterChange('medium')"
+        >Medium</button>
+        <button
+          class="filter-chip low"
+          [class.active]="priorityFilter === 'low'"
+          (click)="onPriorityFilterChange('low')"
+        >Low</button>
+      </div>
+
       <!-- Bulk actions -->
       @if (selectionMode) {
         <div class="bulk-actions">
@@ -53,6 +77,21 @@
     </div>
   </div>
 
+  <!-- Nudges Banner -->
+  @if (visibleNudges.length > 0) {
+    <div class="nudges-banner">
+      @for (nudge of visibleNudges; track nudge.message) {
+        <div class="nudge-card" [class]="'nudge-' + nudge.severity">
+          <span class="material-icons nudge-icon">{{ nudge.icon }}</span>
+          <span class="nudge-message">{{ nudge.message }}</span>
+          <button class="nudge-dismiss" (click)="dismissNudge(nudge)">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+      }
+    </div>
+  }
+
   <!-- Stats Bar -->
   @if (stats) {
     <div class="stats-bar">
@@ -72,6 +111,18 @@
         <span class="stat-value">{{ stats.lost_this_week }}</span>
         <span class="stat-label">Lost (7d)</span>
       </div>
+      @if (stats.avg_days_to_convert > 0) {
+        <div class="stat-item avg-convert">
+          <span class="stat-value">{{ stats.avg_days_to_convert }}d</span>
+          <span class="stat-label">Avg Convert</span>
+        </div>
+      }
+      @if (stats.dormant_count > 0) {
+        <div class="stat-item dormant">
+          <span class="stat-value">{{ stats.dormant_count }}</span>
+          <span class="stat-label">Dormant</span>
+        </div>
+      }
       @for (stage of activeStages; track stage.stage) {
         <div class="stat-item stage-stat">
           <span class="stage-indicator" [style.background-color]="stage.color"></span>
@@ -99,52 +150,252 @@
     </div>
   }
 
-  <!-- Kanban Board -->
+  <!-- Tab + Table View -->
   @if (!isLoading && !error) {
-    <div class="kanban-board">
-      <!-- Active Stages -->
-      <div class="stages-container">
+    <!-- Stage Tabs -->
+    <div class="stage-tabs">
+      <div class="tabs-group active-tabs">
         @for (stage of activeStages; track stage.stage) {
-          <app-stage-column
-            [stage]="stage"
-            [leads]="leadsByStage[stage.stage]"
-            [dropListId]="getDropListId(stage.stage)"
-            [connectedDropLists]="getConnectedLists(stage.stage)"
-            (leadDropped)="onLeadDropped($event)"
-            (viewLead)="onViewLead($event)"
-            (sendSms)="onSendSms($event)"
-            (makeCall)="onMakeCall($event)"
-            (moveToStage)="onMoveToStage($event)"
-          />
+          <button
+            class="stage-tab"
+            [class.active]="selectedStage === stage.stage"
+            [style.--tab-color]="stage.color"
+            [style.--tab-bg]="stage.bgColor"
+            (click)="selectStage(stage.stage)"
+          >
+            <span class="tab-dot" [style.background-color]="stage.color"></span>
+            <span class="tab-label">{{ stage.label }}</span>
+            <span class="tab-count">{{ leadsByStage[stage.stage].length }}</span>
+          </button>
         }
       </div>
 
-      <!-- Toggle for Converted/Lost -->
-      <div class="end-stages-toggle">
-        <button class="toggle-btn" (click)="toggleConvertedLost()">
-          <span class="material-icons">{{ showConvertedLost ? 'expand_less' : 'expand_more' }}</span>
-          {{ showConvertedLost ? 'Hide' : 'Show' }} Converted & Lost
-          ({{ stats ? stats.by_stage['CONVERTED'] : 0 }} / {{ stats ? stats.by_stage['LOST'] : 0 }})
-        </button>
-      </div>
+      <div class="tab-separator"></div>
 
-      <!-- Converted and Lost Stages -->
-      @if (showConvertedLost) {
-        <div class="end-stages-container">
-          @for (stage of endStages; track stage.stage) {
-            <app-stage-column
-              [stage]="stage"
-              [leads]="leadsByStage[stage.stage]"
-              [dropListId]="getDropListId(stage.stage)"
-              [connectedDropLists]="getConnectedLists(stage.stage)"
-              (leadDropped)="onLeadDropped($event)"
-              (viewLead)="onViewLead($event)"
-              (sendSms)="onSendSms($event)"
-              (makeCall)="onMakeCall($event)"
-              (moveToStage)="onMoveToStage($event)"
-            />
-          }
+      <div class="tabs-group end-tabs">
+        @for (stage of endStages; track stage.stage) {
+          <button
+            class="stage-tab"
+            [class.active]="selectedStage === stage.stage"
+            [style.--tab-color]="stage.color"
+            [style.--tab-bg]="stage.bgColor"
+            (click)="selectStage(stage.stage)"
+          >
+            <span class="tab-dot" [style.background-color]="stage.color"></span>
+            <span class="tab-label">{{ stage.label }}</span>
+            <span class="tab-count">{{ leadsByStage[stage.stage].length }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Stage Description Bar -->
+    <div class="stage-description-bar" [style.border-left-color]="currentStageConfig.color">
+      <span class="material-icons stage-desc-icon" [style.color]="currentStageConfig.color">info_outline</span>
+      <span class="stage-desc-text">{{ currentStageConfig.description }}</span>
+      <span class="stage-lead-count">{{ currentStageLeads.length }} lead{{ currentStageLeads.length !== 1 ? 's' : '' }}</span>
+    </div>
+
+    <!-- Leads Table (Desktop) -->
+    <div class="leads-table-container desktop-only">
+      @if (currentStageLeads.length === 0) {
+        <div class="empty-state">
+          <span class="material-icons empty-icon">inbox</span>
+          <p>No leads in {{ currentStageConfig.label }}</p>
         </div>
+      } @else {
+        <table class="leads-table">
+          <thead>
+            <tr>
+              @if (selectionMode) {
+                <th class="col-checkbox">
+                  <input
+                    type="checkbox"
+                    [checked]="allCurrentSelected"
+                    (change)="toggleSelectAll()"
+                  />
+                </th>
+              }
+              <th class="col-name sortable" (click)="onSort('name')">
+                Name
+                @if (sortColumn === 'name') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-priority sortable" (click)="onSort('priority_score')">
+                Priority
+                @if (sortColumn === 'priority_score') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-days sortable" (click)="onSort('days_in_stage')">
+                Days
+                @if (sortColumn === 'days_in_stage') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-phone">Phone</th>
+              <th class="col-pets">Pets</th>
+              <th class="col-action">Suggested Action</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (lead of currentStageLeads; track lead.id) {
+              <tr [class.selected]="selectedLeads.has(lead.id)">
+                @if (selectionMode) {
+                  <td class="col-checkbox">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedLeads.has(lead.id)"
+                      (change)="toggleLeadSelection(lead.id)"
+                    />
+                  </td>
+                }
+                <td class="col-name">
+                  <div class="name-cell" (click)="onViewLead(lead.id)">
+                    <div class="avatar-sm" [style.background-color]="currentStageConfig.color">
+                      {{ (lead.user.first_name || '')[0] || '' }}{{ (lead.user.last_name || '')[0] || '' }}
+                    </div>
+                    <div class="name-info">
+                      <span class="lead-name">
+                        {{ lead.user.first_name }} {{ lead.user.last_name }}
+                        @if (lead.geo_boost) {
+                          <span class="material-icons geo-icon" title="In service area">location_on</span>
+                        }
+                        @if (lead.conversation && lead.conversation.unread_count > 0) {
+                          <span class="unread-badge">{{ lead.conversation.unread_count }}</span>
+                        }
+                      </span>
+                      <span class="lead-email">{{ lead.user.email || 'No email' }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="col-priority">
+                  <span
+                    class="priority-badge"
+                    [style.color]="getPriorityColor(lead.priority_score)"
+                    [style.background-color]="getPriorityBg(lead.priority_score)"
+                  >
+                    {{ lead.priority_score }}
+                  </span>
+                </td>
+                <td class="col-days">
+                  <span class="days-value" [class.stale]="lead.days_in_stage >= 7">{{ lead.days_in_stage }}d</span>
+                </td>
+                <td class="col-phone">{{ formatPhone(lead.user.phone) }}</td>
+                <td class="col-pets">{{ getPetSummary(lead) }}</td>
+                <td class="col-action">
+                  @if (lead.computed_suggested_action) {
+                    <div class="suggested-action" [class]="'priority-' + lead.computed_suggested_action.priority">
+                      <span class="material-icons sa-icon">{{ lead.computed_suggested_action.icon }}</span>
+                      <span class="sa-text">{{ lead.computed_suggested_action.action }}</span>
+                    </div>
+                  }
+                </td>
+                <td class="col-actions">
+                  <div class="row-actions">
+                    <a class="icon-btn imessage-icon" title="Open in iMessage" [href]="getIMessageUrl(lead)" [class.disabled]="!lead.user.phone">
+                      <span class="material-icons">message</span>
+                    </a>
+                    <button class="icon-btn" title="Send SMS (Twilio)" (click)="onSendSms(lead)">
+                      <span class="material-icons">sms</span>
+                    </button>
+                    <button class="icon-btn" title="Log Call" (click)="onMakeCall(lead)">
+                      <span class="material-icons">phone</span>
+                    </button>
+                    <div class="move-menu-wrapper">
+                      <button class="icon-btn move-trigger" title="Move to stage" (click)="toggleRowMoveMenu(lead.id, $event)">
+                        <span class="material-icons">swap_horiz</span>
+                      </button>
+                      @if (activeMoveMenuLeadId === lead.id) {
+                        <div class="move-menu">
+                          @for (targetStage of getAvailableStages(lead.pipeline_stage); track targetStage.stage) {
+                            <button class="move-menu-item" (click)="moveLeadFromRow(lead, targetStage.stage)">
+                              <span class="move-dot" [style.background-color]="targetStage.color"></span>
+                              {{ targetStage.label }}
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <button class="icon-btn" title="View Details" (click)="onViewLead(lead.id)">
+                      <span class="material-icons">open_in_new</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="mobile-leads mobile-only">
+      @if (currentStageLeads.length === 0) {
+        <div class="empty-state">
+          <span class="material-icons empty-icon">inbox</span>
+          <p>No leads in {{ currentStageConfig.label }}</p>
+        </div>
+      } @else {
+        @for (lead of currentStageLeads; track lead.id) {
+          <div class="lead-card">
+            <div class="card-top" (click)="onViewLead(lead.id)">
+              <div class="avatar-sm" [style.background-color]="currentStageConfig.color">
+                {{ (lead.user.first_name || '')[0] || '' }}{{ (lead.user.last_name || '')[0] || '' }}
+              </div>
+              <div class="card-info">
+                <div class="card-name-row">
+                  <span class="lead-name">
+                    {{ lead.user.first_name }} {{ lead.user.last_name }}
+                  </span>
+                  @if (lead.conversation && lead.conversation.unread_count > 0) {
+                    <span class="unread-badge">{{ lead.conversation.unread_count }}</span>
+                  }
+                  @if (lead.geo_boost) {
+                    <span class="material-icons geo-icon">location_on</span>
+                  }
+                </div>
+                <div class="card-details-row">
+                  <span class="card-pets">{{ getPetSummary(lead) }}</span>
+                  <span class="card-divider">·</span>
+                  <span class="card-phone">{{ formatPhone(lead.user.phone) }}</span>
+                </div>
+              </div>
+              <div class="card-score">
+                <span
+                  class="priority-badge"
+                  [style.color]="getPriorityColor(lead.priority_score)"
+                  [style.background-color]="getPriorityBg(lead.priority_score)"
+                >{{ lead.priority_score }}</span>
+                <span class="days-value" [class.stale]="lead.days_in_stage >= 7">{{ lead.days_in_stage }}d</span>
+              </div>
+            </div>
+
+            @if (lead.computed_suggested_action) {
+              <div class="card-suggestion" [class]="'priority-' + lead.computed_suggested_action.priority">
+                <span class="material-icons">{{ lead.computed_suggested_action.icon }}</span>
+                <span>{{ lead.computed_suggested_action.action }}</span>
+              </div>
+            }
+
+            <div class="card-actions">
+              <a class="card-action-btn imessage" [href]="getIMessageUrl(lead)" [class.no-phone]="!lead.user.phone">
+                <span class="material-icons">message</span>
+                <span>iMessage</span>
+              </a>
+              <a class="card-action-btn call" [href]="getCallUrl(lead)" [class.no-phone]="!lead.user.phone">
+                <span class="material-icons">phone</span>
+                <span>Call</span>
+              </a>
+              <button class="card-action-btn details" (click)="onViewLead(lead.id)">
+                <span class="material-icons">open_in_new</span>
+                <span>Details</span>
+              </button>
+            </div>
+          </div>
+        }
       }
     </div>
   }

@@ -29,6 +29,37 @@
     <div class="detail-content">
       <!-- Left Panel: Lead Info -->
       <div class="info-panel">
+
+        <!-- Suggested Action Banner -->
+        @if (lead.computed_suggested_action) {
+          <div class="suggested-action-banner" [class]="getSuggestedActionBannerClass(lead.computed_suggested_action.priority)">
+            <div class="suggested-action-top">
+              <span class="material-icons suggested-icon">{{ lead.computed_suggested_action.icon }}</span>
+              <div class="suggested-text">
+                <span class="suggested-action-label">Suggested Action</span>
+                <span class="suggested-action-value">{{ lead.computed_suggested_action.action }}</span>
+              </div>
+              <span class="suggested-priority-chip" [class]="'chip-' + lead.computed_suggested_action.priority">
+                {{ lead.computed_suggested_action.priority | titlecase }}
+              </span>
+            </div>
+            <p class="suggested-reason">{{ lead.computed_suggested_action.reason }}</p>
+
+            <!-- Priority Score Bar -->
+            <div class="priority-score-row">
+              <span class="priority-score-label">Priority Score</span>
+              <div class="priority-score-track">
+                <div
+                  class="priority-score-fill"
+                  [style.width.%]="priorityScorePercent"
+                  [style.background-color]="priorityColor"
+                ></div>
+              </div>
+              <span class="priority-score-value" [style.color]="priorityColor">{{ lead.priority_score }}</span>
+            </div>
+          </div>
+        }
+
         <!-- Profile Card -->
         <div class="profile-card">
           <div class="avatar-large">
@@ -153,46 +184,103 @@
 
         <!-- Activity Timeline -->
         <div class="section-card">
-          <h3>Activity</h3>
-          <div class="timeline">
-            <div class="timeline-item">
-              <span class="material-icons">person_add</span>
-              <div class="timeline-content">
-                <span class="timeline-title">Signed up</span>
-                <span class="timeline-date">{{ formatDate(lead.user.created_at) }}</span>
+          <div class="section-header">
+            <h3>Activity</h3>
+            <div class="activity-header-actions">
+              <button class="icon-action-btn" (click)="openLogNoteForm()" title="Add note">
+                <span class="material-icons">note_add</span>
+                Add Note
+              </button>
+              <button class="icon-action-btn" (click)="openLogCallForm()" title="Log call">
+                <span class="material-icons">phone_callback</span>
+                Log Call
+              </button>
+            </div>
+          </div>
+
+          <!-- Log Call Inline Form -->
+          @if (showLogCallForm) {
+            <div class="inline-form">
+              <div class="inline-form-field">
+                <label>Outcome</label>
+                <select [(ngModel)]="callOutcome">
+                  <option value="ANSWERED">Answered</option>
+                  <option value="NO_ANSWER">No Answer</option>
+                  <option value="LEFT_VM">Left Voicemail</option>
+                </select>
+              </div>
+              <div class="inline-form-field">
+                <label>Notes <span class="optional">(optional)</span></label>
+                <textarea
+                  [(ngModel)]="callNotes"
+                  placeholder="What happened on the call?"
+                  rows="3"
+                ></textarea>
+              </div>
+              <div class="inline-form-actions">
+                <button class="cancel-btn" (click)="cancelLogCall()">Cancel</button>
+                <button class="save-btn" (click)="saveCall()" [disabled]="isSavingCall">
+                  {{ isSavingCall ? 'Saving...' : 'Save Call' }}
+                </button>
               </div>
             </div>
-            @if (lead.last_sms_sent_at) {
-              <div class="timeline-item">
-                <span class="material-icons">sms</span>
-                <div class="timeline-content">
-                  <span class="timeline-title">Last SMS sent</span>
-                  <span class="timeline-date">{{ formatDate(lead.last_sms_sent_at) }}</span>
-                </div>
+          }
+
+          <!-- Log Note Inline Form -->
+          @if (showLogNoteForm) {
+            <div class="inline-form">
+              <div class="inline-form-field">
+                <label>Note</label>
+                <textarea
+                  [(ngModel)]="noteText"
+                  placeholder="Write a note about this lead..."
+                  rows="3"
+                ></textarea>
               </div>
-            }
-            @if (lead.last_sms_replied_at) {
-              <div class="timeline-item">
-                <span class="material-icons">reply</span>
-                <div class="timeline-content">
-                  <span class="timeline-title">Last reply received</span>
-                  <span class="timeline-date">{{ formatDate(lead.last_sms_replied_at) }}</span>
-                </div>
+              <div class="inline-form-actions">
+                <button class="cancel-btn" (click)="cancelLogNote()">Cancel</button>
+                <button class="save-btn" (click)="saveNote()" [disabled]="isSavingNote || !noteText.trim()">
+                  {{ isSavingNote ? 'Saving...' : 'Save Note' }}
+                </button>
               </div>
-            }
-            @if (lead.last_call_at) {
-              <div class="timeline-item">
-                <span class="material-icons">phone</span>
-                <div class="timeline-content">
-                  <span class="timeline-title">Last call</span>
-                  <span class="timeline-date">{{ formatDate(lead.last_call_at) }}</span>
+            </div>
+          }
+
+          <!-- Timeline Items -->
+          @if (isLoadingActivities) {
+            <div class="activities-loading">
+              <div class="spinner-sm"></div>
+            </div>
+          } @else if (activities.length === 0) {
+            <p class="no-activities">No activity recorded yet</p>
+          } @else {
+            <div class="timeline">
+              @for (activity of activities; track activity.id) {
+                <div class="timeline-item">
+                  <div class="timeline-icon">
+                    <span class="material-icons">{{ getActivityIcon(activity.activity_type) }}</span>
+                  </div>
+                  <div class="timeline-body">
+                    <div class="timeline-top">
+                      <span class="timeline-title">{{ getActivityDescription(activity.activity_type) }}</span>
+                      @if (activity.outcome && getOutcomeBadge(activity.outcome)) {
+                        <span class="outcome-badge" [class]="getOutcomeBadge(activity.outcome)!.cssClass">
+                          {{ getOutcomeBadge(activity.outcome)!.label }}
+                        </span>
+                      }
+                    </div>
+                    @if (activity.notes) {
+                      <p class="timeline-notes">{{ activity.notes }}</p>
+                    }
+                    <span class="timeline-time">{{ formatRelativeTime(activity.created_at) }}</span>
+                  </div>
                 </div>
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
         </div>
 
-        <!-- Notes -->
+        <!-- Sticky Notes -->
         <div class="section-card">
           <div class="section-header">
             <h3>Notes</h3>

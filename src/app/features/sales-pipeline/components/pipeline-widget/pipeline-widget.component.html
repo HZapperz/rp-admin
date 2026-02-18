@@ -1,0 +1,60 @@
+<div class="pipeline-widget" (click)="goToPipeline()">
+  <div class="widget-header">
+    <div class="widget-title">
+      <span class="material-icons">trending_up</span>
+      <h3>Sales Pipeline</h3>
+    </div>
+    <span class="material-icons widget-arrow">arrow_forward</span>
+  </div>
+
+  @if (isLoading) {
+    <div class="widget-loading">
+      <div class="spinner"></div>
+    </div>
+  } @else if (stats) {
+    <!-- Quick Stats Row -->
+    <div class="quick-stats">
+      <div class="quick-stat">
+        <span class="qs-value">{{ stats.total }}</span>
+        <span class="qs-label">Total</span>
+      </div>
+      <div class="quick-stat attention" [class.active]="stats.needs_attention > 0">
+        <span class="qs-value">{{ stats.needs_attention }}</span>
+        <span class="qs-label">Need Attention</span>
+      </div>
+      <div class="quick-stat converted">
+        <span class="qs-value">{{ stats.converted_this_week }}</span>
+        <span class="qs-label">Converted (7d)</span>
+      </div>
+      <div class="quick-stat lost">
+        <span class="qs-value">{{ stats.lost_this_week }}</span>
+        <span class="qs-label">Lost (7d)</span>
+      </div>
+    </div>
+
+    <!-- Funnel Visualization -->
+    <div class="funnel">
+      @for (stage of funnelStages; track stage) {
+        <div class="funnel-row">
+          <span class="funnel-label">{{ getStageLabel(stage) }}</span>
+          <div class="funnel-bar-container">
+            <div
+              class="funnel-bar"
+              [style.width.%]="getBarWidth(stage)"
+              [style.background-color]="getStageColor(stage)"
+            ></div>
+          </div>
+          <span class="funnel-count">{{ getStageCount(stage) }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Top Nudge -->
+    @if (topNudge) {
+      <div class="widget-nudge" [class]="'nudge-' + topNudge.severity">
+        <span class="material-icons">{{ topNudge.icon }}</span>
+        <span class="nudge-text">{{ topNudge.message }}</span>
+      </div>
+    }
+  }
+</div>

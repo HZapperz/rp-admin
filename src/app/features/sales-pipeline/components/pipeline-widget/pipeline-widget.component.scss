@@ -1,0 +1,193 @@
+.pipeline-widget {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  border: 1px solid #e5e7eb;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+}
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.widget-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .material-icons {
+    font-size: 20px;
+    color: #3b82f6;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+  }
+}
+
+.widget-arrow {
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+// Loading
+.widget-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// Quick Stats
+.quick-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.quick-stat {
+  flex: 1;
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 6px;
+  background: #f9fafb;
+
+  &.attention.active {
+    background: #fef3c7;
+
+    .qs-value {
+      color: #d97706;
+    }
+  }
+
+  &.converted .qs-value {
+    color: #22c55e;
+  }
+
+  &.lost .qs-value {
+    color: #6b7280;
+  }
+}
+
+.qs-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.qs-label {
+  display: block;
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+// Funnel
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.funnel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.funnel-label {
+  font-size: 11px;
+  color: #6b7280;
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.funnel-bar-container {
+  flex: 1;
+  height: 16px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.funnel-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 4px;
+}
+
+.funnel-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+// Nudge
+.widget-nudge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+
+  .material-icons {
+    font-size: 16px;
+  }
+
+  &.nudge-warning {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  &.nudge-error {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  &.nudge-info {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+}
+
+.nudge-text {
+  flex: 1;
+  line-height: 1.3;
+}

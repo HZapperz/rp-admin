@@ -1,5 +1,4 @@
 @use '../../../../theme/design-tokens' as *;
-@import 'leaflet/dist/leaflet.css';
 
 .territory-container {
   display: grid;
@@ -186,17 +185,6 @@
   width: 100%;
   height: 100%;
   position: relative;
-}
-
-// Leaflet marker pane transitions for smooth hover effects
-::ng-deep .leaflet-marker-pane {
-  .custom-marker {
-    transition: all 0.2s ease;
-
-    .marker-inner {
-      transition: opacity 0.2s ease, box-shadow 0.2s ease;
-    }
-  }
 }
 
 .map-controls {

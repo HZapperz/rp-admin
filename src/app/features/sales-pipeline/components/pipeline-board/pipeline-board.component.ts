@@ -1,20 +1,23 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { DragDropModule } from '@angular/cdk/drag-drop';
 import {
   PipelineLeadWithDetails,
   PipelineStage,
   PipelineStats,
   PipelineFilters,
+  PipelineNudge,
   PIPELINE_STAGES,
-  StageConfig
+  ACTIVE_STAGES,
+  END_STAGES,
+  StageConfig,
+  PRIORITY_THRESHOLDS
 } from '../../models/pipeline.types';
 import { SalesPipelineService } from '../../services/sales-pipeline.service';
-import { StageColumnComponent } from '../stage-column/stage-column.component';
 import { ComposeSmsComponent } from '../compose-sms/compose-sms.component';
 import { BulkSmsComponent } from '../bulk-sms/bulk-sms.component';
 
@@ -24,8 +27,6 @@ import { BulkSmsComponent } from '../bulk-sms/bulk-sms.component';
   imports: [
     CommonModule,
     FormsModule,
-    DragDropModule,
-    StageColumnComponent,
     ComposeSmsComponent,
     BulkSmsComponent
   ],
@@ -40,16 +41,27 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     'NO_RESPONSE': [],
     'NEEDS_CALL': [],
     'CALLED': [],
+    'BOOKED': [],
     'CONVERTED': [],
-    'LOST': []
+    'LOST': [],
+    'DORMANT': []
   };
+  allLeads: PipelineLeadWithDetails[] = [];
   stats: PipelineStats | null = null;
+  nudges: PipelineNudge[] = [];
 
   // UI State
   isLoading = true;
   error: string | null = null;
   searchTerm = '';
-  showConvertedLost = false;
+  priorityFilter: 'all' | 'high' | 'medium' | 'low' = 'all';
+  dismissedNudges: Set<string> = new Set();
+
+  // Tab + Table State
+  selectedStage: PipelineStage = 'NEW';
+  sortColumn: 'name' | 'priority_score' | 'days_in_stage' = 'priority_score';
+  sortDirection: 'asc' | 'desc' = 'desc';
+  activeMoveMenuLeadId: string | null = null;
 
   // SMS Modal State
   showSmsModal = false;
@@ -62,35 +74,21 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
 
   // Stage configuration
   stages: StageConfig[] = PIPELINE_STAGES;
-  activeStages = PIPELINE_STAGES.filter(s => !['CONVERTED', 'LOST'].includes(s.stage));
-  endStages = PIPELINE_STAGES.filter(s => ['CONVERTED', 'LOST'].includes(s.stage));
-
-  // Drag and drop
-  dropListIds: string[] = [];
-  connectedDropLists: Record<string, string[]> = {};
+  activeStages = PIPELINE_STAGES.filter(s => ACTIVE_STAGES.includes(s.stage));
+  endStages = PIPELINE_STAGES.filter(s => END_STAGES.includes(s.stage));
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private pipelineService: SalesPipelineService,
-    private router: Router
-  ) {
-    // Initialize drop list IDs and connections
-    this.stages.forEach(stage => {
-      const id = `stage-${stage.stage}`;
-      this.dropListIds.push(id);
-    });
-
-    // All columns can drop to all others
-    this.stages.forEach(stage => {
-      this.connectedDropLists[stage.stage] = this.dropListIds.filter(id => id !== `stage-${stage.stage}`);
-    });
-  }
+    private router: Router,
+    private sanitizer: DomSanitizer
+  ) {}
 
   ngOnInit(): void {
     this.loadData();
+    this.pipelineService.runAutomationCheck().subscribe();
 
-    // Auto-refresh every 30 seconds
     interval(30000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
@@ -103,6 +101,17 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  // Close move menu on outside click
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.activeMoveMenuLeadId) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.move-menu') && !target.closest('.move-trigger')) {
+        this.activeMoveMenuLeadId = null;
+      }
+    }
+  }
+
   loadData(): void {
     this.isLoading = true;
     this.error = null;
@@ -111,10 +120,23 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     if (this.searchTerm) {
       filters.searchTerm = this.searchTerm;
     }
+    if (this.priorityFilter !== 'all') {
+      filters.priorityLevel = this.priorityFilter;
+    }
 
     this.pipelineService.getLeadsByStage(filters).subscribe({
       next: (data) => {
         this.leadsByStage = data;
+        this.allLeads = Object.values(data).flat();
+        this.nudges = this.pipelineService.getNudges(this.allLeads);
+        // Auto-select first tab with leads if current tab is empty
+        if ((data[this.selectedStage] || []).length === 0) {
+          const allStages = [...this.activeStages, ...this.endStages];
+          const firstWithLeads = allStages.find(s => (data[s.stage] || []).length > 0);
+          if (firstWithLeads) {
+            this.selectedStage = firstWithLeads.stage;
+          }
+        }
         this.isLoading = false;
       },
       error: (err) => {
@@ -137,10 +159,15 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
       if (this.searchTerm) {
         filters.searchTerm = this.searchTerm;
       }
+      if (this.priorityFilter !== 'all') {
+        filters.priorityLevel = this.priorityFilter;
+      }
 
       this.pipelineService.getLeadsByStage(filters).subscribe({
         next: (data) => {
           this.leadsByStage = data;
+          this.allLeads = Object.values(data).flat();
+          this.nudges = this.pipelineService.getNudges(this.allLeads);
         }
       });
 
@@ -162,39 +189,136 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     this.loadData();
   }
 
-  toggleConvertedLost(): void {
-    this.showConvertedLost = !this.showConvertedLost;
+  onPriorityFilterChange(level: 'all' | 'high' | 'medium' | 'low'): void {
+    this.priorityFilter = level;
+    this.loadData();
   }
 
-  // Drag and Drop
-  onLeadDropped(event: {
-    lead: PipelineLeadWithDetails;
-    fromStage: PipelineStage;
-    toStage: PipelineStage;
-    previousIndex: number;
-    currentIndex: number;
-  }): void {
-    // Optimistically update UI (already done by CDK)
-    // Now persist to database
-    this.pipelineService.moveToStage(event.lead.id, event.toStage).subscribe({
-      next: () => {
-        // Refresh stats
-        this.pipelineService.getStats().subscribe(stats => this.stats = stats);
-      },
-      error: (err) => {
-        console.error('Error moving lead:', err);
-        // Revert UI change
-        this.loadData();
+  dismissNudge(nudge: PipelineNudge): void {
+    this.dismissedNudges.add(nudge.message);
+  }
+
+  get visibleNudges(): PipelineNudge[] {
+    return this.nudges.filter(n => !this.dismissedNudges.has(n.message));
+  }
+
+  // ==================== TAB + TABLE ====================
+
+  selectStage(stage: PipelineStage): void {
+    this.selectedStage = stage;
+    this.activeMoveMenuLeadId = null;
+    // Don't clear selection — allow cross-stage bulk select
+  }
+
+  get currentStageConfig(): StageConfig {
+    return this.stages.find(s => s.stage === this.selectedStage) || this.stages[0];
+  }
+
+  get currentStageLeads(): PipelineLeadWithDetails[] {
+    return this.sortLeads(this.leadsByStage[this.selectedStage] || []);
+  }
+
+  onSort(column: 'name' | 'priority_score' | 'days_in_stage'): void {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = column === 'name' ? 'asc' : 'desc';
+    }
+  }
+
+  sortLeads(leads: PipelineLeadWithDetails[]): PipelineLeadWithDetails[] {
+    const sorted = [...leads];
+    const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+    sorted.sort((a, b) => {
+      switch (this.sortColumn) {
+        case 'name':
+          const nameA = `${a.user.first_name} ${a.user.last_name}`.toLowerCase();
+          const nameB = `${b.user.first_name} ${b.user.last_name}`.toLowerCase();
+          return nameA.localeCompare(nameB) * dir;
+        case 'priority_score':
+          return (a.priority_score - b.priority_score) * dir;
+        case 'days_in_stage':
+          return (a.days_in_stage - b.days_in_stage) * dir;
+        default:
+          return 0;
       }
+    });
+
+    return sorted;
+  }
+
+  selectAllCurrentStage(): void {
+    this.leadsByStage[this.selectedStage].forEach(lead => {
+      this.selectedLeads.add(lead.id);
     });
   }
 
-  // Navigation
+  deselectAllCurrentStage(): void {
+    this.leadsByStage[this.selectedStage].forEach(lead => {
+      this.selectedLeads.delete(lead.id);
+    });
+  }
+
+  get allCurrentSelected(): boolean {
+    const stageLeads = this.leadsByStage[this.selectedStage];
+    if (stageLeads.length === 0) return false;
+    return stageLeads.every(lead => this.selectedLeads.has(lead.id));
+  }
+
+  toggleSelectAll(): void {
+    if (this.allCurrentSelected) {
+      this.deselectAllCurrentStage();
+    } else {
+      this.selectAllCurrentStage();
+    }
+  }
+
+  // ==================== TABLE HELPERS ====================
+
+  getPriorityColor(score: number): string {
+    if (score >= PRIORITY_THRESHOLDS.high) return '#22c55e';
+    if (score >= PRIORITY_THRESHOLDS.medium) return '#eab308';
+    return '#ef4444';
+  }
+
+  getPriorityBg(score: number): string {
+    if (score >= PRIORITY_THRESHOLDS.high) return '#f0fdf4';
+    if (score >= PRIORITY_THRESHOLDS.medium) return '#fefce8';
+    return '#fef2f2';
+  }
+
+  formatPhone(phone: string | null): string {
+    return this.pipelineService.formatPhone(phone);
+  }
+
+  getPetSummary(lead: PipelineLeadWithDetails): string {
+    if (!lead.pets || lead.pets.length === 0) return 'No pets';
+    if (lead.pets.length === 1) return lead.pets[0].name;
+    return `${lead.pets[0].name} +${lead.pets.length - 1}`;
+  }
+
+  toggleRowMoveMenu(leadId: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.activeMoveMenuLeadId = this.activeMoveMenuLeadId === leadId ? null : leadId;
+  }
+
+  moveLeadFromRow(lead: PipelineLeadWithDetails, newStage: PipelineStage): void {
+    this.activeMoveMenuLeadId = null;
+    this.onMoveToStage({ lead, stage: newStage });
+  }
+
+  getAvailableStages(currentStage: PipelineStage): StageConfig[] {
+    return this.stages.filter(s => s.stage !== currentStage);
+  }
+
+  // ==================== ACTIONS ====================
+
   onViewLead(leadId: string): void {
     this.router.navigate(['/sales-pipeline/lead', leadId]);
   }
 
-  // SMS
   onSendSms(lead: PipelineLeadWithDetails): void {
     this.selectedLeadForSms = lead;
     this.showSmsModal = true;
@@ -210,11 +334,10 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     this.refreshData();
   }
 
-  // Call tracking
   onMakeCall(lead: PipelineLeadWithDetails): void {
-    // Update last_call_at and potentially move to CALLED stage
     const updates: any = {
-      last_call_at: new Date().toISOString()
+      last_call_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString()
     };
 
     if (['NEEDS_CALL', 'NO_RESPONSE'].includes(lead.pipeline_stage)) {
@@ -223,25 +346,43 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
 
     this.pipelineService.updateLead(lead.id, updates).subscribe({
       next: () => {
+        this.pipelineService.logActivity(lead.id, lead.user_id, 'CALLED').subscribe();
         this.refreshData();
       }
     });
   }
 
-  // Move via menu
+  getIMessageUrl(lead: PipelineLeadWithDetails): SafeUrl {
+    if (!lead.user.phone) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const firstName = lead.user.first_name || '';
+    const petName = lead.pets?.[0]?.name || 'your pup';
+    const allPetNames = lead.pets?.length > 1
+      ? lead.pets.map(p => p.name).join(' & ')
+      : petName;
+
+    const message = `Hi ${firstName}! This is Royal Pawz Mobile Dog Grooming 🐾 We saw you signed up and we'd love to get ${allPetNames} pampered! Want to book a grooming? Just reply here or visit royalpawzusa.com`;
+
+    return this.sanitizer.bypassSecurityTrustUrl(
+      `sms:${lead.user.phone}&body=${encodeURIComponent(message)}`
+    );
+  }
+
+  getCallUrl(lead: PipelineLeadWithDetails): SafeUrl {
+    if (!lead.user.phone) return this.sanitizer.bypassSecurityTrustUrl('');
+    return this.sanitizer.bypassSecurityTrustUrl(`tel:${lead.user.phone}`);
+  }
+
   onMoveToStage(event: { lead: PipelineLeadWithDetails; stage: PipelineStage }): void {
-    // Remove from current stage
     const currentLeads = this.leadsByStage[event.lead.pipeline_stage];
     const index = currentLeads.findIndex(l => l.id === event.lead.id);
     if (index > -1) {
       currentLeads.splice(index, 1);
     }
 
-    // Add to new stage
     event.lead.pipeline_stage = event.stage;
     this.leadsByStage[event.stage].unshift(event.lead);
 
-    // Persist
     this.pipelineService.moveToStage(event.lead.id, event.stage).subscribe({
       next: () => {
         this.pipelineService.getStats().subscribe(stats => this.stats = stats);
@@ -252,7 +393,8 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Selection for bulk actions
+  // ==================== SELECTION & BULK ====================
+
   toggleSelectionMode(): void {
     this.selectionMode = !this.selectionMode;
     if (!this.selectionMode) {
@@ -266,12 +408,6 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     } else {
       this.selectedLeads.add(leadId);
     }
-  }
-
-  selectAllInStage(stage: PipelineStage): void {
-    this.leadsByStage[stage].forEach(lead => {
-      this.selectedLeads.add(lead.id);
-    });
   }
 
   openBulkSms(): void {
@@ -290,35 +426,8 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     this.refreshData();
   }
 
-  // Opt-outs navigation
   goToOptOuts(): void {
     this.router.navigate(['/sales-pipeline/opt-outs']);
-  }
-
-  // Data migration (one-time)
-  runMigration(): void {
-    if (confirm('This will populate the pipeline from existing warm leads. Continue?')) {
-      this.pipelineService.migrateWarmLeads().subscribe({
-        next: (results) => {
-          const success = results.filter((r: any) => r.success).length;
-          alert(`Migration complete! ${success} leads added to pipeline.`);
-          this.loadData();
-        },
-        error: (err) => {
-          console.error('Migration error:', err);
-          alert('Migration failed. Check console for details.');
-        }
-      });
-    }
-  }
-
-  // Helper methods
-  getDropListId(stage: PipelineStage): string {
-    return `stage-${stage}`;
-  }
-
-  getConnectedLists(stage: PipelineStage): string[] {
-    return this.connectedDropLists[stage];
   }
 
   getSelectedLeadsArray(): PipelineLeadWithDetails[] {

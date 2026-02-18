@@ -9,7 +9,14 @@ import {
   PipelineStage,
   PIPELINE_STAGES,
   getStageConfig,
-  getCompletionCount
+  getCompletionCount,
+  ContactActivity,
+  ContactActivityType,
+  ContactOutcome,
+  SuggestedAction,
+  getActivityIcon,
+  getPriorityLevel,
+  getPriorityColor
 } from '../../models/pipeline.types';
 import { SalesPipelineService } from '../../services/sales-pipeline.service';
 import { SMSConversation, SMSMessage } from '../../../../core/services/sms.service';
@@ -50,6 +57,21 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
   // Stage change
   showStageMenu = false;
   stages = PIPELINE_STAGES;
+
+  // Activity timeline
+  activities: ContactActivity[] = [];
+  isLoadingActivities = false;
+
+  // Log Call form
+  showLogCallForm = false;
+  callOutcome: ContactOutcome = 'ANSWERED';
+  callNotes = '';
+  isSavingCall = false;
+
+  // Log Note form
+  showLogNoteForm = false;
+  noteText = '';
+  isSavingNote = false;
 
   private destroy$ = new Subject<void>();
 
@@ -100,10 +122,15 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
 
         this.lead = lead;
         this.notesInput = lead.notes || '';
+        // Seed activities from the lead object, then fetch fresh copy
+        this.activities = [...(lead.activities || [])].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ).slice(0, 20);
         this.isLoading = false;
 
-        // Load conversation
+        // Load conversation and fresh activities
         this.loadConversation();
+        this.loadActivities();
       },
       error: (err) => {
         console.error('Error loading lead:', err);
@@ -121,6 +148,24 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
         this.conversation = data.conversation;
         this.messages = data.messages;
         this.shouldScrollToBottom = true;
+      }
+    });
+  }
+
+  loadActivities(): void {
+    if (!this.lead) return;
+
+    this.isLoadingActivities = true;
+    this.pipelineService.getActivities(this.lead.id).subscribe({
+      next: (activities) => {
+        this.activities = [...activities]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 20);
+        this.isLoadingActivities = false;
+      },
+      error: (err) => {
+        console.error('Error loading activities:', err);
+        this.isLoadingActivities = false;
       }
     });
   }
@@ -172,6 +217,7 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
           this.lead.days_in_stage = 0;
         }
         this.showStageMenu = false;
+        this.loadActivities();
       },
       error: (err) => {
         console.error('Error changing stage:', err);
@@ -179,7 +225,7 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
     });
   }
 
-  // Notes
+  // Notes (lead-level sticky notes)
   startEditNotes(): void {
     this.isEditingNotes = true;
   }
@@ -221,6 +267,7 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
   onSmsSent(): void {
     this.closeSmsModal();
     this.loadConversation();
+    this.loadActivities();
   }
 
   sendReply(): void {
@@ -233,6 +280,7 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.pipelineService.sendReply(this.conversation.id, content).subscribe({
       next: () => {
         this.loadConversation();
+        this.loadActivities();
         this.isSendingReply = false;
       },
       error: (err) => {
@@ -250,13 +298,12 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
     }
   }
 
-  // Call
+  // Call (quick call - opens tel: link, then prompts to log outcome)
   makeCall(): void {
     if (!this.lead?.user.phone) return;
 
     window.location.href = `tel:${this.lead.user.phone}`;
 
-    // Update last_call_at
     this.pipelineService.updateLead(this.lead.id, {
       last_call_at: new Date().toISOString(),
       pipeline_stage: ['NEEDS_CALL', 'NO_RESPONSE'].includes(this.lead.pipeline_stage) ? 'CALLED' : this.lead.pipeline_stage
@@ -267,7 +314,135 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
     });
   }
 
-  // Helpers
+  // Log Call form
+  openLogCallForm(): void {
+    this.showLogCallForm = true;
+    this.showLogNoteForm = false;
+    this.callOutcome = 'ANSWERED';
+    this.callNotes = '';
+  }
+
+  cancelLogCall(): void {
+    this.showLogCallForm = false;
+    this.callNotes = '';
+  }
+
+  saveCall(): void {
+    if (!this.lead || this.isSavingCall) return;
+
+    this.isSavingCall = true;
+    this.pipelineService.logCall(this.lead.id, this.lead.user_id, this.callOutcome, this.callNotes.trim() || undefined).subscribe({
+      next: () => {
+        this.isSavingCall = false;
+        this.showLogCallForm = false;
+        this.callNotes = '';
+        this.loadActivities();
+      },
+      error: (err) => {
+        console.error('Error logging call:', err);
+        this.isSavingCall = false;
+      }
+    });
+  }
+
+  // Log Note form
+  openLogNoteForm(): void {
+    this.showLogNoteForm = true;
+    this.showLogCallForm = false;
+    this.noteText = '';
+  }
+
+  cancelLogNote(): void {
+    this.showLogNoteForm = false;
+    this.noteText = '';
+  }
+
+  saveNote(): void {
+    if (!this.lead || !this.noteText.trim() || this.isSavingNote) return;
+
+    this.isSavingNote = true;
+    this.pipelineService.logActivity(this.lead.id, this.lead.user_id, 'NOTE', null, this.noteText.trim()).subscribe({
+      next: () => {
+        this.isSavingNote = false;
+        this.showLogNoteForm = false;
+        this.noteText = '';
+        this.loadActivities();
+      },
+      error: (err) => {
+        console.error('Error logging note:', err);
+        this.isSavingNote = false;
+      }
+    });
+  }
+
+  // Activity helpers
+  getActivityIcon(type: ContactActivityType): string {
+    return getActivityIcon(type);
+  }
+
+  getActivityDescription(type: ContactActivityType): string {
+    switch (type) {
+      case 'SMS_SENT':      return 'SMS sent';
+      case 'SMS_RECEIVED':  return 'SMS received';
+      case 'CALLED':        return 'Call initiated';
+      case 'CALL_OUTCOME':  return 'Call logged';
+      case 'NOTE':          return 'Note added';
+      case 'STAGE_CHANGE':  return 'Stage changed';
+      case 'AUTO_ACTION':   return 'Automated action';
+    }
+  }
+
+  getOutcomeBadge(outcome: string | null): { label: string; cssClass: string } | null {
+    if (!outcome) return null;
+    const map: Record<string, { label: string; cssClass: string }> = {
+      ANSWERED:  { label: 'Answered',       cssClass: 'outcome-green'  },
+      NO_ANSWER: { label: 'No Answer',      cssClass: 'outcome-red'    },
+      LEFT_VM:   { label: 'Left Voicemail', cssClass: 'outcome-yellow' },
+      REPLIED:   { label: 'Replied',        cssClass: 'outcome-green'  },
+      BOOKED:    { label: 'Booked',         cssClass: 'outcome-green'  },
+      DECLINED:  { label: 'Declined',       cssClass: 'outcome-red'    },
+    };
+    return map[outcome] || null;
+  }
+
+  formatRelativeTime(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+
+    if (diffMin < 1)   return 'Just now';
+    if (diffMin < 60)  return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
+    if (diffHr < 24)   return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+    if (diffDay < 30)  return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+    const diffMo = Math.floor(diffDay / 30);
+    return `${diffMo} month${diffMo === 1 ? '' : 's'} ago`;
+  }
+
+  // Priority / suggested action helpers
+  get priorityLevel(): 'high' | 'medium' | 'low' {
+    return getPriorityLevel(this.lead?.priority_score ?? 0);
+  }
+
+  get priorityColor(): string {
+    return getPriorityColor(this.priorityLevel);
+  }
+
+  get priorityScorePercent(): number {
+    return Math.min(100, this.lead?.priority_score ?? 0);
+  }
+
+  getSuggestedActionBannerClass(priority: SuggestedAction['priority']): string {
+    switch (priority) {
+      case 'high':   return 'suggested-high';
+      case 'medium': return 'suggested-medium';
+      case 'low':    return 'suggested-low';
+    }
+  }
+
+  // General helpers
   get completionCount(): number {
     return this.lead ? getCompletionCount(this.lead.completion_status) : 0;
   }
@@ -330,13 +505,13 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
     if (!intent) return null;
 
     const badges: Record<string, { label: string; color: string }> = {
-      'CONFIRM': { label: 'Confirm', color: '#22c55e' },
-      'CANCEL': { label: 'Cancel', color: '#ef4444' },
+      'CONFIRM':    { label: 'Confirm',    color: '#22c55e' },
+      'CANCEL':     { label: 'Cancel',     color: '#ef4444' },
       'RESCHEDULE': { label: 'Reschedule', color: '#f59e0b' },
-      'STATUS': { label: 'Status', color: '#3b82f6' },
-      'QUESTION': { label: 'Question', color: '#8b5cf6' },
-      'COMPLAINT': { label: 'Complaint', color: '#dc2626' },
-      'STOP': { label: 'Opt-out', color: '#6b7280' }
+      'STATUS':     { label: 'Status',     color: '#3b82f6' },
+      'QUESTION':   { label: 'Question',   color: '#8b5cf6' },
+      'COMPLAINT':  { label: 'Complaint',  color: '#dc2626' },
+      'STOP':       { label: 'Opt-out',    color: '#6b7280' }
     };
 
     return badges[intent] || null;

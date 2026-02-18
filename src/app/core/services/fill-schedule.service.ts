@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 export interface Pet {
   id: string;
@@ -22,6 +24,8 @@ export interface ClientRecommendation {
   last_booking_date: string | null;
   completed_bookings: number;
   days_since_booking: number | null;
+  pipeline_stage?: string | null;
+  pipeline_lead_id?: string | null;
 }
 
 export interface LocationGroup {
@@ -42,60 +46,32 @@ export interface FillScheduleData {
 @Injectable({ providedIn: 'root' })
 export class FillScheduleService {
   private supabase = inject(SupabaseService);
+  private http = inject(HttpClient);
 
-  // Zip code proximity map for Houston area
-  private readonly ZIP_PROXIMITY: Record<string, string[]> = {
-    // Rice Village / West U / Medical Center
-    '77005': ['77005', '77025', '77030', '77054', '77004'],
-    '77025': ['77005', '77025', '77030', '77054', '77035'],
-    '77030': ['77005', '77025', '77030', '77054'],
-    // Heights / Montrose
-    '77006': ['77006', '77007', '77019', '77098'],
-    '77007': ['77006', '77007', '77008', '77019'],
-    '77008': ['77007', '77008', '77009', '77018'],
-    '77019': ['77006', '77007', '77019', '77098'],
-    '77098': ['77006', '77019', '77098', '77027'],
-    // Bellaire / Meyerland
-    '77401': ['77401', '77096', '77035', '77074'],
-    '77096': ['77401', '77096', '77035', '77074'],
-    '77074': ['77074', '77096', '77035', '77401'],
-    '77035': ['77035', '77096', '77074', '77025'],
-    // Sugar Land
-    '77478': ['77478', '77479', '77498'],
-    '77479': ['77478', '77479', '77498'],
-    '77498': ['77478', '77479', '77498'],
-    // South Houston
-    '77051': ['77051', '77021', '77004', '77033'],
-    '77021': ['77021', '77051', '77004', '77045'],
-    // Memorial / Energy Corridor
-    '77024': ['77024', '77055', '77079', '77077'],
-    '77055': ['77024', '77055', '77008', '77018'],
-    '77079': ['77024', '77079', '77077', '77094'],
-    '77077': ['77024', '77079', '77077', '77094'],
-    // Galleria / Uptown
-    '77027': ['77027', '77056', '77098', '77057'],
-    '77056': ['77027', '77056', '77057', '77024'],
-    '77057': ['77027', '77056', '77057', '77055'],
-    // Katy area
-    '77450': ['77450', '77494', '77493'],
-    '77494': ['77450', '77494', '77493', '77084'],
-    '77493': ['77450', '77494', '77493'],
-    // Spring / The Woodlands
-    '77379': ['77379', '77380', '77381', '77382'],
-    '77380': ['77379', '77380', '77381', '77382'],
-    '77381': ['77379', '77380', '77381', '77382'],
-    '77382': ['77379', '77380', '77381', '77382'],
-    // Pearland
-    '77581': ['77581', '77584', '77089'],
-    '77584': ['77581', '77584', '77089'],
-    // Clear Lake / Webster
-    '77058': ['77058', '77059', '77062'],
-    '77059': ['77058', '77059', '77062'],
-    '77062': ['77058', '77059', '77062'],
-  };
+  // Cache for zip proximity data from DB
+  private zipProximityCache: Map<string, string[]> | null = null;
 
-  getNearbyZips(zip: string): string[] {
-    return this.ZIP_PROXIMITY[zip] || [zip];
+  async getNearbyZips(zip: string): Promise<string[]> {
+    if (!this.zipProximityCache) {
+      await this.loadZipProximity();
+    }
+    return this.zipProximityCache?.get(zip) || [zip];
+  }
+
+  private async loadZipProximity(): Promise<void> {
+    const { data, error } = await this.supabase
+      .from('zip_proximity')
+      .select('zip_code, nearby_zips')
+      .eq('is_active', true);
+
+    this.zipProximityCache = new Map();
+    for (const row of data || []) {
+      this.zipProximityCache.set(row.zip_code, row.nearby_zips);
+    }
+  }
+
+  clearZipCache(): void {
+    this.zipProximityCache = null;
   }
 
   async getRecommendations(date: string, daysThreshold = 21): Promise<FillScheduleData> {
@@ -137,7 +113,7 @@ export class FillScheduleService {
     const processedClientIds = new Set<string>();
 
     for (const [zip, info] of Object.entries(locationGroups)) {
-      const nearbyZips = this.getNearbyZips(zip);
+      const nearbyZips = await this.getNearbyZips(zip);
       const recommendations = await this.getRecommendationsForZips(
         nearbyZips,
         daysThreshold,
@@ -145,7 +121,6 @@ export class FillScheduleService {
         date
       );
 
-      // Track processed clients to avoid duplicates across locations
       recommendations.forEach((r) => processedClientIds.add(r.id));
 
       locations.push({
@@ -156,7 +131,6 @@ export class FillScheduleService {
       });
     }
 
-    // Sort locations by number of bookings (descending)
     locations.sort((a, b) => b.bookings_today - a.bookings_today);
 
     const totalLeads = locations.reduce((sum, loc) => sum + loc.recommendations.length, 0);
@@ -176,7 +150,6 @@ export class FillScheduleService {
     excludeClientIds: Set<string>,
     targetDate: string
   ): Promise<ClientRecommendation[]> {
-    // Get addresses in target zips
     const { data: addresses, error: addressError } = await this.supabase
       .from('addresses')
       .select('user_id, street, city, zip_code')
@@ -186,7 +159,6 @@ export class FillScheduleService {
       return [];
     }
 
-    // Get unique client IDs, excluding already processed
     const clientIds = [
       ...new Set(
         addresses
@@ -195,22 +167,16 @@ export class FillScheduleService {
       ),
     ];
 
-    if (clientIds.length === 0) {
-      return [];
-    }
+    if (clientIds.length === 0) return [];
 
-    // Get client details
     const { data: clients, error: clientError } = await this.supabase
       .from('users')
       .select('id, first_name, last_name, email, phone')
       .eq('role', 'CLIENT')
       .in('id', clientIds);
 
-    if (clientError || !clients || clients.length === 0) {
-      return [];
-    }
+    if (clientError || !clients || clients.length === 0) return [];
 
-    // Filter out test/dev accounts
     const filteredClients = clients.filter((c) => {
       const email = c.email?.toLowerCase() || '';
       return (
@@ -221,68 +187,62 @@ export class FillScheduleService {
       );
     });
 
-    if (filteredClients.length === 0) {
-      return [];
-    }
+    if (filteredClients.length === 0) return [];
 
     const filteredClientIds = filteredClients.map((c) => c.id);
 
-    // Get pets for these clients
-    const { data: pets, error: petsError } = await this.supabase
-      .from('pets')
-      .select('id, user_id, name, breed')
-      .in('user_id', filteredClientIds);
+    // Fetch pets, booking stats, and pipeline status in parallel
+    const [petsResult, bookingStatsResult, pipelineResult] = await Promise.all([
+      this.supabase
+        .from('pets')
+        .select('id, user_id, name, breed')
+        .in('user_id', filteredClientIds),
+      this.supabase
+        .from('bookings')
+        .select('client_id, scheduled_date, status')
+        .in('client_id', filteredClientIds),
+      this.supabase
+        .from('sales_pipeline_leads')
+        .select('id, user_id, pipeline_stage')
+        .in('user_id', filteredClientIds)
+    ]);
+
+    const pets = petsResult.data || [];
+    const bookingStats = bookingStatsResult.data || [];
+    const pipelineLeads = pipelineResult.data || [];
 
     // Only include clients who have pets
-    const clientsWithPets = new Set(pets?.map((p) => p.user_id) || []);
+    const clientsWithPets = new Set(pets.map((p) => p.user_id));
     const clientsWithPetsFiltered = filteredClients.filter((c) =>
       clientsWithPets.has(c.id)
     );
 
-    if (clientsWithPetsFiltered.length === 0) {
-      return [];
-    }
+    if (clientsWithPetsFiltered.length === 0) return [];
 
     const clientIdsWithPets = clientsWithPetsFiltered.map((c) => c.id);
 
-    // Get booking stats for these clients
-    const { data: bookingStats, error: bookingStatsError } = await this.supabase
-      .from('bookings')
-      .select('client_id, scheduled_date, status')
-      .in('client_id', clientIdsWithPets);
+    // Build lookup maps
+    const pipelineMap = new Map(pipelineLeads.map(p => [p.user_id, p]));
 
-    // Calculate stats per client
-    const clientStats: Record<
-      string,
-      { lastBookingDate: string | null; completedCount: number }
-    > = {};
-
+    const clientStatsMap: Record<string, { lastBookingDate: string | null; completedCount: number }> = {};
     for (const clientId of clientIdsWithPets) {
-      const clientBookings =
-        bookingStats?.filter((b) => b.client_id === clientId) || [];
-      const completedBookings = clientBookings.filter(
-        (b) => b.status === 'completed'
-      );
+      const clientBookings = bookingStats.filter((b) => b.client_id === clientId);
+      const completedBookings = clientBookings.filter((b) => b.status === 'completed');
       const sortedBookings = clientBookings
         .filter((b) => b.scheduled_date)
-        .sort(
-          (a, b) =>
-            new Date(b.scheduled_date).getTime() -
-            new Date(a.scheduled_date).getTime()
-        );
+        .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
 
-      clientStats[clientId] = {
+      clientStatsMap[clientId] = {
         lastBookingDate: sortedBookings[0]?.scheduled_date || null,
         completedCount: completedBookings.length,
       };
     }
 
-    // Calculate days since last booking and filter by threshold
     const targetDateObj = new Date(targetDate);
     const recommendations: ClientRecommendation[] = [];
 
     for (const client of clientsWithPetsFiltered) {
-      const stats = clientStats[client.id];
+      const stats = clientStatsMap[client.id];
       let daysSinceBooking: number | null = null;
 
       if (stats.lastBookingDate) {
@@ -291,24 +251,18 @@ export class FillScheduleService {
           (targetDateObj.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        // Skip if booked too recently
-        if (daysSinceBooking < daysThreshold) {
-          continue;
-        }
+        if (daysSinceBooking < daysThreshold) continue;
       }
 
-      // Get client's address in the target zips
       const clientAddress = addresses.find(
         (a) => a.user_id === client.id && zips.includes(a.zip_code)
       );
 
-      // Get client's pets
-      const clientPets =
-        pets?.filter((p) => p.user_id === client.id).map((p) => ({
-          id: p.id,
-          name: p.name,
-          breed: p.breed,
-        })) || [];
+      const clientPets = pets
+        .filter((p) => p.user_id === client.id)
+        .map((p) => ({ id: p.id, name: p.name, breed: p.breed }));
+
+      const pipelineLead = pipelineMap.get(client.id);
 
       recommendations.push({
         id: client.id,
@@ -327,16 +281,15 @@ export class FillScheduleService {
         last_booking_date: stats.lastBookingDate,
         completed_bookings: stats.completedCount,
         days_since_booking: daysSinceBooking,
+        pipeline_stage: pipelineLead?.pipeline_stage || null,
+        pipeline_lead_id: pipelineLead?.id || null,
       });
     }
 
-    // Sort by completed bookings (warm leads first), then by days since booking
     recommendations.sort((a, b) => {
-      // First, sort by completed bookings (descending)
       if (b.completed_bookings !== a.completed_bookings) {
         return b.completed_bookings - a.completed_bookings;
       }
-      // Then by days since last booking (ascending - more recent first if they're warm leads)
       const daysA = a.days_since_booking ?? Infinity;
       const daysB = b.days_since_booking ?? Infinity;
       return daysA - daysB;
@@ -345,11 +298,90 @@ export class FillScheduleService {
     return recommendations;
   }
 
+  // ==================== PIPELINE INTEGRATION ====================
+
+  async addToPipeline(userId: string): Promise<{ success: boolean; leadId?: string; existing?: boolean }> {
+    // Check if already in pipeline
+    const { data: existing } = await this.supabase
+      .from('sales_pipeline_leads')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      // Update geo_boost flag
+      await this.supabase
+        .from('sales_pipeline_leads')
+        .update({ geo_boost: true, last_activity_at: new Date().toISOString() })
+        .eq('id', existing.id);
+
+      return { success: true, leadId: existing.id, existing: true };
+    }
+
+    // Create new lead with geo_boost
+    const { data, error } = await this.supabase
+      .from('sales_pipeline_leads')
+      .insert({
+        user_id: userId,
+        pipeline_stage: 'NEW',
+        priority: 5,
+        geo_boost: true,
+        stage_changed_at: new Date().toISOString(),
+        last_activity_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (error) return { success: false };
+    return { success: true, leadId: data.id, existing: false };
+  }
+
+  async sendFillScheduleSMS(userId: string, phone: string, message: string, leadId?: string): Promise<boolean> {
+    try {
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'X-API-Key': environment.smsService.apiKey
+      });
+
+      await this.http.post(`${environment.smsService.url}/send/sms`, {
+        to: phone,
+        body: message
+      }, { headers }).toPromise();
+
+      // Log activity if we have a pipeline lead
+      if (leadId) {
+        await this.supabase
+          .from('contact_activities')
+          .insert({
+            lead_id: leadId,
+            user_id: userId,
+            activity_type: 'SMS_SENT',
+            notes: message,
+            metadata: { source: 'fill_schedule' }
+          });
+
+        await this.supabase
+          .from('sales_pipeline_leads')
+          .update({
+            last_sms_sent_at: new Date().toISOString(),
+            last_activity_at: new Date().toISOString()
+          })
+          .eq('id', leadId);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error sending fill schedule SMS:', error);
+      return false;
+    }
+  }
+
+  // ==================== HELPERS ====================
+
   getLeadBadge(completedBookings: number): { label: string; class: string } {
     if (completedBookings >= 5) return { label: 'VIP', class: 'badge-vip' };
     if (completedBookings >= 2) return { label: 'Warm', class: 'badge-warm' };
-    if (completedBookings === 1)
-      return { label: 'Returning', class: 'badge-returning' };
+    if (completedBookings === 1) return { label: 'Returning', class: 'badge-returning' };
     return { label: 'New', class: 'badge-new' };
   }
 

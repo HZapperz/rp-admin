@@ -96,11 +96,7 @@
     </div>
 
     <!-- Map Container -->
-    <div class="map-canvas"
-         leaflet
-         [leafletOptions]="mapOptions"
-         (leafletMapReady)="onMapReady($event)">
-    </div>
+    <div class="map-canvas" #mapCanvas></div>
 
     <!-- Customer Detail Popup -->
     <div class="detail-card" *ngIf="selectedCustomer" [@slideIn]>

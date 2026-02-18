@@ -52,6 +52,14 @@
   gap: 1px;
 }
 
+// Row containing name, geo boost icon, and priority badge
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
 .lead-name {
   font-size: 13px;
   font-weight: 500;
@@ -59,6 +67,44 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  // Allow name to shrink so badge/icon always stay visible
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+// Geo boost icon (blue location pin)
+.geo-boost-icon {
+  font-size: 13px;
+  color: #3b82f6;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+// Priority score badge (colored pill)
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 22px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+// Suggested action hint below the name
+.suggested-action-hint {
+  font-size: 10px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
 }
 
 .lead-meta {

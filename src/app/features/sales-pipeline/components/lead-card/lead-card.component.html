@@ -8,7 +8,29 @@
 
     <!-- Name & Quick Info -->
     <div class="lead-info">
-      <span class="lead-name">{{ lead.user.first_name }} {{ lead.user.last_name }}</span>
+      <div class="name-row">
+        <span class="lead-name">{{ lead.user.first_name }} {{ lead.user.last_name }}</span>
+
+        <!-- Geo Boost indicator -->
+        @if (lead.geo_boost) {
+          <span class="material-icons geo-boost-icon" title="Geo boost active">location_on</span>
+        }
+
+        <!-- Priority Score Badge -->
+        <span
+          class="priority-badge"
+          [style.background-color]="priorityBadgeColor"
+          [title]="'Priority score: ' + lead.priority_score"
+        >{{ lead.priority_score }}</span>
+      </div>
+
+      <!-- Suggested action hint (compact view) -->
+      @if (suggestedActionText) {
+        <span class="suggested-action-hint" [title]="lead.computed_suggested_action?.reason || ''">
+          {{ suggestedActionText }}
+        </span>
+      }
+
       <span class="lead-meta">
         @if (lead.pets.length > 0) {
           {{ lead.pets.length }} {{ lead.pets.length === 1 ? 'pet' : 'pets' }}
@@ -89,6 +111,7 @@
           </button>
           @if (showMoveMenu) {
             <div class="move-menu" (mouseleave)="closeMoveMenu()">
+              <!-- Active stages -->
               @for (stage of stages; track stage.stage) {
                 <button
                   class="move-option"
@@ -99,15 +122,19 @@
                   {{ stage.label }}
                 </button>
               }
+
+              <!-- End / terminal stages: Converted, Lost, Dormant -->
               <hr class="menu-divider" />
-              <button class="move-option" (click)="onMoveToStage('CONVERTED', $event)">
-                <span class="stage-dot" style="background-color: #22c55e"></span>
-                Converted
-              </button>
-              <button class="move-option" (click)="onMoveToStage('LOST', $event)">
-                <span class="stage-dot" style="background-color: #6b7280"></span>
-                Lost
-              </button>
+              @for (stage of endStages; track stage.stage) {
+                <button
+                  class="move-option"
+                  [class.current]="stage.stage === lead.pipeline_stage"
+                  (click)="onMoveToStage(stage.stage, $event)"
+                >
+                  <span class="stage-dot" [style.background-color]="stage.color"></span>
+                  {{ stage.label }}
+                </button>
+              }
             </div>
           }
         </div>

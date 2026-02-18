@@ -42,8 +42,7 @@
             ],
             "scripts": [],
             "allowedCommonJsDependencies": [
-              "mapbox-gl",
-              "leaflet"
+              "mapbox-gl"
             ]
           },
           "configurations": {

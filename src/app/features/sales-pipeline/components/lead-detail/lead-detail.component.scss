@@ -53,6 +53,16 @@
   animation: spin 1s linear infinite;
 }
 
+.spinner-sm {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 12px auto;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -87,6 +97,137 @@
   gap: 16px;
   overflow-y: auto;
 }
+
+// ==================== SUGGESTED ACTION BANNER ====================
+
+.suggested-action-banner {
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &.suggested-high {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+
+    .suggested-icon { color: #2563eb; }
+    .suggested-action-label { color: #1d4ed8; }
+    .suggested-action-value { color: #1e3a8a; }
+    .suggested-reason { color: #3b82f6; }
+  }
+
+  &.suggested-medium {
+    background: #fefce8;
+    border: 1px solid #fde68a;
+
+    .suggested-icon { color: #d97706; }
+    .suggested-action-label { color: #b45309; }
+    .suggested-action-value { color: #92400e; }
+    .suggested-reason { color: #ca8a04; }
+  }
+
+  &.suggested-low {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+
+    .suggested-icon { color: #6b7280; }
+    .suggested-action-label { color: #6b7280; }
+    .suggested-action-value { color: #374151; }
+    .suggested-reason { color: #9ca3af; }
+  }
+}
+
+.suggested-action-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.suggested-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.suggested-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suggested-action-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.suggested-action-value {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.suggested-reason {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  padding-left: 32px;
+}
+
+.suggested-priority-chip {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-transform: capitalize;
+
+  &.chip-high   { background: #dbeafe; color: #1d4ed8; }
+  &.chip-medium { background: #fef3c7; color: #b45309; }
+  &.chip-low    { background: #f3f4f6; color: #6b7280; }
+}
+
+.priority-score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.priority-score-label {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.priority-score-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.priority-score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.priority-score-value {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 28px;
+  text-align: right;
+}
+
+// ==================== PROFILE CARD ====================
 
 .profile-card {
   background: white;
@@ -274,6 +415,8 @@
   }
 }
 
+// ==================== SECTION CARDS ====================
+
 .section-card {
   background: white;
   border-radius: 12px;
@@ -291,6 +434,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 12px;
 
   h3 {
     margin: 0;
@@ -308,6 +452,204 @@
     color: #374151;
   }
 }
+
+// ==================== ACTIVITY HEADER ACTIONS ====================
+
+.activity-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+
+  .material-icons {
+    font-size: 15px;
+  }
+
+  &:hover {
+    background: #e5e7eb;
+  }
+}
+
+// ==================== INLINE FORMS ====================
+
+.inline-form {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inline-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .optional {
+    font-weight: 400;
+    color: #9ca3af;
+  }
+
+  select {
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: white;
+    color: #111827;
+    cursor: pointer;
+    appearance: auto;
+
+    &:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+  }
+
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+  }
+}
+
+.inline-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+// ==================== TIMELINE ====================
+
+.no-activities {
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 16px 0 4px;
+  margin: 0;
+}
+
+.activities-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.timeline-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+
+  .material-icons {
+    font-size: 15px;
+    color: #6b7280;
+  }
+}
+
+.timeline-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.timeline-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timeline-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.outcome-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+
+  &.outcome-green  { background: #dcfce7; color: #16a34a; }
+  &.outcome-red    { background: #fee2e2; color: #dc2626; }
+  &.outcome-yellow { background: #fef3c7; color: #d97706; }
+}
+
+.timeline-notes {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.timeline-time {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+// ==================== COMPLETION ====================
 
 .completion-bar {
   height: 6px;
@@ -350,6 +692,8 @@
   }
 }
 
+// ==================== PETS ====================
+
 .pets-list {
   display: flex;
   flex-direction: column;
@@ -385,38 +729,7 @@
   color: #6b7280;
 }
 
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.timeline-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-
-  > .material-icons {
-    color: #9ca3af;
-    font-size: 18px;
-    margin-top: 2px;
-  }
-}
-
-.timeline-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.timeline-title {
-  font-size: 13px;
-  color: #374151;
-}
-
-.timeline-date {
-  font-size: 12px;
-  color: #9ca3af;
-}
+// ==================== NOTES ====================
 
 .notes-text {
   margin: 0;
@@ -434,6 +747,7 @@ textarea {
   font-size: 13px;
   font-family: inherit;
   resize: none;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -460,6 +774,10 @@ textarea {
   background: white;
   border: 1px solid #d1d5db;
   color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
 }
 
 .save-btn {
@@ -467,12 +785,18 @@ textarea {
   border: none;
   color: white;
 
+  &:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
   &:disabled {
     opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
-// Conversation Panel
+// ==================== CONVERSATION PANEL ====================
+
 .conversation-panel {
   background: white;
   border-radius: 12px;
@@ -691,7 +1015,8 @@ textarea {
   animation: spin 1s linear infinite;
 }
 
-// Responsive
+// ==================== RESPONSIVE ====================
+
 @media (max-width: 1024px) {
   .detail-content {
     grid-template-columns: 1fr;

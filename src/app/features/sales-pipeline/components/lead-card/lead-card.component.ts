@@ -5,6 +5,8 @@ import {
   PipelineStage,
   getStageConfig,
   getCompletionCount,
+  getPriorityLevel,
+  getPriorityColor,
   PIPELINE_STAGES
 } from '../../models/pipeline.types';
 import { SalesPipelineService } from '../../services/sales-pipeline.service';
@@ -26,7 +28,11 @@ export class LeadCardComponent {
   showMoveMenu = false;
   isExpanded = false;
 
-  stages = PIPELINE_STAGES.filter(s => !['CONVERTED', 'LOST'].includes(s.stage));
+  // Active stages shown in the main move menu section
+  stages = PIPELINE_STAGES.filter(s => !['CONVERTED', 'LOST', 'DORMANT'].includes(s.stage));
+
+  // End/terminal stages shown below the divider
+  endStages = PIPELINE_STAGES.filter(s => ['CONVERTED', 'LOST', 'DORMANT'].includes(s.stage));
 
   constructor(private pipelineService: SalesPipelineService) {}
 
@@ -61,6 +67,20 @@ export class LeadCardComponent {
 
   get stageColor(): string {
     return getStageConfig(this.lead.pipeline_stage).color;
+  }
+
+  // Priority badge helpers
+  get priorityLevel(): 'high' | 'medium' | 'low' {
+    return getPriorityLevel(this.lead.priority_score);
+  }
+
+  get priorityBadgeColor(): string {
+    return getPriorityColor(this.priorityLevel);
+  }
+
+  // Suggested action text shown in the compact row (null-safe)
+  get suggestedActionText(): string | null {
+    return this.lead.computed_suggested_action?.action ?? null;
   }
 
   toggleExpand(event: Event): void {
