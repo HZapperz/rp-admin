@@ -814,33 +814,17 @@
   }
 }
 
-// ==================== DESKTOP/MOBILE TOGGLE ====================
-
-.mobile-only {
-  display: none;
-}
-
-.desktop-only {
-  display: block;
-}
-
-// ==================== MOBILE CARD STYLES ====================
+// ==================== MOBILE CARD VIEW ====================
+// Hidden on desktop, shown on mobile via media query
 
 .mobile-leads {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
+  display: none; // Hidden on desktop
 }
 
 .lead-card {
   background: white;
   border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
 }
 
 .card-top {
@@ -862,7 +846,9 @@
   gap: 6px;
 
   .lead-name {
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
   }
 
   .geo-icon {
@@ -875,9 +861,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .card-divider {
@@ -911,14 +897,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   font-size: 12px;
+  font-weight: 500;
   color: #6b7280;
   background: #f9fafb;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid #e5e7eb;
 
   .material-icons {
-    font-size: 15px;
+    font-size: 16px;
   }
 
   &.priority-high {
@@ -934,7 +921,7 @@
 
 .card-actions {
   display: flex;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid #e5e7eb;
 }
 
 .card-action-btn {
@@ -943,19 +930,17 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px 8px;
+  padding: 14px 8px;
   border: none;
-  background: none;
+  background: white;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   text-decoration: none;
-  transition: background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
-  min-height: 44px;
 
   .material-icons {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   &:active {
@@ -969,45 +954,41 @@
 
   &.imessage {
     color: #16a34a;
-    border-right: 1px solid #f3f4f6;
-
-    &:active {
-      background: #f0fdf4;
-    }
+    border-right: 1px solid #e5e7eb;
+    border-radius: 0 0 0 10px;
   }
 
   &.call {
     color: #2563eb;
-    border-right: 1px solid #f3f4f6;
-
-    &:active {
-      background: #eff6ff;
-    }
+    border-right: 1px solid #e5e7eb;
   }
 
   &.details {
     color: #6b7280;
-
-    &:active {
-      background: #f3f4f6;
-    }
+    border-radius: 0 0 10px 0;
   }
 }
 
 // ==================== RESPONSIVE ====================
 
 @media (max-width: 768px) {
-  .mobile-only {
-    display: flex;
+  // Swap table for cards
+  .leads-table-container {
+    display: none !important;
   }
 
-  .desktop-only {
-    display: none !important;
+  .mobile-leads {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 20px;
   }
 
   .pipeline-container {
     padding: 10px;
-    gap: 0;
   }
 
   // Compact header
@@ -1141,18 +1122,10 @@
     font-size: 11px;
   }
 
-  // Card view adjustments
-  .lead-card {
-    border-radius: 8px;
-  }
-
-  .card-top {
-    padding: 10px;
-  }
-
+  // Mobile card adjustments
   .avatar-sm {
-    width: 36px;
-    height: 36px;
-    font-size: 12px;
+    width: 38px;
+    height: 38px;
+    font-size: 13px;
   }
 }
