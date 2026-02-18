@@ -1,0 +1,248 @@
+<div class="email-campaign-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>Email Campaign</h1>
+        <p class="subtitle">Send service update emails to all clients</p>
+      </div>
+      @if (phase === 'complete') {
+        <button class="btn-secondary" (click)="resetCampaign()">New Campaign</button>
+      }
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (phase === 'loading') {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading recipients...</p>
+    </div>
+  }
+
+  <!-- Error Banner -->
+  @if (error) {
+    <div class="error-banner">
+      <span class="material-icons">error_outline</span>
+      <span>{{ error }}</span>
+      <button (click)="loadPreview()">Retry</button>
+    </div>
+  }
+
+  <!-- Phase 1: Preview -->
+  @if (phase === 'preview' && !error) {
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-value">{{ totalClients }}</div>
+        <div class="stat-label">Total Clients</div>
+      </div>
+      <div class="stat-card excluded">
+        <div class="stat-value">{{ excludedCount }}</div>
+        <div class="stat-label">Excluded (Test)</div>
+      </div>
+      <div class="stat-card eligible">
+        <div class="stat-value">{{ eligibleCount }}</div>
+        <div class="stat-label">Eligible</div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-primary" (click)="startSending()" [disabled]="eligibleCount === 0">
+        <span class="material-icons">send</span>
+        Send to {{ eligibleCount }} Recipients
+      </button>
+    </div>
+
+    <div class="table-container">
+      <table class="recipients-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Pet</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (recipient of recipients; track recipient.id; let i = $index) {
+            <tr>
+              <td class="row-num">{{ i + 1 }}</td>
+              <td class="name-cell">{{ recipient.name }}</td>
+              <td class="email-cell">{{ recipient.email }}</td>
+              <td class="pet-cell">{{ recipient.petName }}</td>
+              <td>
+                <span class="status-badge pending">Pending</span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Phase 2: Sending -->
+  @if (phase === 'sending') {
+    <div class="progress-section">
+      <div class="progress-bar-container">
+        <div class="progress-bar" [style.width.%]="progressPercent"></div>
+      </div>
+      <div class="progress-stats">
+        <span class="stat sent-stat">{{ sentCount }} sent</span>
+        <span class="stat error-stat">{{ errorCount }} errors</span>
+        <span class="stat remaining-stat">{{ remainingCount }} remaining</span>
+        <span class="stat percent-stat">{{ progressPercent }}%</span>
+        <span class="stat timer-stat">{{ elapsedFormatted }}</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      @if (isPaused) {
+        <button class="btn-control resume" (click)="resume()">
+          <span class="material-icons">play_arrow</span>
+          Resume
+        </button>
+      } @else {
+        <button class="btn-control pause" (click)="pause()">
+          <span class="material-icons">pause</span>
+          Pause
+        </button>
+      }
+      <button class="btn-control stop" (click)="stop()">
+        <span class="material-icons">stop</span>
+        Stop
+      </button>
+      @if (isPaused) {
+        <span class="paused-label">Paused</span>
+      }
+    </div>
+
+    <div class="table-container">
+      <table class="recipients-table sending">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Pet</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (recipient of recipients; track recipient.id; let i = $index) {
+            <tr [class.current-row]="i === currentIndex && recipient.status === 'sending'">
+              <td class="row-num">{{ i + 1 }}</td>
+              <td class="name-cell">{{ recipient.name }}</td>
+              <td class="email-cell">{{ recipient.email }}</td>
+              <td class="pet-cell">{{ recipient.petName }}</td>
+              <td>
+                @switch (recipient.status) {
+                  @case ('pending') {
+                    <span class="status-badge pending">Pending</span>
+                  }
+                  @case ('sending') {
+                    <span class="status-badge sending">
+                      <span class="sending-dot"></span>
+                      Sending...
+                    </span>
+                  }
+                  @case ('sent') {
+                    <span class="status-badge sent">Sent</span>
+                  }
+                  @case ('error') {
+                    <span class="status-badge error" [title]="recipient.reason || ''">Error</span>
+                  }
+                  @case ('skipped') {
+                    <span class="status-badge skipped">Skipped</span>
+                  }
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Phase 3: Complete -->
+  @if (phase === 'complete') {
+    <div class="summary-cards">
+      <div class="summary-card sent">
+        <span class="material-icons">check_circle</span>
+        <div class="summary-value">{{ sentCount }}</div>
+        <div class="summary-label">Sent</div>
+      </div>
+      <div class="summary-card errors">
+        <span class="material-icons">error</span>
+        <div class="summary-value">{{ errorCount }}</div>
+        <div class="summary-label">Errors</div>
+      </div>
+      <div class="summary-card skipped">
+        <span class="material-icons">skip_next</span>
+        <div class="summary-value">{{ skippedCount }}</div>
+        <div class="summary-label">Skipped</div>
+      </div>
+      <div class="summary-card time">
+        <span class="material-icons">timer</span>
+        <div class="summary-value">{{ elapsedFormatted }}</div>
+        <div class="summary-label">Duration</div>
+      </div>
+    </div>
+
+    @if (failedRecipients.length > 0) {
+      <div class="retry-section">
+        <button class="btn-primary" (click)="retryFailed()">
+          <span class="material-icons">refresh</span>
+          Retry {{ failedRecipients.length }} Failed
+        </button>
+      </div>
+    }
+
+    <div class="table-container">
+      <table class="recipients-table results">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Pet</th>
+            <th>Status</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (recipient of recipients; track recipient.id; let i = $index) {
+            <tr [class.error-row]="recipient.status === 'error'">
+              <td class="row-num">{{ i + 1 }}</td>
+              <td class="name-cell">{{ recipient.name }}</td>
+              <td class="email-cell">{{ recipient.email }}</td>
+              <td class="pet-cell">{{ recipient.petName }}</td>
+              <td>
+                @switch (recipient.status) {
+                  @case ('sent') {
+                    <span class="status-badge sent">Sent</span>
+                  }
+                  @case ('error') {
+                    <span class="status-badge error">Error</span>
+                  }
+                  @case ('skipped') {
+                    <span class="status-badge skipped">Skipped</span>
+                  }
+                  @default {
+                    <span class="status-badge pending">-</span>
+                  }
+                }
+              </td>
+              <td class="details-cell">
+                @if (recipient.reason) {
+                  <span class="detail-text error-text">{{ recipient.reason }}</span>
+                } @else if (recipient.emailId) {
+                  <span class="detail-text">{{ recipient.emailId }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

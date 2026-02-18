@@ -94,6 +94,11 @@ export const routes: Routes = [
           import('./features/sessions/sessions.routes').then(m => m.routes)
       },
       {
+        path: 'email-campaign',
+        loadChildren: () =>
+          import('./features/email-campaign/email-campaign.routes').then(m => m.routes)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

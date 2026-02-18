@@ -49,6 +49,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Promotions', route: '/promotions', icon: 'card_giftcard' },
     { label: 'Complaints', route: '/complaints', icon: 'feedback' },
     { label: 'Service Areas', route: '/service-areas', icon: 'location_on' },
+    { label: 'Email Campaign', route: '/email-campaign', icon: 'campaign' },
     { label: 'Settings', route: '/profile', icon: 'settings' },
   ];
 
