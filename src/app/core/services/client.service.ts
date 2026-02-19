@@ -63,6 +63,97 @@ export interface ClientWithStats {
 
 export type ClientFilterType = 'all' | 'clients' | 'warm_leads';
 
+// Client Relations UI Types
+export type ClientSegment = 'all' | 'vip' | 'at_risk' | 'upcoming' | 'new';
+
+export interface ClientSegmentConfig {
+  segment: ClientSegment;
+  label: string;
+  color: string;
+  bgColor: string;
+  description: string;
+  icon: string;
+}
+
+export interface ClientSuggestedAction {
+  action: string;
+  reason: string;
+  icon: string;
+  priority: 'high' | 'medium' | 'low';
+  type: 'rebooking' | 'thank_you' | 'follow_up' | 'win_back';
+}
+
+export interface ClientWithEngagement extends ClientWithStats {
+  engagement_score: number;
+  segment: ClientSegment;
+  days_since_last_booking: number;
+  days_since_outreach: number | null;
+  suggested_action: ClientSuggestedAction | null;
+}
+
+export interface ClientNudge {
+  message: string;
+  count: number;
+  segment: ClientSegment | null;
+  icon: string;
+  severity: 'warning' | 'error' | 'info';
+}
+
+export interface ClientRelationsStats {
+  total: number;
+  vip_count: number;
+  at_risk_count: number;
+  upcoming_count: number;
+  new_count: number;
+  total_revenue: number;
+  avg_ltv: number;
+  nudges: ClientNudge[];
+}
+
+// Segment configurations
+export const CLIENT_SEGMENT_CONFIGS: Record<ClientSegment, ClientSegmentConfig> = {
+  all: {
+    segment: 'all',
+    label: 'All Clients',
+    color: '#6b7280',
+    bgColor: '#f3f4f6',
+    description: 'View all clients in the system',
+    icon: 'people'
+  },
+  vip: {
+    segment: 'vip',
+    label: 'VIP',
+    color: '#7c3aed',
+    bgColor: '#ede9fe',
+    description: 'High-value clients with $500+ spent or more than 2 grooms',
+    icon: 'star'
+  },
+  at_risk: {
+    segment: 'at_risk',
+    label: 'At Risk',
+    color: '#dc2626',
+    bgColor: '#fee2e2',
+    description: 'Clients who haven\'t booked in 30+ days and may churn',
+    icon: 'warning'
+  },
+  upcoming: {
+    segment: 'upcoming',
+    label: 'Upcoming',
+    color: '#16a34a',
+    bgColor: '#dcfce7',
+    description: 'Clients with scheduled bookings coming up',
+    icon: 'event'
+  },
+  new: {
+    segment: 'new',
+    label: 'New',
+    color: '#2563eb',
+    bgColor: '#dbeafe',
+    description: 'New clients whose first booking was within 30 days',
+    icon: 'person_add'
+  }
+};
+
 export interface Pet {
   id: string;
   user_id: string;
@@ -1023,5 +1114,422 @@ export class ClientService {
       console.error('Error deleting payment method:', error);
       throw error;
     }
+  }
+
+  // ============================================
+  // CLIENT RELATIONS UI METHODS
+  // ============================================
+
+  /**
+   * Get clients with engagement scoring and segment assignment
+   */
+  getClientsWithEngagement(search?: string, segment?: ClientSegment): Observable<ClientWithEngagement[]> {
+    return from(this.fetchClientsWithEngagement(search, segment));
+  }
+
+  private async fetchClientsWithEngagement(search?: string, segment?: ClientSegment): Promise<ClientWithEngagement[]> {
+    // Get all clients with stats first
+    const clientsWithStats = await this.fetchClients(search);
+
+    // Filter to only actual clients (not warm leads)
+    const actualClients = clientsWithStats.filter(c => !c.is_warm_lead);
+
+    // Enrich with engagement data
+    const clientsWithEngagement: ClientWithEngagement[] = actualClients.map(client => {
+      const engagement = this.calculateClientEngagement(client);
+      const clientSegment = this.determineClientSegment(client, engagement.days_since_last_booking);
+      const suggestedAction = this.computeClientSuggestedAction(client, clientSegment, engagement.days_since_last_booking);
+
+      return {
+        ...client,
+        engagement_score: engagement.score,
+        segment: clientSegment,
+        days_since_last_booking: engagement.days_since_last_booking,
+        days_since_outreach: engagement.days_since_outreach,
+        suggested_action: suggestedAction
+      };
+    });
+
+    // Filter by segment if specified
+    let filtered = clientsWithEngagement;
+    if (segment && segment !== 'all') {
+      filtered = clientsWithEngagement.filter(c => c.segment === segment);
+    }
+
+    // Sort by engagement score descending
+    filtered.sort((a, b) => b.engagement_score - a.engagement_score);
+
+    return filtered;
+  }
+
+  /**
+   * Calculate engagement score for a client (0-100)
+   */
+  calculateClientEngagement(client: ClientWithStats): {
+    score: number;
+    days_since_last_booking: number;
+    days_since_outreach: number | null;
+  } {
+    let score = 0;
+
+    // Calculate days since last booking
+    const daysSinceLastBooking = client.last_booking_date
+      ? Math.floor((Date.now() - new Date(client.last_booking_date).getTime()) / (1000 * 60 * 60 * 24))
+      : 999; // No bookings = very high days
+
+    // Calculate days since last outreach
+    let daysSinceOutreach: number | null = null;
+    if (client.last_outreach_date) {
+      daysSinceOutreach = Math.floor((Date.now() - new Date(client.last_outreach_date).getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Recency (30 pts): Days since last booking
+    if (daysSinceLastBooking <= 14) score += 30;
+    else if (daysSinceLastBooking <= 30) score += 20;
+    else if (daysSinceLastBooking <= 60) score += 10;
+    else if (daysSinceLastBooking <= 90) score += 5;
+
+    // Value (25 pts): Total spent
+    if (client.total_spent >= 1000) score += 25;
+    else if (client.total_spent >= 500) score += 20;
+    else if (client.total_spent >= 250) score += 15;
+    else if (client.total_spent >= 100) score += 10;
+
+    // Frequency (20 pts): Total bookings
+    if (client.total_bookings >= 10) score += 20;
+    else if (client.total_bookings >= 5) score += 15;
+    else if (client.total_bookings >= 3) score += 10;
+    else if (client.total_bookings >= 2) score += 5;
+
+    // Upcoming (15 pts): Has scheduled booking
+    if (client.next_booking_date) {
+      const upcomingDate = new Date(client.next_booking_date);
+      if (upcomingDate > new Date()) {
+        score += 15;
+      }
+    }
+
+    // Outreach (10 pts): Recent contact within 7 days
+    if (daysSinceOutreach !== null && daysSinceOutreach <= 7) {
+      score += 10;
+    }
+
+    return {
+      score: Math.min(score, 100),
+      days_since_last_booking: daysSinceLastBooking,
+      days_since_outreach: daysSinceOutreach
+    };
+  }
+
+  /**
+   * Determine client segment based on criteria
+   */
+  private determineClientSegment(client: ClientWithStats, daysSinceLastBooking: number): ClientSegment {
+    // Check VIP first (highest priority): $500+ spent OR more than 2 grooms
+    if (client.total_spent >= 500 || client.total_bookings > 2) {
+      return 'vip';
+    }
+
+    // Check upcoming
+    if (client.next_booking_date) {
+      const upcomingDate = new Date(client.next_booking_date);
+      if (upcomingDate > new Date()) {
+        return 'upcoming';
+      }
+    }
+
+    // Check at risk (no booking in 30+ days)
+    if (daysSinceLastBooking >= 30) {
+      return 'at_risk';
+    }
+
+    // Check new client (first booking within 30 days)
+    if (client.total_bookings === 1 && daysSinceLastBooking <= 30) {
+      return 'new';
+    }
+
+    // Default: active client but not in any special segment
+    return 'all';
+  }
+
+  /**
+   * Compute suggested action for a client
+   */
+  private computeClientSuggestedAction(
+    client: ClientWithStats,
+    segment: ClientSegment,
+    daysSinceLastBooking: number
+  ): ClientSuggestedAction | null {
+    const isVIP = client.total_spent >= 500 || client.total_bookings > 2;
+    const hasUpcoming = client.next_booking_date && new Date(client.next_booking_date) > new Date();
+
+    // VIP + At Risk = highest priority
+    if (isVIP && segment === 'at_risk') {
+      return {
+        action: 'Send VIP win-back message',
+        reason: `${daysSinceLastBooking} days since last booking, $${client.total_spent.toFixed(0)} lifetime value`,
+        icon: 'star',
+        priority: 'high',
+        type: 'win_back'
+      };
+    }
+
+    // At Risk (any)
+    if (segment === 'at_risk') {
+      return {
+        action: 'Send rebooking reminder',
+        reason: `${daysSinceLastBooking} days since last booking`,
+        icon: 'event_available',
+        priority: 'high',
+        type: 'rebooking'
+      };
+    }
+
+    // Upcoming
+    if (hasUpcoming) {
+      return {
+        action: 'Send booking confirmation',
+        reason: 'Has upcoming appointment',
+        icon: 'check_circle',
+        priority: 'medium',
+        type: 'follow_up'
+      };
+    }
+
+    // New Client
+    if (segment === 'new') {
+      return {
+        action: 'Send welcome follow-up',
+        reason: 'New client, first booking recently completed',
+        icon: 'waving_hand',
+        priority: 'medium',
+        type: 'thank_you'
+      };
+    }
+
+    // VIP + no recent outreach
+    if (isVIP && client.last_outreach_date) {
+      const daysSinceOutreach = Math.floor(
+        (Date.now() - new Date(client.last_outreach_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysSinceOutreach > 14) {
+        return {
+          action: 'VIP check-in call',
+          reason: `${daysSinceOutreach} days since last outreach`,
+          icon: 'phone',
+          priority: 'low',
+          type: 'follow_up'
+        };
+      }
+    }
+
+    // VIP without any outreach
+    if (isVIP && !client.last_outreach_date) {
+      return {
+        action: 'VIP check-in call',
+        reason: 'VIP client, no recent outreach recorded',
+        icon: 'phone',
+        priority: 'low',
+        type: 'follow_up'
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get client relations stats for the stats bar
+   */
+  async getClientRelationsStats(): Promise<ClientRelationsStats> {
+    const clients = await this.fetchClients();
+
+    // Filter to actual clients only
+    const actualClients = clients.filter(c => !c.is_warm_lead);
+
+    // Calculate stats
+    let vipCount = 0;
+    let atRiskCount = 0;
+    let upcomingCount = 0;
+    let newCount = 0;
+    let totalRevenue = 0;
+
+    for (const client of actualClients) {
+      totalRevenue += client.total_spent;
+
+      const daysSinceLastBooking = client.last_booking_date
+        ? Math.floor((Date.now() - new Date(client.last_booking_date).getTime()) / (1000 * 60 * 60 * 24))
+        : 999;
+
+      // VIP: $500+ spent OR more than 2 grooms
+      if (client.total_spent >= 500 || client.total_bookings > 2) {
+        vipCount++;
+      }
+
+      // At Risk
+      if (daysSinceLastBooking >= 30) {
+        atRiskCount++;
+      }
+
+      // Upcoming
+      if (client.next_booking_date && new Date(client.next_booking_date) > new Date()) {
+        upcomingCount++;
+      }
+
+      // New
+      if (client.total_bookings === 1 && daysSinceLastBooking <= 30) {
+        newCount++;
+      }
+    }
+
+    // Generate nudges
+    const nudges = this.generateClientNudges(actualClients);
+
+    return {
+      total: actualClients.length,
+      vip_count: vipCount,
+      at_risk_count: atRiskCount,
+      upcoming_count: upcomingCount,
+      new_count: newCount,
+      total_revenue: totalRevenue,
+      avg_ltv: actualClients.length > 0 ? totalRevenue / actualClients.length : 0,
+      nudges
+    };
+  }
+
+  /**
+   * Generate nudges/alerts for the client relations UI
+   */
+  private generateClientNudges(clients: ClientWithStats[]): ClientNudge[] {
+    const nudges: ClientNudge[] = [];
+
+    // At-risk clients without recent outreach
+    const atRiskNoOutreach = clients.filter(c => {
+      const daysSinceLastBooking = c.last_booking_date
+        ? Math.floor((Date.now() - new Date(c.last_booking_date).getTime()) / (1000 * 60 * 60 * 24))
+        : 999;
+
+      if (daysSinceLastBooking < 30) return false;
+
+      if (!c.last_outreach_date) return true;
+
+      const daysSinceOutreach = Math.floor(
+        (Date.now() - new Date(c.last_outreach_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return daysSinceOutreach >= 14;
+    });
+
+    if (atRiskNoOutreach.length > 0) {
+      nudges.push({
+        message: `${atRiskNoOutreach.length} at-risk client${atRiskNoOutreach.length > 1 ? 's' : ''} haven't been contacted in 14+ days`,
+        count: atRiskNoOutreach.length,
+        segment: 'at_risk',
+        icon: 'warning',
+        severity: 'warning'
+      });
+    }
+
+    // VIPs without upcoming bookings
+    const vipNoUpcoming = clients.filter(c => {
+      const isVIP = c.total_spent >= 500;
+      const hasUpcoming = c.next_booking_date && new Date(c.next_booking_date) > new Date();
+      return isVIP && !hasUpcoming;
+    });
+
+    if (vipNoUpcoming.length > 0) {
+      nudges.push({
+        message: `${vipNoUpcoming.length} VIP${vipNoUpcoming.length > 1 ? 's' : ''} without upcoming bookings`,
+        count: vipNoUpcoming.length,
+        segment: 'vip',
+        icon: 'star_outline',
+        severity: 'info'
+      });
+    }
+
+    // New clients to welcome
+    const newClientsToWelcome = clients.filter(c => {
+      const daysSinceLastBooking = c.last_booking_date
+        ? Math.floor((Date.now() - new Date(c.last_booking_date).getTime()) / (1000 * 60 * 60 * 24))
+        : 999;
+      return c.total_bookings === 1 && daysSinceLastBooking <= 30 && !c.last_outreach_date;
+    });
+
+    if (newClientsToWelcome.length > 0) {
+      nudges.push({
+        message: `${newClientsToWelcome.length} new client${newClientsToWelcome.length > 1 ? 's' : ''} to welcome`,
+        count: newClientsToWelcome.length,
+        segment: 'new',
+        icon: 'person_add',
+        severity: 'info'
+      });
+    }
+
+    return nudges;
+  }
+
+  /**
+   * Log client activity (for tracking outreach)
+   */
+  async logClientActivity(
+    clientId: string,
+    activityType: 'call' | 'sms' | 'email' | 'note',
+    notes?: string
+  ): Promise<boolean> {
+    try {
+      // Update last_outreach_date on the user record
+      const { error } = await this.supabase
+        .from('users')
+        .update({
+          last_outreach_date: new Date().toISOString()
+        })
+        .eq('id', clientId);
+
+      if (error) {
+        console.error('Error logging client activity:', error);
+        return false;
+      }
+
+      // Optionally log to contact_activities table for audit trail
+      // This reuses the existing table from the sales pipeline
+      await this.supabase
+        .from('contact_activities')
+        .insert({
+          user_id: clientId,
+          lead_id: null, // Not a pipeline lead
+          activity_type: activityType.toUpperCase(),
+          outcome: 'COMPLETED',
+          notes: notes || `Admin ${activityType}`
+        });
+
+      return true;
+    } catch (error) {
+      console.error('Error logging client activity:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get iMessage URL with pre-filled text for a client
+   */
+  getIMessageUrl(client: ClientWithStats, template?: string): string {
+    if (!client.phone) return '#';
+
+    // Clean phone number
+    const cleanPhone = client.phone.replace(/\D/g, '');
+    // Format for iMessage
+    const formattedPhone = cleanPhone.length === 10 ? `+1${cleanPhone}` : `+${cleanPhone}`;
+
+    // Only include body if a template is explicitly provided
+    if (template) {
+      return `imessage://${formattedPhone}?body=${encodeURIComponent(template)}`;
+    }
+    return `imessage://${formattedPhone}`;
+  }
+
+  /**
+   * Get call URL for a client
+   */
+  getCallUrl(client: ClientWithStats): string {
+    if (!client.phone) return '#';
+    return `tel:${client.phone}`;
   }
 }

@@ -1,9 +1,10 @@
 <div class="clients-page">
+  <!-- Header -->
   <div class="page-header">
     <div class="header-content">
       <div>
-        <h1>Clients Management</h1>
-        <p class="subtitle">Manage and view all client information</p>
+        <h1>Client Relations</h1>
+        <p class="subtitle">Manage engagement, track outreach, and nurture client relationships</p>
       </div>
       <button class="btn btn-primary" (click)="openCreateClientModal()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -16,7 +17,7 @@
     </div>
   </div>
 
-  <!-- Search Section with View Toggle -->
+  <!-- Search & Bulk Actions Row -->
   <div class="search-section">
     <div class="search-row">
       <div class="search-box">
@@ -30,42 +31,92 @@
           (input)="onSearch($event)"
           [value]="searchTerm"
         />
+        @if (searchTerm) {
+          <button class="clear-search" (click)="clearSearch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        }
       </div>
 
-      <!-- View Toggle (Desktop only) -->
-      <div class="view-toggle desktop-only">
-        <button
-          class="view-toggle-btn"
-          [class.active]="viewMode === 'table'"
-          (click)="setViewMode('table')"
-          title="Table View"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
+      <!-- Bulk actions -->
+      @if (selectionMode) {
+        <div class="bulk-actions">
+          <span class="selection-count">{{ selectedClients.size }} selected</span>
+          <button class="action-btn bulk-sms-btn" [disabled]="selectedClients.size === 0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+            Send SMS
+          </button>
+          <button class="action-btn cancel-btn" (click)="toggleSelectionMode()">
+            Cancel
+          </button>
+        </div>
+      } @else {
+        <button class="action-btn select-btn" (click)="toggleSelectionMode()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Table
+          Select
         </button>
-        <button
-          class="view-toggle-btn"
-          [class.active]="viewMode === 'cards'"
-          (click)="setViewMode('cards')"
-          title="Card View"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="7" rx="2"></rect>
-            <rect x="3" y="14" width="18" height="7" rx="2"></rect>
-          </svg>
-          Cards
-        </button>
-      </div>
+      }
     </div>
+  </div>
 
-    <div class="results-count" *ngIf="!isLoading">
-      {{ clients.length }} {{ clients.length === 1 ? 'client' : 'clients' }} found
+  <!-- Nudges Banner -->
+  @if (visibleNudges.length > 0) {
+    <div class="nudges-banner">
+      @for (nudge of visibleNudges; track nudge.message) {
+        <div class="nudge-card" [class]="'nudge-' + nudge.severity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            @if (nudge.icon === 'warning') {
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"/>
+            } @else if (nudge.icon === 'star_outline') {
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            } @else {
+              <circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 16v-4M12 8h.01" stroke-linecap="round" stroke-linejoin="round"/>
+            }
+          </svg>
+          <span class="nudge-message">{{ nudge.message }}</span>
+          <button class="nudge-dismiss" (click)="dismissNudge(nudge)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      }
     </div>
+  }
+
+  <!-- Segment Tabs -->
+  <div class="segment-tabs">
+    @for (segment of segmentList; track segment) {
+      <button
+        class="segment-tab"
+        [class.active]="selectedSegment === segment"
+        [style.--tab-color]="segmentConfigs[segment].color"
+        [style.--tab-bg]="segmentConfigs[segment].bgColor"
+        (click)="selectSegment(segment)"
+      >
+        <span class="tab-dot" [style.background-color]="segmentConfigs[segment].color"></span>
+        <span class="tab-label">{{ segmentConfigs[segment].label }}</span>
+        <span class="tab-count">{{ getSegmentCount(segment) }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Segment Description Bar -->
+  <div class="segment-description-bar" [style.border-left-color]="currentSegmentConfig.color">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [style.color]="currentSegmentConfig.color">
+      <circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 16v-4M12 8h.01" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="segment-desc-text">{{ currentSegmentConfig.description }}</span>
+    <span class="segment-client-count">{{ filteredClients.length }} client{{ filteredClients.length !== 1 ? 's' : '' }}</span>
   </div>
 
   <!-- Loading State -->
@@ -76,256 +127,25 @@
     </div>
   }
 
-  <!-- Table View -->
-  @if (!isLoading && viewMode === 'table') {
-    <div class="clients-table-container">
-      <table class="clients-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Pets</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Total Bookings</th>
-            <th>Total Spent</th>
-            <th>Last Booking</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (clients.length === 0) {
-            <tr>
-              <td colspan="8" class="no-clients">No clients found</td>
-            </tr>
-          }
-          @for (client of clients; track client.id) {
-            <tr (click)="viewClientDetail(client.id)" class="client-row">
-              <td>
-                <div class="client-name-cell">
-                  <div class="client-avatar">
-                    @if (client.avatar_url) {
-                      <img
-                        [src]="client.avatar_url"
-                        [alt]="client.first_name + ' ' + client.last_name"
-                        (error)="onAvatarError(client.id)"
-                      />
-                    }
-                    @if (!client.avatar_url || hasAvatarFailed(client.id)) {
-                      <span class="avatar-initials">
-                        {{ getInitials(client.first_name, client.last_name) }}
-                      </span>
-                    }
-                  </div>
-                  <div class="client-name">
-                    {{ client.first_name }} {{ client.last_name }}
-                  </div>
-                </div>
-              </td>
-              <td>
-                <span class="pets-list">
-                  @if (client.pets && client.pets.length > 0) {
-                    {{ getPetNames(client.pets) }}
-                  } @else {
-                    <span class="no-pets">No pets</span>
-                  }
-                </span>
-              </td>
-              <td>{{ client.email }}</td>
-              <td>{{ client.phone || 'N/A' }}</td>
-              <td>
-                <span class="stat-value">{{ client.total_bookings }}</span>
-              </td>
-              <td>
-                <span class="amount-value">${{ client.total_spent.toFixed(2) }}</span>
-              </td>
-              <td>
-                <span class="date-value">
-                  {{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}
-                </span>
-              </td>
-              <td class="actions-cell">
-                <div class="quick-actions">
-                  <button
-                    class="action-btn call-btn"
-                    (click)="callClient(client, $event)"
-                    [disabled]="!client.phone"
-                    title="Call"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
-                    </svg>
-                  </button>
-                  <button
-                    class="action-btn sms-btn"
-                    (click)="smsClient(client, $event)"
-                    [disabled]="!client.phone"
-                    title="SMS"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-
-  }
-
-  <!-- Card View (Mobile always, Desktop when selected) -->
-  @if (!isLoading && viewMode === 'cards') {
-    <div class="clients-cards-container desktop-cards">
-      @if (clients.length === 0) {
-        <div class="no-clients-card">
-          <p>No clients found</p>
-        </div>
-      }
-      @for (client of clients; track client.id) {
-        <div class="client-card" [class.expanded]="isCardExpanded(client.id)">
-          <div class="client-card-header">
-            <div class="header-left">
-              <div class="client-avatar-large">
-                @if (client.avatar_url) {
-                  <img
-                    [src]="client.avatar_url"
-                    [alt]="client.first_name + ' ' + client.last_name"
-                    (error)="onAvatarError(client.id)"
-                  />
-                }
-                @if (!client.avatar_url || hasAvatarFailed(client.id)) {
-                  <span class="avatar-initials">
-                    {{ getInitials(client.first_name, client.last_name) }}
-                  </span>
-                }
-              </div>
-              <div class="client-info">
-                <h3 class="client-name">{{ client.first_name }} {{ client.last_name }}</h3>
-                <p class="client-email">{{ client.email }}</p>
-              </div>
-            </div>
-            <button
-              class="expand-toggle-btn"
-              (click)="toggleCard(client.id, $event)"
-              [attr.aria-expanded]="isCardExpanded(client.id)"
-              aria-label="Toggle client details"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                [class.rotated]="isCardExpanded(client.id)"
-              >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-          <!-- Always visible summary -->
-          <div class="client-card-summary">
-            <div class="summary-row">
-              <span class="summary-label">Pets:</span>
-              <span class="summary-value">
-                @if (client.pets && client.pets.length > 0) {
-                  {{ getPetNames(client.pets) }}
-                } @else {
-                  <span class="no-pets">No pets</span>
-                }
-              </span>
-            </div>
-            <div class="summary-row">
-              <span class="summary-label">Phone:</span>
-              <span class="summary-value">{{ client.phone || 'N/A' }}</span>
-            </div>
-            <div class="summary-row amount-row">
-              <span class="summary-label">Total Spent:</span>
-              <span class="summary-value amount">${{ client.total_spent.toFixed(2) }}</span>
-            </div>
-          </div>
-          <!-- Expandable details -->
-          <div
-            class="client-card-details"
-            [class.expanded]="isCardExpanded(client.id)"
-          >
-            <div class="client-stats">
-              <div class="stat-item">
-                <span class="stat-label">Bookings</span>
-                <span class="stat-value">{{ client.total_bookings }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Total Spent</span>
-                <span class="stat-value">${{ client.total_spent.toFixed(2) }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Last Booking</span>
-                <span class="stat-value-small">
-                  {{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <!-- Footer with actions -->
-          <div class="client-card-footer">
-            <div class="mobile-quick-actions">
-              <button
-                class="action-btn call-btn"
-                (click)="callClient(client, $event)"
-                [disabled]="!client.phone"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
-                </svg>
-                Call
-              </button>
-              <button
-                class="action-btn sms-btn"
-                (click)="smsClient(client, $event)"
-                [disabled]="!client.phone"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                </svg>
-                SMS
-              </button>
-            </div>
-            <button
-              class="btn-view-details"
-              (click)="viewClientDetail(client.id)"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              View Details
-            </button>
-          </div>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- Mobile Card View (Always shown on mobile) -->
+  <!-- Card View -->
   @if (!isLoading) {
-    <div class="clients-cards-container mobile-only">
-      @if (clients.length === 0) {
-        <div class="no-clients-card">
-          <p>No clients found</p>
+    <div class="clients-cards-container">
+      @if (filteredClients.length === 0) {
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="9" cy="7" r="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>No clients in this segment</p>
         </div>
       }
-      @for (client of clients; track client.id) {
+      @for (client of filteredClients; track client.id) {
         <div class="client-card" [class.expanded]="isCardExpanded(client.id)">
           <div class="client-card-header">
             <div class="header-left">
               <div class="client-avatar-large">
-                @if (client.avatar_url) {
+                @if (client.avatar_url && !hasAvatarFailed(client.id)) {
                   <img
                     [src]="client.avatar_url"
                     [alt]="client.first_name + ' ' + client.last_name"
@@ -339,34 +159,41 @@
                 }
               </div>
               <div class="client-info">
-                <h3 class="client-name">{{ client.first_name }} {{ client.last_name }}</h3>
+                <div class="client-name-row">
+                  <h3 class="client-name">{{ client.first_name }} {{ client.last_name }}</h3>
+                  @if (client.segment !== 'all') {
+                    <span
+                      class="segment-badge small"
+                      [style.color]="getSegmentColor(client.segment)"
+                      [style.background-color]="getSegmentBg(client.segment)"
+                    >
+                      {{ segmentConfigs[client.segment].label }}
+                    </span>
+                  }
+                  @if (wasRecentlyContacted(client)) {
+                    <span class="contacted-badge small" [title]="'Contacted ' + getOutreachDaysAgo(client) + ' days ago'">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      Contacted
+                    </span>
+                  }
+                </div>
                 <p class="client-email">{{ client.email }}</p>
               </div>
             </div>
-            <button
-              class="expand-toggle-btn"
-              (click)="toggleCard(client.id, $event)"
-              [attr.aria-expanded]="isCardExpanded(client.id)"
-              aria-label="Toggle client details"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                [class.rotated]="isCardExpanded(client.id)"
+            <div class="card-score">
+              <span
+                class="engagement-badge"
+                [style.color]="getEngagementColor(client.engagement_score)"
+                [style.background-color]="getEngagementBg(client.engagement_score)"
               >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
+                {{ client.engagement_score }}
+              </span>
+            </div>
           </div>
-          <!-- Always visible summary -->
+
+          <!-- Summary -->
           <div class="client-card-summary">
             <div class="summary-row">
               <span class="summary-label">Pets:</span>
@@ -379,70 +206,71 @@
               </span>
             </div>
             <div class="summary-row">
-              <span class="summary-label">Phone:</span>
-              <span class="summary-value">{{ client.phone || 'N/A' }}</span>
-            </div>
-            <div class="summary-row amount-row">
               <span class="summary-label">Total Spent:</span>
-              <span class="summary-value amount">${{ client.total_spent.toFixed(2) }}</span>
+              <span class="summary-value amount">{{ formatCurrency(client.total_spent) }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Last Booking:</span>
+              <span class="summary-value" [class.overdue]="client.days_since_last_booking >= 30">
+                @if (client.days_since_last_booking === 999) {
+                  Never
+                } @else if (client.days_since_last_booking === 0) {
+                  Today
+                } @else if (client.days_since_last_booking === 1) {
+                  Yesterday
+                } @else if (client.days_since_last_booking < 7) {
+                  {{ client.days_since_last_booking }} days ago
+                } @else {
+                  {{ formatDate(client.last_booking_date!) }}
+                }
+              </span>
             </div>
           </div>
-          <!-- Expandable details -->
-          <div
-            class="client-card-details"
-            [class.expanded]="isCardExpanded(client.id)"
-          >
-            <div class="client-stats">
-              <div class="stat-item">
-                <span class="stat-label">Bookings</span>
-                <span class="stat-value">{{ client.total_bookings }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Total Spent</span>
-                <span class="stat-value">${{ client.total_spent.toFixed(2) }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Last Booking</span>
-                <span class="stat-value-small">
-                  {{ client.last_booking_date ? formatDate(client.last_booking_date) : 'Never' }}
-                </span>
-              </div>
-            </div>
-          </div>
+
           <!-- Footer with actions -->
           <div class="client-card-footer">
-            <div class="mobile-quick-actions">
-              <button
-                class="action-btn call-btn"
-                (click)="callClient(client, $event)"
-                [disabled]="!client.phone"
+            <div class="card-actions-row">
+              <a
+                class="card-icon-btn imessage"
+                [href]="clientService.getIMessageUrl(client)"
+                [class.no-phone]="!client.phone"
+                title="iMessage"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
-                </svg>
-                Call
-              </button>
-              <button
-                class="action-btn sms-btn"
-                (click)="smsClient(client, $event)"
-                [disabled]="!client.phone"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
-                SMS
+              </a>
+              <a
+                class="card-icon-btn call"
+                [href]="clientService.getCallUrl(client)"
+                [class.no-phone]="!client.phone"
+                title="Call"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                </svg>
+              </a>
+              <button
+                class="card-icon-btn outreach"
+                [class.done]="wasRecentlyContacted(client)"
+                [title]="wasRecentlyContacted(client) ? 'Contacted ' + getOutreachDaysAgo(client) + 'd ago' : 'Mark Outreach Done'"
+                (click)="markOutreachDone(client, $event)"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button
+                class="card-icon-btn details"
+                (click)="viewClientDetail(client.id)"
+                title="View Details"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
               </button>
             </div>
-            <button
-              class="btn-view-details"
-              (click)="viewClientDetail(client.id)"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              View Details
-            </button>
           </div>
         </div>
       }
