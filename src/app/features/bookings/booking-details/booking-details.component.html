@@ -437,6 +437,17 @@
               <div *ngIf="paymentSuccess" class="alert alert-success">{{ paymentSuccess }}</div>
               <div *ngIf="paymentError" class="alert alert-error">{{ paymentError }}</div>
 
+              <!-- Payment Method Info -->
+              <div class="payment-method-info" *ngIf="!booking.payment_captured_at">
+                <span class="payment-method-label">Method:</span>
+                <span class="payment-method-value" *ngIf="booking.payment_method_type === 'card'">
+                  Card ending in {{ booking.payment_method_last4 }}
+                </span>
+                <span class="payment-method-value cash" *ngIf="booking.payment_method_type !== 'card'">
+                  Cash on Service
+                </span>
+              </div>
+
               <!-- Payment Actions -->
               <div class="payment-actions-compact">
                 <button
@@ -445,6 +456,12 @@
                   class="btn-capture-compact"
                   [disabled]="isCapturingPayment">
                   {{ isCapturingPayment ? 'Processing...' : 'Capture Payment' }}
+                </button>
+                <button
+                  *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'"
+                  (click)="openChangePaymentMethod()"
+                  class="btn-change-payment">
+                  Change Payment Method
                 </button>
                 <button
                   *ngIf="booking.payment_captured_at && !booking.tip_amount && booking.payment_method_id"
@@ -1089,6 +1106,105 @@
           {{ isRemovingPet ? 'Removing...' : 'Remove Pet' }}
         </button>
         <button (click)="closeRemovePetModal()" class="btn-cancel-dialog">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Payment Method Modal -->
+  <div *ngIf="showChangePaymentModal" class="modal-overlay" (click)="closeChangePaymentModal()">
+    <div class="change-payment-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Change Payment Method</h3>
+        <button class="modal-close" (click)="closeChangePaymentModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Current Payment Method -->
+        <div class="current-payment-box">
+          <span class="current-payment-label">Current Method</span>
+          <div class="current-payment-value" *ngIf="booking?.payment_method_type === 'card'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+            Card ending in {{ booking?.payment_method_last4 }}
+          </div>
+          <div class="current-payment-value cash" *ngIf="booking?.payment_method_type !== 'card'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            Cash on Service
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoadingPaymentMethods" class="payment-methods-loading">
+          <div class="spinner-small"></div>
+          <span>Loading saved cards...</span>
+        </div>
+
+        <!-- Payment Method Options -->
+        <div *ngIf="!isLoadingPaymentMethods" class="payment-method-options">
+          <label class="payment-options-label">Select New Method</label>
+
+          <!-- Saved Cards -->
+          <div
+            *ngFor="let method of clientPaymentMethods"
+            class="payment-method-tile"
+            [class.selected]="selectedNewPaymentMethod?.id === method.id"
+            (click)="selectNewPaymentMethod(method)">
+            <div class="tile-radio">
+              <div class="radio-dot" *ngIf="selectedNewPaymentMethod?.id === method.id"></div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+            <div class="tile-details">
+              <span class="tile-brand">{{ method.brand | titlecase }}</span>
+              <span class="tile-last4">**** {{ method.last4 }}</span>
+            </div>
+            <span class="tile-expiry">{{ method.exp_month }}/{{ method.exp_year }}</span>
+            <span *ngIf="method.is_default" class="tile-default-badge">Default</span>
+          </div>
+
+          <!-- No cards message -->
+          <div *ngIf="clientPaymentMethods.length === 0" class="no-cards-message">
+            <p>No saved cards found for this client.</p>
+          </div>
+
+          <!-- Cash Option -->
+          <div
+            class="payment-method-tile cash-tile"
+            [class.selected]="changePaymentToCash"
+            (click)="selectCashPayment()">
+            <div class="tile-radio">
+              <div class="radio-dot" *ngIf="changePaymentToCash"></div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <div class="tile-details">
+              <span class="tile-brand">Cash on Service</span>
+              <span class="tile-last4">Pay at appointment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button (click)="closeChangePaymentModal()" class="btn btn-secondary">Cancel</button>
+        <button
+          (click)="confirmChangePaymentMethod()"
+          [disabled]="isChangingPaymentMethod || (!selectedNewPaymentMethod && !changePaymentToCash)"
+          class="btn btn-primary">
+          {{ isChangingPaymentMethod ? 'Updating...' : 'Confirm Change' }}
+        </button>
       </div>
     </div>
   </div>

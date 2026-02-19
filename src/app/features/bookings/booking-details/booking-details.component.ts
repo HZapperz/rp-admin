@@ -8,6 +8,7 @@ import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../
 import { EmailService } from '../../../core/services/email.service';
 import { ChangeRequestService, ChangeRequest } from '../../../core/services/change-request.service';
 import { PackageService } from '../../../core/services/package.service';
+import { ClientService, PaymentMethod } from '../../../core/services/client.service';
 import { BookingWithDetails } from '../../../core/models/types';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -51,6 +52,7 @@ export class BookingDetailsComponent implements OnInit {
   private emailService = inject(EmailService);
   private changeRequestService = inject(ChangeRequestService);
   private packageService = inject(PackageService);
+  private clientService = inject(ClientService);
   private http = inject(HttpClient);
 
   booking: BookingWithDetails | null = null;
@@ -185,6 +187,14 @@ export class BookingDetailsComponent implements OnInit {
   paymentError: string | null = null;
   paymentSuccess: string | null = null;
   earningsBreakdown: any = null;
+
+  // Change payment method
+  showChangePaymentModal = false;
+  clientPaymentMethods: PaymentMethod[] = [];
+  isLoadingPaymentMethods = false;
+  isChangingPaymentMethod = false;
+  selectedNewPaymentMethod: PaymentMethod | null = null;
+  changePaymentToCash = false;
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -2073,6 +2083,93 @@ export class BookingDetailsComponent implements OnInit {
     } catch (err) {
       console.error('Error loading earnings breakdown:', err);
       this.earningsBreakdown = null;
+    }
+  }
+
+  // Change Payment Method Methods
+  async openChangePaymentMethod() {
+    if (!this.booking) return;
+
+    this.showChangePaymentModal = true;
+    this.isLoadingPaymentMethods = true;
+    this.selectedNewPaymentMethod = null;
+    this.changePaymentToCash = false;
+
+    try {
+      this.clientPaymentMethods = await this.clientService.getClientPaymentMethods(this.booking.client_id);
+    } catch (err) {
+      console.error('Error fetching payment methods:', err);
+      this.clientPaymentMethods = [];
+    } finally {
+      this.isLoadingPaymentMethods = false;
+    }
+  }
+
+  selectNewPaymentMethod(method: PaymentMethod) {
+    this.selectedNewPaymentMethod = method;
+    this.changePaymentToCash = false;
+  }
+
+  selectCashPayment() {
+    this.changePaymentToCash = true;
+    this.selectedNewPaymentMethod = null;
+  }
+
+  closeChangePaymentModal() {
+    this.showChangePaymentModal = false;
+    this.selectedNewPaymentMethod = null;
+    this.changePaymentToCash = false;
+    this.clientPaymentMethods = [];
+  }
+
+  async confirmChangePaymentMethod() {
+    if (!this.booking) return;
+    if (!this.changePaymentToCash && !this.selectedNewPaymentMethod) return;
+
+    this.isChangingPaymentMethod = true;
+
+    try {
+      let updateData: any;
+
+      if (this.changePaymentToCash) {
+        updateData = {
+          payment_status: 'cash_on_service',
+          payment_method_type: 'cash',
+          payment_method_id: null,
+          stripe_customer_id: null,
+          payment_method_last4: null,
+          updated_at: new Date().toISOString()
+        };
+      } else {
+        const method = this.selectedNewPaymentMethod!;
+        updateData = {
+          payment_status: 'card_saved',
+          payment_method_type: 'card',
+          payment_method_id: method.stripe_payment_method_id,
+          stripe_customer_id: method.stripe_customer_id,
+          payment_method_last4: method.last4,
+          updated_at: new Date().toISOString()
+        };
+      }
+
+      const { error } = await this.supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', this.booking.id);
+
+      if (error) throw error;
+
+      alert(this.changePaymentToCash
+        ? 'Payment method changed to Cash on Service.'
+        : `Payment method changed to card ending in ${this.selectedNewPaymentMethod!.last4}.`);
+
+      this.closeChangePaymentModal();
+      await this.loadBookingDetails(this.booking.id);
+    } catch (err: any) {
+      console.error('Error changing payment method:', err);
+      alert('Failed to change payment method: ' + (err.message || 'Unknown error'));
+    } finally {
+      this.isChangingPaymentMethod = false;
     }
   }
 }
