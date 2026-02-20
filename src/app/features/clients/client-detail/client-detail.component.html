@@ -14,49 +14,45 @@
 
   <!-- Client Detail Content -->
   <div *ngIf="!loading && !error && clientData" class="detail-content">
-    <!-- Compact Header -->
-    <div class="page-header">
-      <button (click)="goBack()" class="btn-back-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <div class="header-center">
-        <span class="client-label">Client</span>
+    <!-- Merged Header Bar -->
+    <div class="header-bar">
+      <div class="header-left">
+        <button (click)="goBack()" class="btn-back-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <span class="client-name-header">{{ clientData.client.first_name }} {{ clientData.client.last_name }}</span>
+        <button class="btn-edit-header" (click)="openEditClientModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit
+        </button>
       </div>
-      <button class="btn-edit-header" (click)="openEditClientModal()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-        Edit
-      </button>
-    </div>
-
-    <!-- Quick Info Bar -->
-    <div class="quick-info-bar">
-      <div class="info-chip">
-        <span class="chip-icon">📧</span>
-        <span class="chip-value">{{ clientData.client.email }}</span>
-      </div>
-      <div class="info-chip">
-        <span class="chip-icon">📞</span>
-        <span class="chip-value">{{ clientData.client.phone || 'N/A' }}</span>
-      </div>
-      <div class="info-chip">
-        <span class="chip-icon">🐾</span>
-        <span class="chip-label">Pets:</span>
-        <span class="chip-value">{{ clientData.pets.length }}</span>
-      </div>
-      <div class="info-chip highlight">
-        <span class="chip-label">Total Spent:</span>
-        <span class="chip-value">{{ formatCurrency(clientData.client.total_spent) }}</span>
+      <div class="header-spacer"></div>
+      <div class="header-chips">
+        <div class="info-chip small">
+          <span class="chip-icon">📧</span>
+          <span class="chip-value">{{ clientData.client.email }}</span>
+        </div>
+        <div class="info-chip small">
+          <span class="chip-icon">📞</span>
+          <span class="chip-value">{{ clientData.client.phone || 'N/A' }}</span>
+        </div>
+        <div class="info-chip small">
+          <span class="chip-icon">🐾</span>
+          <span class="chip-value">{{ clientData.pets.length }}</span>
+        </div>
+        <div class="info-chip small highlight">
+          <span class="chip-value">{{ formatCurrency(clientData.client.total_spent) }}</span>
+        </div>
       </div>
     </div>
 
-    <!-- Client Overview (2-column grid) -->
-    <div class="details-grid two-col">
+    <!-- Top Row: Profile, Stats, Payment Methods (3-column) -->
+    <div class="top-row">
       <!-- Profile Card -->
       <div class="compact-card">
         <div class="compact-header">
@@ -134,166 +130,169 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Pets Section -->
-    <div class="compact-card">
-      <div class="compact-header">
-        <h3>Pets ({{ clientData.pets.length }})</h3>
-        <button class="btn-add-compact" (click)="openAddPetModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Add Pet
-        </button>
-      </div>
-      <div *ngIf="clientData.pets.length === 0" class="empty-state">
-        No pets registered
-      </div>
-      <div class="pets-grid-compact" *ngIf="clientData.pets.length > 0">
-        <div class="pet-card-compact" *ngFor="let pet of clientData.pets" (click)="openEditPetModal(pet)">
-          <div class="pet-top">
-            <img
-              *ngIf="pet.photo_url"
-              [src]="getPetPhotoUrl(pet.photo_url)"
-              [alt]="pet.name"
-              class="pet-photo-small"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
-            />
-            <div *ngIf="!pet.photo_url" class="pet-placeholder">
-              🐾
-            </div>
-            <div class="pet-info-compact">
-              <span class="pet-name">{{ pet.name }}</span>
-              <span class="pet-breed">{{ pet.breed || 'Unknown breed' }}</span>
-              <div class="pet-badges-compact">
-                <span class="badge-small" *ngIf="pet.size_category">{{ pet.size_category }}</span>
-              </div>
-            </div>
-          </div>
-          <button
-            class="expand-btn"
-            [class.expanded]="expandedPets[pet.id]"
-            (click)="togglePetDetails(pet.id); $event.stopPropagation()"
-          >
-            <span>{{ expandedPets[pet.id] ? 'Hide' : 'Show' }} Health Details</span>
+      <!-- Payment Methods Section (moved to top row) -->
+      <div class="compact-card">
+        <div class="compact-header">
+          <h3>Payment ({{ clientData.paymentMethods.length }})</h3>
+          <button class="btn-add-compact" (click)="openPaymentMethodModal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+            Add
           </button>
-          <div class="pet-health-collapsed" [class.expanded]="expandedPets[pet.id]">
-            <div class="health-grid-compact">
-              <div class="health-item-compact" *ngIf="pet.age || pet.date_of_birth">
-                <span class="hl">Age:</span>
-                <span class="hv">{{ pet.age || calculateAge(pet.date_of_birth) }}</span>
-              </div>
-              <div class="health-item-compact">
-                <span class="hl">Allergies:</span>
-                <span class="hv" [class.negative]="pet.has_allergies">{{ pet.has_allergies ? 'Yes' : 'No' }}</span>
-              </div>
-              <div class="health-item-compact">
-                <span class="hl">Skin Cond.:</span>
-                <span class="hv" [class.negative]="pet.has_skin_conditions">{{ pet.has_skin_conditions ? 'Yes' : 'No' }}</span>
-              </div>
-              <div class="health-item-compact" *ngIf="pet.blow_dryer_reaction">
-                <span class="hl">Dryer:</span>
-                <span class="hv">{{ pet.blow_dryer_reaction }}</span>
-              </div>
-              <div class="health-item-compact" *ngIf="pet.water_reaction">
-                <span class="hl">Water:</span>
-                <span class="hv">{{ pet.water_reaction }}</span>
-              </div>
+        </div>
+        <div *ngIf="clientData.paymentMethods.length === 0" class="empty-state">
+          No cards
+        </div>
+        <div class="payment-methods-list-compact" *ngIf="clientData.paymentMethods.length > 0">
+          <div class="payment-item-compact" *ngFor="let pm of clientData.paymentMethods">
+            <div class="payment-header-compact">
+              <span class="card-brand-compact">{{ pm.brand | uppercase }}</span>
+              <span class="badge-default" *ngIf="pm.is_default">Default</span>
             </div>
-            <div class="health-notes" *ngIf="pet.has_allergies && pet.allergy_details">
-              <strong>Allergies:</strong> {{ pet.allergy_details }}
-            </div>
-            <div class="health-notes" *ngIf="pet.has_skin_conditions && pet.skin_condition_details">
-              <strong>Skin:</strong> {{ pet.skin_condition_details }}
-            </div>
-            <div class="health-notes" *ngIf="pet.special_notes || pet.additional_notes">
-              <strong>Notes:</strong> {{ pet.special_notes || pet.additional_notes }}
+            <div class="payment-details-compact">
+              <div class="card-number-compact">•••• {{ pm.last4 }}</div>
+              <div class="card-expiry-compact">Exp: {{ pm.exp_month }}/{{ pm.exp_year }}</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Addresses Section -->
-    <div class="compact-card">
-      <div class="compact-header">
-        <h3>Addresses ({{ clientData.addresses.length }})</h3>
-        <button class="btn-add-compact" (click)="openAddAddressModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Add Address
-        </button>
-      </div>
-      <div *ngIf="clientData.addresses.length === 0" class="empty-state">
-        No addresses saved
-      </div>
-      <div class="addresses-list-compact" *ngIf="clientData.addresses.length > 0">
-        <div class="address-item-compact" *ngFor="let address of clientData.addresses">
-          <div class="address-header-compact">
-            <span class="address-name-compact">{{ address.name }}</span>
-            <div class="address-badges-compact">
-              <span class="badge-default" *ngIf="address.is_default">Default</span>
-              <span class="badge-type">{{ address.address_type }}</span>
+    <!-- Middle Row: Pets & Addresses (2-column) -->
+    <div class="middle-row">
+      <!-- Pets Section -->
+      <div class="compact-card">
+        <div class="compact-header">
+          <h3>Pets ({{ clientData.pets.length }})</h3>
+          <button class="btn-add-compact" (click)="openAddPetModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Add Pet
+          </button>
+        </div>
+        <div *ngIf="clientData.pets.length === 0" class="empty-state">
+          No pets registered
+        </div>
+        <div class="pets-grid-compact" *ngIf="clientData.pets.length > 0">
+          <div class="pet-card-compact" *ngFor="let pet of clientData.pets" (click)="openEditPetModal(pet)">
+            <div class="pet-top">
+              <img
+                *ngIf="pet.photo_url"
+                [src]="getPetPhotoUrl(pet.photo_url)"
+                [alt]="pet.name"
+                class="pet-photo-small"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+              />
+              <div *ngIf="!pet.photo_url" class="pet-placeholder">
+                🐾
+              </div>
+              <div class="pet-info-compact">
+                <span class="pet-name">{{ pet.name }}</span>
+                <span class="pet-breed">{{ pet.breed || 'Unknown breed' }}</span>
+                <div class="pet-badges-compact">
+                  <span class="badge-small" *ngIf="pet.size_category">{{ pet.size_category }}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="address-details-compact">
-            <span *ngIf="address.building && address.street">{{ address.building }}<br/></span>
-            {{ address.street || address.building }}<span *ngIf="address.apartment">, Apt {{ address.apartment }}</span><span *ngIf="address.floor">, Floor {{ address.floor }}</span><br/>
-            {{ address.city }}, {{ address.state }} {{ address.zip_code }}
-            <div *ngIf="address.additional_info">{{ address.additional_info }}</div>
-          </div>
-          <div class="address-actions-compact">
-            <button class="btn-icon-compact" (click)="openEditAddressModal(address)" title="Edit">
+            <button
+              class="expand-btn"
+              [class.expanded]="expandedPets[pet.id]"
+              (click)="togglePetDetails(pet.id); $event.stopPropagation()"
+            >
+              <span>{{ expandedPets[pet.id] ? 'Hide' : 'Show' }} Health Details</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
-            <button class="btn-icon-compact danger" (click)="deleteAddress(address)" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-              </svg>
-            </button>
+            <div class="pet-health-collapsed" [class.expanded]="expandedPets[pet.id]">
+              <div class="health-grid-compact">
+                <div class="health-item-compact" *ngIf="pet.age || pet.date_of_birth">
+                  <span class="hl">Age:</span>
+                  <span class="hv">{{ pet.age || calculateAge(pet.date_of_birth) }}</span>
+                </div>
+                <div class="health-item-compact">
+                  <span class="hl">Allergies:</span>
+                  <span class="hv" [class.negative]="pet.has_allergies">{{ pet.has_allergies ? 'Yes' : 'No' }}</span>
+                </div>
+                <div class="health-item-compact">
+                  <span class="hl">Skin Cond.:</span>
+                  <span class="hv" [class.negative]="pet.has_skin_conditions">{{ pet.has_skin_conditions ? 'Yes' : 'No' }}</span>
+                </div>
+                <div class="health-item-compact" *ngIf="pet.blow_dryer_reaction">
+                  <span class="hl">Dryer:</span>
+                  <span class="hv">{{ pet.blow_dryer_reaction }}</span>
+                </div>
+                <div class="health-item-compact" *ngIf="pet.water_reaction">
+                  <span class="hl">Water:</span>
+                  <span class="hv">{{ pet.water_reaction }}</span>
+                </div>
+              </div>
+              <div class="health-notes" *ngIf="pet.has_allergies && pet.allergy_details">
+                <strong>Allergies:</strong> {{ pet.allergy_details }}
+              </div>
+              <div class="health-notes" *ngIf="pet.has_skin_conditions && pet.skin_condition_details">
+                <strong>Skin:</strong> {{ pet.skin_condition_details }}
+              </div>
+              <div class="health-notes" *ngIf="pet.special_notes || pet.additional_notes">
+                <strong>Notes:</strong> {{ pet.special_notes || pet.additional_notes }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Addresses Section -->
+      <div class="compact-card">
+        <div class="compact-header">
+          <h3>Addresses ({{ clientData.addresses.length }})</h3>
+          <button class="btn-add-compact" (click)="openAddAddressModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Add Address
+          </button>
+        </div>
+        <div *ngIf="clientData.addresses.length === 0" class="empty-state">
+          No addresses saved
+        </div>
+        <div class="addresses-list-compact" *ngIf="clientData.addresses.length > 0">
+          <div class="address-item-compact" *ngFor="let address of clientData.addresses">
+            <div class="address-header-compact">
+              <span class="address-name-compact">{{ address.name }}</span>
+              <div class="address-badges-compact">
+                <span class="badge-default" *ngIf="address.is_default">Default</span>
+                <span class="badge-type">{{ address.address_type }}</span>
+              </div>
+            </div>
+            <div class="address-details-compact">
+              <span *ngIf="address.building && address.street">{{ address.building }}<br/></span>
+              {{ address.street || address.building }}<span *ngIf="address.apartment">, Apt {{ address.apartment }}</span><span *ngIf="address.floor">, Floor {{ address.floor }}</span><br/>
+              {{ address.city }}, {{ address.state }} {{ address.zip_code }}
+              <div *ngIf="address.additional_info">{{ address.additional_info }}</div>
+            </div>
+            <div class="address-actions-compact">
+              <button class="btn-icon-compact" (click)="openEditAddressModal(address)" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="btn-icon-compact danger" (click)="deleteAddress(address)" title="Delete">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Payment Methods Section -->
-    <div class="compact-card">
-      <div class="compact-header">
-        <h3>Payment Methods ({{ clientData.paymentMethods.length }})</h3>
-        <button class="btn-add-compact" (click)="openPaymentMethodModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Add Card
-        </button>
-      </div>
-      <div *ngIf="clientData.paymentMethods.length === 0" class="empty-state">
-        No payment methods saved
-      </div>
-      <div class="payment-methods-list-compact" *ngIf="clientData.paymentMethods.length > 0">
-        <div class="payment-item-compact" *ngFor="let pm of clientData.paymentMethods">
-          <div class="payment-header-compact">
-            <span class="card-brand-compact">{{ pm.brand | uppercase }}</span>
-            <span class="badge-default" *ngIf="pm.is_default">Default</span>
-          </div>
-          <div class="payment-details-compact">
-            <div class="card-number-compact">•••• •••• •••• {{ pm.last4 }}</div>
-            <div class="card-expiry-compact">Expires: {{ pm.exp_month }}/{{ pm.exp_year }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Booking History Section -->
+    <!-- Booking History Section (full-width) -->
     <div class="compact-card">
       <div class="compact-header">
         <h3>Booking History ({{ clientData.bookings.length }})</h3>
@@ -361,42 +360,7 @@
       </div>
     </div>
 
-    <!-- Ratings Section -->
-    <div class="compact-card">
-      <div class="compact-header">
-        <h3>Reviews Given ({{ clientData.ratings.length }})</h3>
-      </div>
-      <div *ngIf="clientData.ratings.length === 0" class="empty-state">
-        No reviews yet
-      </div>
-      <div class="ratings-list-compact" *ngIf="clientData.ratings.length > 0">
-        <div class="rating-item-compact" *ngFor="let rating of clientData.ratings">
-          <div class="rating-header-compact">
-            <span class="groomer-name-compact">Groomer: {{ rating.groomer?.first_name }} {{ rating.groomer?.last_name }}</span>
-            <span class="rating-date-compact">{{ formatDate(rating.created_at) }}</span>
-          </div>
-          <div class="rating-scores-compact">
-            <div class="score-chip">
-              <span class="score-label">Experience:</span>
-              <span class="score-value">{{ rating.experience_rating }}/5 ⭐</span>
-            </div>
-            <div class="score-chip">
-              <span class="score-label">Quality:</span>
-              <span class="score-value">{{ rating.quality_rating }}/5 ⭐</span>
-            </div>
-            <div class="score-chip">
-              <span class="score-label">Recommendation:</span>
-              <span class="score-value">{{ rating.recommendation_rating }}/5 ⭐</span>
-            </div>
-          </div>
-          <div class="rating-comment-compact" *ngIf="rating.comment">
-            "{{ rating.comment }}"
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Admin Notes Section -->
+    <!-- Admin Notes Section (full-width) -->
     <div class="compact-card">
       <div class="compact-header">
         <h3>Admin Notes</h3>
