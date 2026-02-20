@@ -440,10 +440,10 @@
               <!-- Payment Method Info -->
               <div class="payment-method-info" *ngIf="!booking.payment_captured_at">
                 <span class="payment-method-label">Method:</span>
-                <span class="payment-method-value" *ngIf="booking.payment_method_type === 'card'">
-                  Card ending in {{ booking.payment_method_last4 }}
+                <span class="payment-method-value" *ngIf="booking.payment_method_last4">
+                  {{ booking.payment_method_type | titlecase }} ending in {{ booking.payment_method_last4 }}
                 </span>
-                <span class="payment-method-value cash" *ngIf="booking.payment_method_type !== 'card'">
+                <span class="payment-method-value cash" *ngIf="!booking.payment_method_last4">
                   Cash on Service
                 </span>
               </div>
@@ -1126,14 +1126,14 @@
         <!-- Current Payment Method -->
         <div class="current-payment-box">
           <span class="current-payment-label">Current Method</span>
-          <div class="current-payment-value" *ngIf="booking?.payment_method_type === 'card'">
+          <div class="current-payment-value" *ngIf="booking?.payment_method_last4">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
               <line x1="1" y1="10" x2="23" y2="10"></line>
             </svg>
-            Card ending in {{ booking?.payment_method_last4 }}
+            {{ booking?.payment_method_type | titlecase }} ending in {{ booking?.payment_method_last4 }}
           </div>
-          <div class="current-payment-value cash" *ngIf="booking?.payment_method_type !== 'card'">
+          <div class="current-payment-value cash" *ngIf="!booking?.payment_method_last4">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="1" x2="12" y2="23"></line>
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
