@@ -137,6 +137,11 @@ export class BookingDetailsComponent implements OnInit {
   currentDiscountAmount: number = 0;
   currentDiscountPercentage: number = 0;
 
+  // Inline discount editor
+  isEditingDiscount = false;
+  discountEditType: 'percentage' | 'amount' = 'percentage';
+  discountEditValue: number = 0;
+
   // Remove pet modal
   showRemovePetModal = false;
   petToRemove: any = null;
@@ -581,6 +586,59 @@ export class BookingDetailsComponent implements OnInit {
     } catch (err: any) {
       console.error('Error saving changes:', err);
       alert('Failed to save changes: ' + err.message);
+    }
+  }
+
+  openDiscountEdit(): void {
+    const currentDiscount = Number(this.booking?.discount_amount) || 0;
+    const subtotal = Number(this.booking?.original_subtotal) || 0;
+    this.discountEditType = 'percentage';
+    this.discountEditValue = subtotal > 0
+      ? Math.round((currentDiscount / subtotal) * 100 * 100) / 100
+      : 0;
+    this.isEditingDiscount = true;
+  }
+
+  cancelDiscountEdit(): void {
+    this.isEditingDiscount = false;
+    this.discountEditValue = 0;
+  }
+
+  getDiscountPreview(): { discountAmount: number; subtotalBeforeTax: number; taxAmount: number; total: number } {
+    const subtotal = Number(this.booking?.original_subtotal) || 0;
+    const taxRate = Number(this.booking?.tax_rate) || 0.0825;
+    const serviceFee = Number(this.booking?.service_fee) || 0;
+    const processingFee = Number(this.booking?.processing_fee) || 0;
+    const rushFee = Number(this.booking?.rush_fee) || 0;
+    const discountAmount = this.discountEditType === 'percentage'
+      ? Math.round(subtotal * (this.discountEditValue / 100) * 100) / 100
+      : Math.min(this.discountEditValue, subtotal);
+    const subtotalBeforeTax = Math.max(0, subtotal + serviceFee + rushFee - discountAmount);
+    const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
+    const total = Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
+    return { discountAmount, subtotalBeforeTax, taxAmount, total };
+  }
+
+  async saveDiscount(): Promise<void> {
+    if (!this.booking) return;
+    const preview = this.getDiscountPreview();
+    try {
+      const { error } = await this.supabase
+        .from('bookings')
+        .update({
+          discount_amount: preview.discountAmount,
+          subtotal_before_tax: preview.subtotalBeforeTax,
+          tax_amount: preview.taxAmount,
+          total_amount: preview.total,
+          authorized_amount: preview.total,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', this.booking.id);
+      if (error) throw error;
+      await this.loadBookingDetails(this.booking.id);
+      this.isEditingDiscount = false;
+    } catch (err: any) {
+      alert('Failed to save discount: ' + (err.message || 'Unknown error'));
     }
   }
 

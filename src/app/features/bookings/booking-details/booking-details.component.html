@@ -396,9 +396,12 @@
           <div class="compact-card">
             <div class="compact-header">
               <h3>Payment</h3>
-              <span class="status-badge payment-badge" [ngClass]="booking.payment_captured_at ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
-                {{ booking.payment_captured_at ? 'Captured' : booking.payment_status | titlecase }}
-              </span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button class="btn-edit-sm" (click)="openDiscountEdit()" *ngIf="!isEditingDiscount">Edit Discount</button>
+                <span class="status-badge payment-badge" [ngClass]="booking.payment_captured_at ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                  {{ booking.payment_captured_at ? 'Captured' : booking.payment_status | titlecase }}
+                </span>
+              </div>
             </div>
             <div class="compact-body">
               <!-- Price Breakdown Compact -->
@@ -407,9 +410,52 @@
                   <span>Subtotal</span>
                   <span>${{ booking.original_subtotal }}</span>
                 </div>
-                <div class="price-row-compact" *ngIf="booking.discount_amount && booking.discount_amount > 0">
+                <div class="price-row-compact" *ngIf="booking.discount_amount && booking.discount_amount > 0 && !isEditingDiscount">
                   <span class="text-green-600">Discount</span>
                   <span class="text-green-600">-${{ booking.discount_amount }}</span>
+                </div>
+
+                <!-- Inline discount editor -->
+                <div class="discount-editor" *ngIf="isEditingDiscount">
+                  <div class="discount-editor-header">
+                    <span>Apply Discount</span>
+                    <button class="btn-cancel-xs" (click)="cancelDiscountEdit()">✕</button>
+                  </div>
+                  <div class="discount-type-toggle">
+                    <button [class.active]="discountEditType === 'percentage'" (click)="discountEditType = 'percentage'">%</button>
+                    <button [class.active]="discountEditType === 'amount'" (click)="discountEditType = 'amount'">$</button>
+                  </div>
+                  <div class="discount-input-row">
+                    <input
+                      type="number"
+                      [(ngModel)]="discountEditValue"
+                      [placeholder]="discountEditType === 'percentage' ? '0' : '0.00'"
+                      [min]="0"
+                      [max]="discountEditType === 'percentage' ? 100 : (booking.original_subtotal || 0)"
+                      step="0.01"
+                      class="discount-input-sm"
+                    />
+                    <span class="discount-suffix">{{ discountEditType === 'percentage' ? '%' : '$' }}</span>
+                  </div>
+                  <!-- Live preview -->
+                  <div class="discount-preview" *ngIf="discountEditValue > 0">
+                    <div class="preview-row">
+                      <span>Discount</span>
+                      <span class="text-green-600">-${{ getDiscountPreview().discountAmount | number:'1.2-2' }}</span>
+                    </div>
+                    <div class="preview-row">
+                      <span>New Tax</span>
+                      <span>${{ getDiscountPreview().taxAmount | number:'1.2-2' }}</span>
+                    </div>
+                    <div class="preview-row preview-total">
+                      <span>New Total</span>
+                      <span>${{ getDiscountPreview().total | number:'1.2-2' }}</span>
+                    </div>
+                  </div>
+                  <div class="discount-actions">
+                    <button class="btn-save-sm" (click)="saveDiscount()">Apply</button>
+                    <button class="btn-cancel-sm" (click)="cancelDiscountEdit()">Cancel</button>
+                  </div>
                 </div>
                 <div class="price-row-compact" *ngIf="booking.credits_applied && booking.credits_applied > 0">
                   <span class="text-blue-600">Credits Applied</span>

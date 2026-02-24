@@ -253,7 +253,7 @@
                   </td>
                 }
                 <td class="col-name">
-                  <div class="name-cell" (click)="onViewLead(lead.id)">
+                  <div class="name-cell" (click)="onViewLead(lead.user.id)">
                     <div class="avatar-sm" [style.background-color]="currentStageConfig.color">
                       {{ (lead.user.first_name || '')[0] || '' }}{{ (lead.user.last_name || '')[0] || '' }}
                     </div>
@@ -282,6 +282,7 @@
                 </td>
                 <td class="col-days">
                   <span class="days-value" [class.stale]="lead.days_in_stage >= 7">{{ lead.days_in_stage }}d</span>
+                  <span class="stage-date">{{ formatStageDate(lead.stage_changed_at) }}</span>
                 </td>
                 <td class="col-phone">{{ formatPhone(lead.user.phone) }}</td>
                 <td class="col-pets">{{ getPetSummary(lead) }}</td>
@@ -319,7 +320,7 @@
                         </div>
                       }
                     </div>
-                    <button class="icon-btn" title="View Details" (click)="onViewLead(lead.id)">
+                    <button class="icon-btn" title="View Details" (click)="onViewLead(lead.user.id)">
                       <span class="material-icons">open_in_new</span>
                     </button>
                   </div>
@@ -341,7 +342,7 @@
       } @else {
         @for (lead of currentStageLeads; track lead.id) {
           <div class="lead-card">
-            <div class="card-top" (click)="onViewLead(lead.id)">
+            <div class="card-top" (click)="onViewLead(lead.user.id)">
               <div class="avatar-sm" [style.background-color]="currentStageConfig.color">
                 {{ (lead.user.first_name || '')[0] || '' }}{{ (lead.user.last_name || '')[0] || '' }}
               </div>
@@ -370,6 +371,7 @@
                   [style.background-color]="getPriorityBg(lead.priority_score)"
                 >{{ lead.priority_score }}</span>
                 <span class="days-value" [class.stale]="lead.days_in_stage >= 7">{{ lead.days_in_stage }}d</span>
+                <span class="stage-date">{{ formatStageDate(lead.stage_changed_at) }}</span>
               </div>
             </div>
 
@@ -389,7 +391,7 @@
                 <span class="material-icons">phone</span>
                 <span>Call</span>
               </a>
-              <button class="card-action-btn details" (click)="onViewLead(lead.id)">
+              <button class="card-action-btn details" (click)="onViewLead(lead.user.id)">
                 <span class="material-icons">open_in_new</span>
                 <span>Details</span>
               </button>

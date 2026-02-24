@@ -68,6 +68,8 @@ export class BusinessSettingsModalComponent implements OnInit {
     start_time: '',
     end_time: '',
     is_active: true,
+    is_client_visible: true,
+    days_of_week: null as number[] | null,
     sort_order: 0
   };
 
@@ -393,6 +395,8 @@ export class BusinessSettingsModalComponent implements OnInit {
           start_time: '',
           end_time: '',
           is_active: true,
+          is_client_visible: true,
+          days_of_week: null as number[] | null,
           sort_order: 0
         };
       } else {

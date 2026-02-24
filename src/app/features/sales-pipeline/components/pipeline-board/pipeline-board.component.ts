@@ -315,8 +315,8 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
 
   // ==================== ACTIONS ====================
 
-  onViewLead(leadId: string): void {
-    this.router.navigate(['/sales-pipeline/lead', leadId]);
+  onViewLead(userId: string): void {
+    this.router.navigate(['/clients', userId]);
   }
 
   onSendSms(lead: PipelineLeadWithDetails): void {
@@ -440,5 +440,11 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
       }
     }
     return leads;
+  }
+
+  formatStageDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   }
 }
