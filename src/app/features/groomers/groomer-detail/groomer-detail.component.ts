@@ -60,6 +60,12 @@ export class GroomerDetailComponent implements OnInit {
   isLoadingAvailability = false;
   DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+  // Block date modal state
+  showBlockDateModal = false;
+  blockDateInput = '';
+  blockDateReason = '';
+  isBlockingDate = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -322,6 +328,46 @@ export class GroomerDetailComponent implements OnInit {
       error: (err) => {
         console.error('Error loading availability:', err);
         this.isLoadingAvailability = false;
+      }
+    });
+  }
+
+  openBlockDateModal() {
+    this.blockDateInput = '';
+    this.blockDateReason = '';
+    this.showBlockDateModal = true;
+  }
+
+  closeBlockDateModal() {
+    this.showBlockDateModal = false;
+  }
+
+  blockDate() {
+    if (!this.blockDateInput) return;
+    this.isBlockingDate = true;
+    this.groomerService.createDateException(this.groomerId, this.blockDateInput, this.blockDateReason || undefined).subscribe({
+      next: () => {
+        this.isBlockingDate = false;
+        this.closeBlockDateModal();
+        this.loadAvailabilityData();
+      },
+      error: (err) => {
+        console.error('Error blocking date:', err);
+        this.isBlockingDate = false;
+        alert('Failed to block date. Please try again.');
+      }
+    });
+  }
+
+  unblockDate(exceptionId: string) {
+    if (!confirm('Remove this date block?')) return;
+    this.groomerService.deleteDateException(this.groomerId, exceptionId).subscribe({
+      next: () => {
+        this.loadAvailabilityData();
+      },
+      error: (err) => {
+        console.error('Error removing date block:', err);
+        alert('Failed to remove date block. Please try again.');
       }
     });
   }

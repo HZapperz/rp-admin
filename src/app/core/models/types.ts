@@ -115,6 +115,7 @@ export interface Booking {
   tax_rate?: number;
   // Time preference fields
   shift_preference?: 'morning' | 'afternoon' | 'evening';
+  time_preferences?: Array<{ id: string; label: string; start_time: string; end_time: string }> | null;
   assigned_time_slot?: string;
   // Additional fields from database
   distance_miles?: number;

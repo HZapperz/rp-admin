@@ -564,7 +564,7 @@
 .col-checkbox { width: 40px; text-align: center; }
 .col-name { min-width: 200px; }
 .col-priority { width: 80px; }
-.col-days { width: 60px; }
+.col-days { width: 100px; }
 .col-phone { width: 140px; }
 .col-pets { width: 100px; }
 .col-action { min-width: 180px; }
@@ -657,6 +657,14 @@
     color: #ef4444;
     font-weight: 700;
   }
+}
+
+.stage-date {
+  display: block;
+  font-size: 10px;
+  color: #9ca3af;
+  white-space: nowrap;
+  margin-top: 2px;
 }
 
 // Suggested Action
@@ -890,6 +898,11 @@
 
   .days-value {
     font-size: 11px;
+  }
+
+  .stage-date {
+    font-size: 9px;
+    text-align: center;
   }
 }
 

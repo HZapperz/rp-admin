@@ -1307,6 +1307,55 @@ export class GroomerService {
   // ==========================================
 
   /**
+   * Block a specific date for a groomer (admin only)
+   */
+  createDateException(groomerId: string, date: string, reason?: string): Observable<GroomerDateException> {
+    return from(this.insertDateException(groomerId, date, reason));
+  }
+
+  private async insertDateException(groomerId: string, date: string, reason?: string): Promise<GroomerDateException> {
+    const { data, error } = await this.supabase
+      .from('groomer_date_exceptions')
+      .insert({
+        groomer_id: groomerId,
+        exception_date: date,
+        exception_type: 'blocked',
+        start_time: null,
+        end_time: null,
+        reason: reason || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating date exception:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Remove a specific date exception for a groomer (admin only)
+   */
+  deleteDateException(groomerId: string, exceptionId: string): Observable<void> {
+    return from(this.removeDateException(groomerId, exceptionId));
+  }
+
+  private async removeDateException(groomerId: string, exceptionId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('groomer_date_exceptions')
+      .delete()
+      .eq('id', exceptionId)
+      .eq('groomer_id', groomerId);
+
+    if (error) {
+      console.error('Error deleting date exception:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get groomer's full availability schedule (weekly + exceptions)
    */
   getGroomerAvailability(groomerId: string, days: number = 60): Observable<GroomerAvailabilityData> {
@@ -1500,13 +1549,14 @@ export class GroomerService {
       };
     }
 
-    // Get existing bookings
+    // Only confirmed/in_progress bookings have a committed time — pending bookings
+    // may carry a wide preference window and should not block slots.
     const { data: existingBookings, error: bookingsError } = await this.supabase
       .from('bookings')
       .select('id, scheduled_time_start, scheduled_time_end, status')
       .eq('groomer_id', groomerId)
       .eq('scheduled_date', date)
-      .in('status', ['pending', 'confirmed', 'in_progress']);
+      .in('status', ['confirmed', 'in_progress']);
 
     if (bookingsError) {
       console.error('Error fetching bookings:', bookingsError);

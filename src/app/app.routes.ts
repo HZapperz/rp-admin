@@ -84,6 +84,11 @@ export const routes: Routes = [
           import('./features/services/services.routes').then(m => m.routes)
       },
       {
+        path: 'time-slots',
+        loadChildren: () =>
+          import('./features/time-slots/time-slots.routes').then(m => m.TIME_SLOTS_ROUTES)
+      },
+      {
         path: 'profile',
         loadChildren: () =>
           import('./features/profile/profile.routes').then(m => m.routes)

@@ -226,11 +226,6 @@
 
         <!-- Availability content -->
         <div *ngIf="!isLoadingAvailability && availabilityData" class="availability-content">
-          <!-- Info Banner -->
-          <div class="availability-info-banner">
-            <span class="material-icons">info</span>
-            <p>This is a read-only view of the groomer's schedule. Groomers manage their own availability through their portal.</p>
-          </div>
 
           <!-- Weekly Schedule -->
           <div class="section weekly-schedule-section">
@@ -262,10 +257,18 @@
             </div>
           </div>
 
-          <!-- Upcoming Exceptions -->
+          <!-- Upcoming Time Off / Blocked Dates -->
           <div class="section exceptions-section">
-            <h2 class="section-title">Upcoming Time Off</h2>
-            <p class="section-subtitle">Next {{ availabilityData.date_range.from }} to {{ availabilityData.date_range.to }}</p>
+            <div class="section-header-row">
+              <div>
+                <h2 class="section-title">Upcoming Time Off / Blocked Dates</h2>
+                <p class="section-subtitle">Next {{ availabilityData.date_range.from }} to {{ availabilityData.date_range.to }}</p>
+              </div>
+              <button class="btn-block-date" (click)="openBlockDateModal()">
+                <span class="material-icons">block</span>
+                Block a Date
+              </button>
+            </div>
 
             @if (availabilityData.exceptions.length > 0) {
               <div class="exceptions-list">
@@ -290,15 +293,60 @@
                     @if (exception.reason) {
                       <div class="exception-reason">{{ exception.reason }}</div>
                     }
+                    <button class="btn-remove-exception" (click)="unblockDate(exception.id)" title="Remove block">
+                      <span class="material-icons">delete_outline</span>
+                    </button>
                   </div>
                 }
               </div>
             } @else {
               <div class="no-exceptions">
                 <span class="material-icons">event_available</span>
-                <p>No upcoming time off scheduled</p>
+                <p>No upcoming time off or blocked dates</p>
               </div>
             }
+          </div>
+        </div>
+
+        <!-- Block Date Modal -->
+        <div *ngIf="showBlockDateModal" class="modal-overlay" (click)="closeBlockDateModal()">
+          <div class="modal-dialog" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h4>Block a Date</h4>
+              <button class="modal-close-btn" (click)="closeBlockDateModal()">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label for="block-date-input">Date</label>
+                <input
+                  id="block-date-input"
+                  type="date"
+                  [(ngModel)]="blockDateInput"
+                  class="form-control"
+                />
+              </div>
+              <div class="form-group">
+                <label for="block-date-reason">Reason (optional)</label>
+                <input
+                  id="block-date-reason"
+                  type="text"
+                  [(ngModel)]="blockDateReason"
+                  placeholder="e.g. Fully booked"
+                  class="form-control"
+                />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-cancel" (click)="closeBlockDateModal()">Cancel</button>
+              <button
+                class="btn-confirm"
+                (click)="blockDate()"
+                [disabled]="!blockDateInput || isBlockingDate">
+                {{ isBlockingDate ? 'Blocking...' : 'Block Date' }}
+              </button>
+            </div>
           </div>
         </div>
 

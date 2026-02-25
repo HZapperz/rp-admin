@@ -1,0 +1,178 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Time Slots</h1>
+      <p class="subtitle">Manage client-facing booking windows. Toggle visibility per slot, including evening hours.</p>
+    </div>
+    <button class="btn-primary" (click)="openAddForm()">
+      <span class="material-icons">add</span>
+      Add Slot
+    </button>
+  </div>
+
+  <!-- Loading -->
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading time slots...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error) {
+    <div class="error-banner">
+      <span class="material-icons">error_outline</span>
+      {{ error }}
+      <button class="btn-text" (click)="loadSlots()">Retry</button>
+    </div>
+  }
+
+  <!-- Add Form -->
+  @if (showAddForm) {
+    <div class="add-form-card">
+      <h3>New Time Slot</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Label *</label>
+          <input [(ngModel)]="newSlot.label" type="text" placeholder="8:30 – 9:45 AM" />
+        </div>
+        <div class="form-group">
+          <label>Display Time</label>
+          <input [(ngModel)]="newSlot.display_time" type="text" placeholder="8:30 AM – 9:45 AM" />
+        </div>
+        <div class="form-group">
+          <label>Start Time *</label>
+          <input [(ngModel)]="newSlot.start_time" type="time" step="60" />
+        </div>
+        <div class="form-group">
+          <label>End Time *</label>
+          <input [(ngModel)]="newSlot.end_time" type="time" step="60" />
+        </div>
+        <div class="form-group">
+          <label>Sort Order</label>
+          <input [(ngModel)]="newSlot.sort_order" type="number" min="1" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Days of Week (leave all unchecked = every day)</label>
+        <div class="day-chips">
+          @for (day of ALL_DAYS; track day) {
+            <button
+              type="button"
+              class="day-chip"
+              [class.selected]="isDaySelected(day)"
+              (click)="toggleDaySelection(day)"
+            >
+              {{ DAY_NAMES[day] }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="form-toggles">
+        <label class="toggle-label">
+          <input type="checkbox" [(ngModel)]="newSlot.is_active" />
+          <span>Active</span>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" [(ngModel)]="newSlot.is_client_visible" />
+          <span>Visible to clients</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="cancelAdd()" [disabled]="isSubmitting">Cancel</button>
+        <button class="btn-primary" (click)="submitAdd()" [disabled]="isSubmitting">
+          @if (isSubmitting) { Saving... } @else { Save Slot }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Slots List -->
+  @if (!loading && slots.length > 0) {
+    <div class="slots-list">
+      @for (slot of slots; track slot.id) {
+        <div class="slot-card" [class.inactive]="!slot.is_active" [class.evening]="isEveningSlot(slot)">
+          <div class="slot-main">
+            <div class="slot-info">
+              <div class="slot-name-row">
+                <span class="slot-label">{{ slot.label }}</span>
+                @if (isEveningSlot(slot)) {
+                  <span class="badge badge-evening">Evening</span>
+                }
+                @if (!slot.is_active) {
+                  <span class="badge badge-inactive">Inactive</span>
+                }
+              </div>
+              <div class="slot-meta">
+                <span class="meta-item">
+                  <span class="material-icons">schedule</span>
+                  {{ formatTime(slot.start_time) }} – {{ formatTime(slot.end_time) }}
+                </span>
+                @if (slot.display_time) {
+                  <span class="meta-item">{{ slot.display_time }}</span>
+                }
+                <span class="meta-item">
+                  <span class="material-icons">today</span>
+                  {{ getDayLabels(slot.days_of_week) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="slot-controls">
+              <!-- Active toggle -->
+              <div class="toggle-group">
+                <label class="toggle-switch-label">Active</label>
+                <button
+                  class="toggle-switch"
+                  [class.on]="slot.is_active"
+                  (click)="toggleActive(slot)"
+                  [attr.aria-label]="slot.is_active ? 'Deactivate slot' : 'Activate slot'"
+                >
+                  <span class="toggle-knob"></span>
+                </button>
+              </div>
+
+              <!-- Client visible toggle -->
+              <div class="toggle-group" [class.highlight]="isEveningSlot(slot)">
+                <label class="toggle-switch-label">
+                  @if (isEveningSlot(slot)) { Show to clients } @else { Visible }
+                </label>
+                <button
+                  class="toggle-switch"
+                  [class.on]="slot.is_client_visible"
+                  (click)="toggleClientVisible(slot)"
+                  [attr.aria-label]="slot.is_client_visible ? 'Hide from clients' : 'Show to clients'"
+                >
+                  <span class="toggle-knob"></span>
+                </button>
+              </div>
+
+              <!-- Delete -->
+              <button
+                class="btn-icon btn-delete"
+                (click)="confirmDelete(slot)"
+                [disabled]="deletingId === slot.id"
+                aria-label="Delete slot"
+              >
+                <span class="material-icons">
+                  {{ deletingId === slot.id ? 'hourglass_empty' : 'delete_outline' }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (!loading && slots.length === 0 && !error) {
+    <div class="empty-state">
+      <span class="material-icons">schedule</span>
+      <p>No time slots configured yet.</p>
+      <button class="btn-primary" (click)="openAddForm()">Add First Slot</button>
+    </div>
+  }
+</div>

@@ -217,9 +217,13 @@
                   <span class="schedule-label">Date:</span>
                   <span class="schedule-value">{{ formatDate(booking.scheduled_date) }}</span>
                 </div>
-                <div class="schedule-row" *ngIf="booking.scheduled_time_start">
+                <div class="schedule-row" *ngIf="booking.status === 'pending' && getTimePreferenceLabel(booking)">
+                  <span class="schedule-label">Preferred:</span>
+                  <span class="schedule-value">{{ getTimePreferenceLabel(booking) }}</span>
+                </div>
+                <div class="schedule-row" *ngIf="booking.status !== 'pending' && booking.scheduled_time_start">
                   <span class="schedule-label">Time:</span>
-                  <span class="schedule-value">{{ formatTime(booking.scheduled_time_start) }} - {{ formatTime(booking.scheduled_time_end || '') }}</span>
+                  <span class="schedule-value">{{ formatTime(booking.scheduled_time_start) }} – {{ formatTime(booking.scheduled_time_end || '') }}</span>
                 </div>
               </div>
 
@@ -489,7 +493,10 @@
                 <span class="payment-method-value" *ngIf="booking.payment_method_last4">
                   {{ booking.payment_method_type | titlecase }} ending in {{ booking.payment_method_last4 }}
                 </span>
-                <span class="payment-method-value cash" *ngIf="!booking.payment_method_last4">
+                <span class="payment-method-value" *ngIf="!booking.payment_method_last4 && booking.payment_status === 'card_saved'">
+                  Card on File
+                </span>
+                <span class="payment-method-value cash" *ngIf="!booking.payment_method_last4 && booking.payment_status !== 'card_saved'">
                   Cash on Service
                 </span>
               </div>
@@ -609,9 +616,9 @@
                   <label>3. Time Slot</label>
 
                   <!-- Client's preferred shift (info only) -->
-                  <div *ngIf="booking?.shift_preference" class="client-preference-info">
+                  <div *ngIf="booking?.shift_preference || booking?.time_preferences?.length" class="client-preference-info">
                     <span class="preference-label">Client requested:</span>
-                    <span class="preference-value">{{ booking!.shift_preference | titlecase }}</span>
+                    <span class="preference-value">{{ getTimePreferenceLabel(booking) }}</span>
                   </div>
 
                   <!-- Loading state -->
@@ -1179,7 +1186,14 @@
             </svg>
             {{ booking?.payment_method_type | titlecase }} ending in {{ booking?.payment_method_last4 }}
           </div>
-          <div class="current-payment-value cash" *ngIf="!booking?.payment_method_last4">
+          <div class="current-payment-value" *ngIf="!booking?.payment_method_last4 && booking?.payment_status === 'card_saved'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+            Card on File
+          </div>
+          <div class="current-payment-value cash" *ngIf="!booking?.payment_method_last4 && booking?.payment_status !== 'card_saved'">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="1" x2="12" y2="23"></line>
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>

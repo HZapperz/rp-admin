@@ -70,6 +70,8 @@ export interface BookingTimeSlot {
   start_time: string; // HH:MM:SS format
   end_time: string;
   is_active: boolean;
+  is_client_visible: boolean;
+  days_of_week: number[] | null; // null = all days, otherwise array of 0-6
   sort_order: number;
   created_at: string;
   updated_at: string;

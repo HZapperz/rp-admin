@@ -940,6 +940,16 @@ export class BookingDetailsComponent implements OnInit {
     return '';
   }
 
+  getTimePreferenceLabel(booking: any): string {
+    if (booking?.time_preferences?.length) {
+      return booking.time_preferences.map((p: any) => p.label).join(', ');
+    }
+    if (booking?.shift_preference) {
+      return booking.shift_preference.charAt(0).toUpperCase() + booking.shift_preference.slice(1);
+    }
+    return '';
+  }
+
   // Custom Time Slot Methods
   toggleCustomTimeSlot() {
     this.useCustomTimeSlot = !this.useCustomTimeSlot;
@@ -2155,6 +2165,16 @@ export class BookingDetailsComponent implements OnInit {
 
     try {
       this.clientPaymentMethods = await this.clientService.getClientPaymentMethods(this.booking.client_id);
+
+      // Pre-select the current payment method to reflect actual booking state
+      if (this.booking.payment_method_type === 'cash' || this.booking.payment_status === 'cash_on_service') {
+        this.changePaymentToCash = true;
+      } else if (this.booking.payment_method_id) {
+        const current = this.clientPaymentMethods.find(
+          m => m.stripe_payment_method_id === this.booking!.payment_method_id
+        );
+        if (current) this.selectedNewPaymentMethod = current;
+      }
     } catch (err) {
       console.error('Error fetching payment methods:', err);
       this.clientPaymentMethods = [];
