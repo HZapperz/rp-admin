@@ -823,12 +823,9 @@ export class BookingDetailsComponent implements OnInit {
           this.groomerAvailabilityInfo = data;
 
           if (!data.is_available) {
-            this.groomerUnavailableReason = data.reason || 'Groomer is not available on this date';
-            this.dynamicAvailableSlots = [];
-          } else {
-            // Filter to only show available slots
-            this.dynamicAvailableSlots = data.business_slots;
+            this.groomerUnavailableReason = data.reason || 'Groomer has no standard availability for this day';
           }
+          this.dynamicAvailableSlots = data.business_slots; // always populated
 
           this.isLoadingSlots = false;
         },
@@ -852,8 +849,6 @@ export class BookingDetailsComponent implements OnInit {
 
   // Select a dynamic time slot
   selectDynamicTimeSlot(slot: AvailableSlot) {
-    if (!slot.is_available) return;
-
     this.selectedTimeSlot = {
       label: slot.display_time,
       start: slot.start_time + ':00', // Add seconds for consistency

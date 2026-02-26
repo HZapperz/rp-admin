@@ -144,11 +144,9 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
         this.groomerAvailabilityInfo = data;
 
         if (!data.is_available) {
-          this.groomerUnavailableReason = data.reason || 'Groomer is not available on this date';
-          this.availableSlots = [];
-        } else {
-          this.availableSlots = data.business_slots;
+          this.groomerUnavailableReason = data.reason || 'Groomer has no standard availability for this day';
         }
+        this.availableSlots = data.business_slots; // always populated
 
         this.isLoadingSlots = false;
       },
@@ -161,8 +159,6 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   }
 
   selectSlot(slot: AvailableSlot): void {
-    if (!slot.is_available) return;
-
     this.selectedSlot = slot;
     this.useCustomTime = false;
     // Set the time inputs from the slot for consistency

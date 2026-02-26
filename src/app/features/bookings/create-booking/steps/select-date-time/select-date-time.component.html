@@ -77,27 +77,26 @@
           <span>Loading available time slots...</span>
         </div>
 
-        <!-- Groomer Unavailable Message -->
-        <div *ngIf="selectedDate && !isLoadingSlots && groomerUnavailableReason" class="groomer-unavailable-msg">
-          <mat-icon inline>warning</mat-icon>
+        <!-- Groomer Unavailable Info Banner (non-blocking) -->
+        <div *ngIf="selectedDate && !isLoadingSlots && groomerUnavailableReason" class="groomer-info-banner">
+          <mat-icon inline>info</mat-icon>
           <span>{{ groomerUnavailableReason }}</span>
         </div>
 
-        <!-- Available Time Slots -->
-        <div *ngIf="selectedDate && !isLoadingSlots && !groomerUnavailableReason && availableSlots.length > 0" class="available-slots">
+        <!-- Available Time Slots (always shown when date selected and slots loaded) -->
+        <div *ngIf="selectedDate && !isLoadingSlots && availableSlots.length > 0" class="available-slots">
           <div class="slots-grid">
             <button
               *ngFor="let slot of availableSlots"
               class="slot-btn"
               [class.selected]="isSlotSelected(slot)"
               [class.unavailable]="!slot.is_available"
-              [disabled]="!slot.is_available"
               [title]="slot.conflict_reason || ''"
               (click)="selectSlot(slot)"
               type="button">
               <span class="slot-label">{{ slot.label }}</span>
               <span class="slot-time">{{ slot.display_time }}</span>
-              <mat-icon *ngIf="!slot.is_available" class="conflict-icon" inline>block</mat-icon>
+              <span *ngIf="!slot.is_available" class="busy-badge">Busy</span>
             </button>
           </div>
 

@@ -580,143 +580,11 @@
               </div>
 
               <!-- Assignment Button (no groomer) -->
-              <div *ngIf="!booking.groomer && booking.status === 'pending' && !showAssignmentForm" class="no-groomer">
+              <div *ngIf="!booking.groomer && booking.status === 'pending'" class="no-groomer">
                 <p>This booking needs a groomer assigned.</p>
                 <button (click)="showGroomerAssignment()" class="btn-assign-compact">
                   Assign Groomer
                 </button>
-              </div>
-
-              <!-- Assignment Form (inline compact version) - Flow: Groomer → Date → Time -->
-              <div *ngIf="showAssignmentForm" class="assignment-form-compact">
-                <!-- Step 1: Select Groomer First -->
-                <div class="form-row">
-                  <label>1. Groomer</label>
-                  <select [(ngModel)]="selectedGroomerId" (ngModelChange)="onGroomerChange()" class="form-select-compact">
-                    <option value="">Select groomer...</option>
-                    <option *ngFor="let g of availableGroomers" [value]="g.id">{{ g.first_name }} {{ g.last_name }}</option>
-                  </select>
-                </div>
-
-                <!-- Step 2: Select Date (only enabled after groomer is selected) -->
-                <div class="form-row">
-                  <label>2. Date</label>
-                  <input
-                    type="date"
-                    [(ngModel)]="selectedDate"
-                    [min]="minDate"
-                    [max]="maxDate"
-                    (change)="onDateChange()"
-                    class="form-input-compact"
-                    [disabled]="!selectedGroomerId">
-                </div>
-
-                <!-- Step 3: Select Time Slot (dynamic based on groomer availability) -->
-                <div class="form-row" *ngIf="selectedGroomerId && selectedDate">
-                  <label>3. Time Slot</label>
-
-                  <!-- Client's preferred shift (info only) -->
-                  <div *ngIf="booking?.shift_preference || booking?.time_preferences?.length" class="client-preference-info">
-                    <span class="preference-label">Client requested:</span>
-                    <span class="preference-value">{{ getTimePreferenceLabel(booking) }}</span>
-                  </div>
-
-                  <!-- Loading state -->
-                  <div *ngIf="isLoadingSlots" class="slots-loading">
-                    <span class="spinner-small"></span> Loading available slots...
-                  </div>
-
-                  <!-- Groomer unavailable message -->
-                  <div *ngIf="!isLoadingSlots && groomerUnavailableReason" class="groomer-unavailable-msg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {{ groomerUnavailableReason }}
-                  </div>
-
-                  <!-- Granular time slots (6 slots: 3 morning + 3 afternoon) -->
-                  <div *ngIf="!isLoadingSlots && !groomerUnavailableReason" class="time-slots-sections">
-                    <!-- Morning slots -->
-                    <div class="slot-section" [class.preferred]="booking!.shift_preference === 'morning'">
-                      <div class="slot-section-header">
-                        <span class="slot-section-title">Morning</span>
-                        <span *ngIf="booking!.shift_preference === 'morning'" class="preferred-badge">Preferred</span>
-                      </div>
-                      <div class="time-slots-grid">
-                        <button
-                          *ngFor="let slot of morningSlots"
-                          (click)="selectTimeSlot(slot)"
-                          [class.selected]="selectedTimeSlot?.start === slot.start"
-                          [class.unavailable]="!isSlotAvailable(slot)"
-                          [disabled]="!isSlotAvailable(slot)"
-                          [title]="getSlotConflictReason(slot)"
-                          class="slot-btn-granular">
-                          {{ slot.label }}
-                          <span *ngIf="!isSlotAvailable(slot)" class="slot-conflict-icon">✕</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Afternoon slots -->
-                    <div class="slot-section" [class.preferred]="booking!.shift_preference === 'afternoon'">
-                      <div class="slot-section-header">
-                        <span class="slot-section-title">Afternoon</span>
-                        <span *ngIf="booking!.shift_preference === 'afternoon'" class="preferred-badge">Preferred</span>
-                      </div>
-                      <div class="time-slots-grid">
-                        <button
-                          *ngFor="let slot of afternoonSlots"
-                          (click)="selectTimeSlot(slot)"
-                          [class.selected]="selectedTimeSlot?.start === slot.start"
-                          [class.unavailable]="!isSlotAvailable(slot)"
-                          [disabled]="!isSlotAvailable(slot)"
-                          [title]="getSlotConflictReason(slot)"
-                          class="slot-btn-granular">
-                          {{ slot.label }}
-                          <span *ngIf="!isSlotAvailable(slot)" class="slot-conflict-icon">✕</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Custom time option -->
-                  <div class="custom-time-toggle" *ngIf="!isLoadingSlots && !groomerUnavailableReason">
-                    <button (click)="toggleCustomTimeSlot()" class="btn-custom-time-toggle">
-                      {{ useCustomTimeSlot ? 'Use Standard Slots' : 'Use Custom Time' }}
-                    </button>
-                  </div>
-
-                  <!-- Custom time inputs -->
-                  <div *ngIf="useCustomTimeSlot" class="custom-time-inputs">
-                    <div class="custom-time-row">
-                      <input
-                        type="text"
-                        [(ngModel)]="customStartTime"
-                        (blur)="onCustomStartTimeBlur()"
-                        placeholder="Start (e.g., 9:30 AM)"
-                        class="time-input-compact">
-                      <span class="time-separator">to</span>
-                      <input
-                        type="text"
-                        [(ngModel)]="customEndTime"
-                        (blur)="onCustomEndTimeBlur()"
-                        placeholder="End (e.g., 11:00 AM)"
-                        class="time-input-compact">
-                    </div>
-                    <button (click)="toggleTimeHelp()" class="btn-time-help">{{ showTimeHelp ? 'Hide format help' : 'Time format help' }}</button>
-                    <div *ngIf="showTimeHelp" class="time-help-text">
-                      Formats: "9:30 AM", "930am", "1:00 PM", "130pm"
-                    </div>
-                  </div>
-                </div>
-
-                <div class="assignment-actions">
-                  <button (click)="assignGroomerAndApprove()" [disabled]="!selectedDate || !selectedGroomerId || (!selectedTimeSlot && !isCustomTimeValid()) || assigningGroomer" class="btn-approve-compact">
-                    {{ assigningGroomer ? 'Approving...' : 'Approve' }}
-                  </button>
-                  <button (click)="openRejectDialog()" class="btn-reject-compact">Reject</button>
-                  <button (click)="hideAssignmentForm()" class="btn-cancel-compact">Cancel</button>
-                </div>
               </div>
             </div>
           </div>
@@ -1265,6 +1133,165 @@
           class="btn btn-primary">
           {{ isChangingPaymentMethod ? 'Updating...' : 'Confirm Change' }}
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Groomer Assignment Modal -->
+  <div *ngIf="showAssignmentForm" class="assignment-modal-overlay" (click)="hideAssignmentForm()">
+    <div class="assignment-modal-dialog" (click)="$event.stopPropagation()">
+      <div class="assignment-modal-header">
+        <h3>Assign Groomer &amp; Approve Booking</h3>
+        <button (click)="hideAssignmentForm()" class="dialog-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="assignment-modal-body">
+        <!-- Left Column: Form -->
+        <div class="assignment-col-main">
+          <!-- Step 1: Select Groomer -->
+          <div class="form-row">
+            <label>1. Groomer</label>
+            <select [(ngModel)]="selectedGroomerId" (ngModelChange)="onGroomerChange()" class="form-select-compact">
+              <option value="">Select groomer...</option>
+              <option *ngFor="let g of availableGroomers" [value]="g.id">{{ g.first_name }} {{ g.last_name }}</option>
+            </select>
+          </div>
+
+          <!-- Step 2: Select Date -->
+          <div class="form-row">
+            <label>2. Date</label>
+            <input
+              type="date"
+              [(ngModel)]="selectedDate"
+              [min]="minDate"
+              [max]="maxDate"
+              (change)="onDateChange()"
+              class="form-input-compact"
+              [disabled]="!selectedGroomerId">
+          </div>
+
+          <!-- Step 3: Select Time Slot -->
+          <div class="form-row" *ngIf="selectedGroomerId && selectedDate">
+            <label>3. Time Slot</label>
+
+            <!-- Client preference info -->
+            <div *ngIf="booking?.shift_preference || booking?.time_preferences?.length" class="client-preference-info">
+              <span class="preference-label">Client requested:</span>
+              <span class="preference-value">{{ getTimePreferenceLabel(booking) }}</span>
+            </div>
+
+            <!-- Loading state -->
+            <div *ngIf="isLoadingSlots" class="slots-loading">
+              <span class="spinner-small"></span> Loading available slots...
+            </div>
+
+            <!-- Info banner (groomer has no standard schedule, not an error) -->
+            <div *ngIf="!isLoadingSlots && groomerUnavailableReason" class="groomer-info-banner">
+              ℹ️ {{ groomerUnavailableReason }}
+            </div>
+
+            <!-- Time slot grid (always shown once date selected, never hard-blocked) -->
+            <div *ngIf="!isLoadingSlots" class="time-slots-sections">
+              <!-- Morning slots -->
+              <div class="slot-section" [class.preferred]="booking!.shift_preference === 'morning'">
+                <div class="slot-section-header">
+                  <span class="slot-section-title">Morning</span>
+                  <span *ngIf="booking!.shift_preference === 'morning'" class="preferred-badge">Preferred</span>
+                </div>
+                <div class="time-slots-grid">
+                  <button
+                    *ngFor="let slot of morningSlots"
+                    (click)="selectTimeSlot(slot)"
+                    [class.selected]="selectedTimeSlot?.start === slot.start"
+                    [class.slot-busy]="!isSlotAvailable(slot)"
+                    [title]="getSlotConflictReason(slot)"
+                    class="slot-btn-granular">
+                    {{ slot.label }}
+                    <span *ngIf="!isSlotAvailable(slot)" class="slot-busy-badge">Busy</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Afternoon slots -->
+              <div class="slot-section" [class.preferred]="booking!.shift_preference === 'afternoon'">
+                <div class="slot-section-header">
+                  <span class="slot-section-title">Afternoon</span>
+                  <span *ngIf="booking!.shift_preference === 'afternoon'" class="preferred-badge">Preferred</span>
+                </div>
+                <div class="time-slots-grid">
+                  <button
+                    *ngFor="let slot of afternoonSlots"
+                    (click)="selectTimeSlot(slot)"
+                    [class.selected]="selectedTimeSlot?.start === slot.start"
+                    [class.slot-busy]="!isSlotAvailable(slot)"
+                    [title]="getSlotConflictReason(slot)"
+                    class="slot-btn-granular">
+                    {{ slot.label }}
+                    <span *ngIf="!isSlotAvailable(slot)" class="slot-busy-badge">Busy</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom time toggle -->
+            <div class="custom-time-toggle" *ngIf="!isLoadingSlots">
+              <button (click)="toggleCustomTimeSlot()" class="btn-custom-time-toggle">
+                {{ useCustomTimeSlot ? 'Use Standard Slots' : 'Use Custom Time' }}
+              </button>
+            </div>
+
+            <!-- Custom time inputs -->
+            <div *ngIf="useCustomTimeSlot" class="custom-time-inputs">
+              <div class="custom-time-row">
+                <input
+                  type="text"
+                  [(ngModel)]="customStartTime"
+                  (blur)="onCustomStartTimeBlur()"
+                  placeholder="Start (e.g., 9:30 AM)"
+                  class="time-input-compact">
+                <span class="time-separator">to</span>
+                <input
+                  type="text"
+                  [(ngModel)]="customEndTime"
+                  (blur)="onCustomEndTimeBlur()"
+                  placeholder="End (e.g., 11:00 AM)"
+                  class="time-input-compact">
+              </div>
+              <button (click)="toggleTimeHelp()" class="btn-time-help">{{ showTimeHelp ? 'Hide format help' : 'Time format help' }}</button>
+              <div *ngIf="showTimeHelp" class="time-help-text">
+                Formats: "9:30 AM", "930am", "1:00 PM", "130pm"
+              </div>
+            </div>
+          </div>
+
+          <div class="assignment-actions">
+            <button (click)="assignGroomerAndApprove()" [disabled]="!selectedDate || !selectedGroomerId || (!selectedTimeSlot && !isCustomTimeValid()) || assigningGroomer" class="btn-approve-compact">
+              {{ assigningGroomer ? 'Approving...' : 'Approve & Assign' }}
+            </button>
+            <button (click)="openRejectDialog()" class="btn-reject-compact">Reject</button>
+            <button (click)="hideAssignmentForm()" class="btn-cancel-compact">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Right Column: Day Schedule -->
+        <div class="assignment-col-schedule" *ngIf="selectedDate && groomerAvailabilityInfo">
+          <h4 style="font-size: 0.75rem; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 0.75rem;">
+            Schedule for {{ selectedDate }}
+          </h4>
+          <div *ngIf="groomerAvailabilityInfo.existing_bookings?.length; else noSchedule">
+            <div *ngFor="let b of groomerAvailabilityInfo.existing_bookings" class="schedule-booking-item">
+              <span>{{ formatTime(b.start_time) }} – {{ formatTime(b.end_time) }}</span>
+              <span style="color: #6b7280; font-size: 0.75rem;">Booked</span>
+            </div>
+          </div>
+          <ng-template #noSchedule>
+            <p class="schedule-empty">No bookings for this date.</p>
+          </ng-template>
+        </div>
       </div>
     </div>
   </div>
