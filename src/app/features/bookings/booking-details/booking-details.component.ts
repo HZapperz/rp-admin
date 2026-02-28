@@ -706,6 +706,29 @@ export class BookingDetailsComponent implements OnInit {
     return `${displayHour}:${minutes} ${ampm}`;
   }
 
+  get scheduleTimeline(): { label: string; start24: string; end24: string; isBooked: boolean }[] {
+    const slots: { label: string; start24: string; end24: string; isBooked: boolean }[] = [];
+    for (let hour = 8; hour < 20; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        const endMin = min + 30;
+        const endHour = endMin === 60 ? hour + 1 : hour;
+        const endMinNorm = endMin === 60 ? 0 : endMin;
+        const start24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+        const end24 = `${endHour.toString().padStart(2, '0')}:${endMinNorm.toString().padStart(2, '0')}`;
+        const h = hour, ampm = h >= 12 ? 'PM' : 'AM', display = h % 12 || 12;
+        const label = `${display}:${min.toString().padStart(2, '0')} ${ampm}`;
+        let isBooked = false;
+        for (const b of this.groomerAvailabilityInfo?.existing_bookings || []) {
+          const bStart = b.start_time.substring(0, 5);
+          const bEnd = b.end_time.substring(0, 5);
+          if (start24 < bEnd && end24 > bStart) { isBooked = true; break; }
+        }
+        slots.push({ label, start24, end24, isBooked });
+      }
+    }
+    return slots;
+  }
+
   calculateDuration(startTime: string, endTime: string): number {
     const start = new Date(startTime).getTime();
     const end = new Date(endTime).getTime();

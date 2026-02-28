@@ -1277,20 +1277,20 @@
           </div>
         </div>
 
-        <!-- Right Column: Day Schedule -->
+        <!-- Right Column: Day Schedule Timeline -->
         <div class="assignment-col-schedule" *ngIf="selectedDate && groomerAvailabilityInfo">
-          <h4 style="font-size: 0.75rem; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 0.75rem;">
-            Schedule for {{ selectedDate }}
-          </h4>
-          <div *ngIf="groomerAvailabilityInfo.existing_bookings?.length; else noSchedule">
-            <div *ngFor="let b of groomerAvailabilityInfo.existing_bookings" class="schedule-booking-item">
-              <span>{{ formatTime(b.start_time) }} – {{ formatTime(b.end_time) }}</span>
-              <span style="color: #6b7280; font-size: 0.75rem;">Booked</span>
+          <p class="schedule-panel-title">Schedule for {{ selectedDate }}</p>
+          <div class="schedule-timeline">
+            <div
+              *ngFor="let row of scheduleTimeline"
+              class="schedule-timeline-row"
+              [class.is-booked]="row.isBooked">
+              <span class="schedule-time-label">{{ row.label }}</span>
+              <span class="schedule-status-badge" [class.badge-booked]="row.isBooked" [class.badge-open]="!row.isBooked">
+                {{ row.isBooked ? 'Booked' : 'Open' }}
+              </span>
             </div>
           </div>
-          <ng-template #noSchedule>
-            <p class="schedule-empty">No bookings for this date.</p>
-          </ng-template>
         </div>
       </div>
     </div>
