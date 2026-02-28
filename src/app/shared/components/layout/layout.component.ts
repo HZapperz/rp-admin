@@ -26,6 +26,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private smsService = inject(SMSService);
   private pendingCountSub?: Subscription;
   private smsStatsSub?: Subscription;
+  private authSub?: Subscription;
+  private resizeListener?: () => void;
 
   currentUser: AuthUser | null = null;
   isSidebarOpen = false; // Start closed on mobile, will be set based on screen size
@@ -57,7 +59,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   constructor(private authService: AuthService) {}
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe((user) => {
+    this.authSub = this.authService.currentUser$.subscribe((user) => {
       this.currentUser = user;
     });
 
@@ -72,13 +74,18 @@ export class LayoutComponent implements OnInit, OnDestroy {
     // Set initial sidebar state based on screen size
     this.updateSidebarState();
 
-    // Listen for window resize to update sidebar state
-    window.addEventListener('resize', () => this.updateSidebarState());
+    // Listen for window resize to update sidebar state (stored so it can be removed)
+    this.resizeListener = () => this.updateSidebarState();
+    window.addEventListener('resize', this.resizeListener);
   }
 
   ngOnDestroy(): void {
     this.pendingCountSub?.unsubscribe();
     this.smsStatsSub?.unsubscribe();
+    this.authSub?.unsubscribe();
+    if (this.resizeListener) {
+      window.removeEventListener('resize', this.resizeListener);
+    }
   }
 
   private loadSmsStats(): void {

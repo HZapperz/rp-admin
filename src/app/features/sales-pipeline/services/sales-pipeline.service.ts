@@ -54,7 +54,7 @@ export class SalesPipelineService {
   constructor(private http: HttpClient) {
     this.supabase = createClient(
       environment.supabase.url,
-      environment.supabase.serviceRoleKey
+      environment.supabase.anonKey
     );
   }
 
@@ -653,7 +653,7 @@ export class SalesPipelineService {
   private async fetchStats(): Promise<PipelineStats> {
     const { data: leads, error } = await this.supabase
       .from('sales_pipeline_leads')
-      .select('pipeline_stage, stage_changed_at, converted_booking_id');
+      .select('pipeline_stage, stage_changed_at, converted_booking_id, created_at');
 
     if (error) throw error;
 
@@ -706,9 +706,12 @@ export class SalesPipelineService {
         if (stage === 'LOST') stats.lost_this_week++;
       }
 
-      // Track conversion time
-      if (stage === 'CONVERTED' && lead.converted_booking_id) {
-        convertedDaysTotal += daysInStage;
+      // Track conversion time: measure from lead creation to conversion date
+      if (stage === 'CONVERTED' && lead.converted_booking_id && lead.created_at) {
+        const daysToConvert = Math.floor(
+          (new Date(lead.stage_changed_at).getTime() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        convertedDaysTotal += Math.max(0, daysToConvert);
         convertedCount++;
       }
     }

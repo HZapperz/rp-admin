@@ -11,6 +11,7 @@ export const environment = {
   stripePublishableKey: '',
   smsService: {
     url: 'https://royalpawz-sms.herokuapp.com',
-    apiKey: ''
-  }
+    apiKey: 'rp-sms-service-key-2024'
+  },
+  googleReviewUrl: 'https://g.page/r/YOUR_PLACE_ID/review'
 };
