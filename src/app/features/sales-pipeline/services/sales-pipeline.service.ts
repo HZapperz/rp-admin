@@ -9,8 +9,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject, from, of } from 'rxjs';
 import { map, tap, catchError, switchMap } from 'rxjs/operators';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../../environments/environment';
+import { SupabaseService } from '../../../core/services/supabase.service';
 import {
   PipelineLead,
   PipelineLeadWithDetails,
@@ -51,11 +52,8 @@ export class SalesPipelineService {
   private leadsSubject = new BehaviorSubject<PipelineLeadWithDetails[]>([]);
   public leads$ = this.leadsSubject.asObservable();
 
-  constructor(private http: HttpClient) {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private http: HttpClient, private supabaseService: SupabaseService) {
+    this.supabase = supabaseService.client;
   }
 
   // ==================== LEAD MANAGEMENT ====================
