@@ -87,6 +87,9 @@
       <button class="btn-icon-lg" (click)="toggleViewMode()" title="Toggle view mode">
         <span class="material-icons">{{ viewMode === 'markers' ? 'layers' : 'place' }}</span>
       </button>
+      <button class="btn-icon-lg" [class.active]="showBookingMarkers" (click)="toggleBookingMarkers()" title="Toggle booking markers">
+        <span class="material-icons">event</span>
+      </button>
     </div>
 
     <!-- Loading Overlay -->
@@ -245,6 +248,116 @@
           </div>
         </div>
 
+        <!-- Upcoming Appointments -->
+        <div class="panel-section">
+          <div class="section-header-collapsible" (click)="toggleUpcoming()">
+            <h3 class="section-title">
+              Upcoming Appointments
+              <span class="booking-count-badge upcoming" *ngIf="upcomingBookings.length > 0">{{ upcomingBookings.length }}</span>
+            </h3>
+            <span class="material-icons chevron" [class.collapsed]="!showUpcoming">expand_more</span>
+          </div>
+
+          <div *ngIf="showUpcoming" class="booking-list">
+            <div *ngIf="bookingsLoading" class="booking-list-loading">
+              <div class="spinner-sm"></div>
+            </div>
+            <div *ngIf="!bookingsLoading && upcomingBookings.length === 0" class="booking-list-empty">
+              No upcoming appointments
+            </div>
+            <div
+              *ngFor="let booking of upcomingBookings"
+              class="booking-mini-card upcoming"
+              (click)="openBookingDetail(booking.id)"
+              (mouseenter)="flyToBooking(booking)"
+            >
+              <div class="mini-card-top">
+                <span class="mini-card-client">{{ booking.client_name }}</span>
+                <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
+              </div>
+              <div class="mini-card-details">
+                <span class="mini-card-detail">
+                  <span class="material-icons">calendar_today</span>
+                  {{ formatDate(booking.scheduled_date) }}
+                </span>
+                <span class="mini-card-detail">
+                  <span class="material-icons">schedule</span>
+                  {{ getTimeDisplay(booking) }}
+                </span>
+              </div>
+              <div class="mini-card-details">
+                <span class="mini-card-detail" *ngIf="booking.zip_code">
+                  <span class="material-icons">location_on</span>
+                  {{ booking.zip_code }}
+                </span>
+                <span class="mini-card-detail">
+                  <span class="material-icons">pets</span>
+                  {{ booking.pet_count }} {{ booking.pet_count === 1 ? 'pet' : 'pets' }}
+                </span>
+              </div>
+              <div class="mini-card-bottom">
+                <span class="booking-status-badge confirmed">Confirmed</span>
+                <span class="mini-card-service" *ngIf="booking.service_name">{{ booking.service_name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requested Appointments -->
+        <div class="panel-section">
+          <div class="section-header-collapsible" (click)="toggleRequested()">
+            <h3 class="section-title">
+              Requested Appointments
+              <span class="booking-count-badge requested" *ngIf="requestedBookings.length > 0">{{ requestedBookings.length }}</span>
+            </h3>
+            <span class="material-icons chevron" [class.collapsed]="!showRequested">expand_more</span>
+          </div>
+
+          <div *ngIf="showRequested" class="booking-list">
+            <div *ngIf="bookingsLoading" class="booking-list-loading">
+              <div class="spinner-sm"></div>
+            </div>
+            <div *ngIf="!bookingsLoading && requestedBookings.length === 0" class="booking-list-empty">
+              No pending requests
+            </div>
+            <div
+              *ngFor="let booking of requestedBookings"
+              class="booking-mini-card requested"
+              (click)="openBookingDetail(booking.id)"
+              (mouseenter)="flyToBooking(booking)"
+            >
+              <div class="mini-card-top">
+                <span class="mini-card-client">{{ booking.client_name }}</span>
+                <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
+              </div>
+              <div class="mini-card-details">
+                <span class="mini-card-detail">
+                  <span class="material-icons">calendar_today</span>
+                  {{ formatDate(booking.scheduled_date) }}
+                </span>
+                <span class="mini-card-detail">
+                  <span class="material-icons">schedule</span>
+                  {{ getTimeDisplay(booking) }}
+                </span>
+              </div>
+              <div class="mini-card-details">
+                <span class="mini-card-detail" *ngIf="booking.zip_code">
+                  <span class="material-icons">location_on</span>
+                  {{ booking.zip_code }}
+                </span>
+                <span class="mini-card-detail">
+                  <span class="material-icons">pets</span>
+                  {{ booking.pet_count }} {{ booking.pet_count === 1 ? 'pet' : 'pets' }}
+                </span>
+              </div>
+              <div class="mini-card-bottom">
+                <span class="booking-status-badge pending">Pending</span>
+                <span class="mini-card-service" *ngIf="booking.service_name">{{ booking.service_name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Legend -->
         <div class="panel-section">
           <h3 class="section-title">Status Legend</h3>
@@ -252,6 +365,17 @@
             <div class="legend-item" *ngFor="let option of statusOptions">
               <span class="legend-color" [style.background-color]="option.color"></span>
               <span class="legend-label">{{ option.label }}</span>
+            </div>
+
+            <div class="legend-divider"></div>
+
+            <div class="legend-item">
+              <span class="legend-color diamond" style="background-color: #2196f3;"></span>
+              <span class="legend-label">Upcoming Booking</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color diamond" style="background-color: #ff9800;"></span>
+              <span class="legend-label">Requested Booking</span>
             </div>
           </div>
         </div>

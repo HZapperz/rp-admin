@@ -4,6 +4,7 @@ const path = require('path');
 // Environment variables to inject (from Vercel)
 const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 const apiUrl = process.env.API_URL || 'https://www.royalpawzusa.com';
+const googleReviewUrl = process.env.GOOGLE_REVIEW_URL || 'https://g.page/r/YOUR_PLACE_ID/review';
 
 console.log('Setting environment variables...');
 console.log('API URL:', apiUrl);
@@ -27,7 +28,8 @@ export const environment = {
   smsService: {
     url: 'https://royalpawz-sms.herokuapp.com',
     apiKey: ''
-  }
+  },
+  googleReviewUrl: '${googleReviewUrl}'
 };
 `;
 

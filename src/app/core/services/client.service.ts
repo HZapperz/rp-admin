@@ -50,6 +50,7 @@ export interface ClientWithStats {
   last_sign_in_at?: string;
   pets?: { id: string; name: string }[];
   sms_enabled?: boolean;
+  google_review_requested?: boolean;
   // Warm lead fields
   is_warm_lead: boolean;
   completion_status: {
@@ -64,7 +65,7 @@ export interface ClientWithStats {
 export type ClientFilterType = 'all' | 'clients' | 'warm_leads';
 
 // Client Relations UI Types
-export type ClientSegment = 'all' | 'vip' | 'at_risk' | 'upcoming' | 'new';
+export type ClientSegment = 'all' | 'vip' | 'at_risk' | 'upcoming' | 'new' | 'needs_review';
 
 export interface ClientSegmentConfig {
   segment: ClientSegment;
@@ -105,6 +106,7 @@ export interface ClientRelationsStats {
   at_risk_count: number;
   upcoming_count: number;
   new_count: number;
+  needs_review_count: number;
   total_revenue: number;
   avg_ltv: number;
   nudges: ClientNudge[];
@@ -151,6 +153,14 @@ export const CLIENT_SEGMENT_CONFIGS: Record<ClientSegment, ClientSegmentConfig> 
     bgColor: '#dbeafe',
     description: 'New clients whose first booking was within 30 days',
     icon: 'person_add'
+  },
+  needs_review: {
+    segment: 'needs_review',
+    label: 'Needs Review',
+    color: '#d97706',
+    bgColor: '#fef3c7',
+    description: 'Clients who completed a booking but haven\'t received a Google review request',
+    icon: 'star'
   }
 };
 
@@ -284,7 +294,7 @@ export class ClientService {
     // Step 1: Get all clients
     let query = this.supabase
       .from('users')
-      .select('id, first_name, last_name, email, phone, avatar_url, created_at, sms_consent, last_outreach_date')
+      .select('id, first_name, last_name, email, phone, avatar_url, created_at, sms_consent, last_outreach_date, google_review_requested')
       .eq('role', 'CLIENT')
       .order('created_at', { ascending: false });
 
@@ -436,6 +446,7 @@ export class ClientService {
       return {
         ...client,
         sms_enabled: (client as any).sms_consent, // Map sms_consent to sms_enabled
+        google_review_requested: (client as any).google_review_requested ?? false,
         total_bookings: totalBookings,
         total_spent: totalSpent,
         last_booking_date: lastBookingDate,
@@ -1152,7 +1163,9 @@ export class ClientService {
 
     // Filter by segment if specified
     let filtered = clientsWithEngagement;
-    if (segment && segment !== 'all') {
+    if (segment === 'needs_review') {
+      filtered = clientsWithEngagement.filter(c => !c.google_review_requested && c.total_bookings >= 1);
+    } else if (segment && segment !== 'all') {
       filtered = clientsWithEngagement.filter(c => c.segment === segment);
     }
 
@@ -1351,6 +1364,7 @@ export class ClientService {
     let atRiskCount = 0;
     let upcomingCount = 0;
     let newCount = 0;
+    let needsReviewCount = 0;
     let totalRevenue = 0;
 
     for (const client of actualClients) {
@@ -1379,6 +1393,11 @@ export class ClientService {
       if (client.total_bookings === 1 && daysSinceLastBooking <= 30) {
         newCount++;
       }
+
+      // Needs Review
+      if (!client.google_review_requested && client.total_bookings >= 1) {
+        needsReviewCount++;
+      }
     }
 
     // Generate nudges
@@ -1390,6 +1409,7 @@ export class ClientService {
       at_risk_count: atRiskCount,
       upcoming_count: upcomingCount,
       new_count: newCount,
+      needs_review_count: needsReviewCount,
       total_revenue: totalRevenue,
       avg_ltv: actualClients.length > 0 ? totalRevenue / actualClients.length : 0,
       nudges
@@ -1531,5 +1551,94 @@ export class ClientService {
   getCallUrl(client: ClientWithStats): string {
     if (!client.phone) return '#';
     return `tel:${client.phone}`;
+  }
+
+  // ============================================
+  // GOOGLE REVIEW REQUEST METHODS
+  // ============================================
+
+  /**
+   * Send a Google review request SMS (with before/after photos if available)
+   * to a client via the Twilio MMS endpoint.
+   */
+  sendGoogleReviewRequest(client: ClientWithEngagement): Observable<void> {
+    return from(this.doSendGoogleReviewRequest(client));
+  }
+
+  private async doSendGoogleReviewRequest(client: ClientWithEngagement): Promise<void> {
+    // 1. Fetch the most recent completed bookings to find one with photos
+    const { data: recentBookings } = await this.supabase
+      .from('bookings')
+      .select('id, before_photos, after_photos, completed_at, scheduled_date')
+      .eq('client_id', client.id)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(5);
+
+    // Prefer a booking that has at least one photo; fall back to the most recent
+    const bookingWithPhotos = recentBookings?.find(b =>
+      (b.before_photos?.length > 0) || (b.after_photos?.length > 0)
+    );
+    const booking = bookingWithPhotos ?? recentBookings?.[0] ?? null;
+
+    // 2. Build media_urls (cap at 3 for Twilio MMS)
+    const mediaUrls: string[] = [];
+    if (booking) {
+      const before: string[] = booking.before_photos || [];
+      const after: string[] = booking.after_photos || [];
+      mediaUrls.push(...before, ...after);
+    }
+    const cappedMediaUrls = mediaUrls.filter(Boolean).slice(0, 3);
+
+    // 3. Build message text
+    const petName = client.pets?.[0]?.name || 'your pup';
+    const googleReviewUrl = environment.googleReviewUrl;
+    const message = [
+      `Hi ${client.first_name}! 🐾 ${petName} looked absolutely amazing — we loved having them in!`,
+      `If you have a moment, we'd love it if you shared your experience:`,
+      `⭐ ${googleReviewUrl}`
+    ].join('\n');
+
+    // 4. POST to SMS service
+    const response = await fetch(`${environment.smsService.url}/send/sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': environment.smsService.apiKey
+      },
+      body: JSON.stringify({
+        to: client.phone,
+        body: message,
+        media_urls: cappedMediaUrls,
+        user_id: client.id,
+        booking_id: booking?.id ?? null
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`SMS send failed: ${errText}`);
+    }
+
+    // 5. Mark the user as review-requested in Supabase
+    const { error } = await this.supabase
+      .from('users')
+      .update({
+        google_review_requested: true,
+        google_review_requested_at: new Date().toISOString()
+      })
+      .eq('id', client.id);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get clients who need a Google review request:
+   * actual clients (not warm leads) who haven't been sent one yet.
+   */
+  getClientsNeedingReview(): Observable<ClientWithEngagement[]> {
+    return this.getClientsWithEngagement(undefined, 'needs_review');
   }
 }

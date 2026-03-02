@@ -11,6 +11,8 @@ export interface User {
   email?: string;
   createdAt: string;
   updatedAt: string;
+  google_review_requested?: boolean;
+  google_review_requested_at?: string | null;
 }
 
 // Pet Types
@@ -563,4 +565,21 @@ export interface TerritoryMetrics {
     customers_change_percent: number;
     revenue_change_percent: number;
   };
+}
+
+export interface TerritoryBooking {
+  id: string;
+  client_name: string;
+  status: 'pending' | 'confirmed';
+  scheduled_date: string;
+  time_slot?: string;
+  shift_preference?: string;
+  total_amount: number;
+  zip_code?: string;
+  latitude?: number;
+  longitude?: number;
+  pet_count: number;
+  pet_names: string[];
+  service_name?: string;
+  created_at: string;
 }

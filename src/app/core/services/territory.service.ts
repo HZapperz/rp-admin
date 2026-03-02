@@ -5,7 +5,8 @@ import {
   TerritoryCustomer,
   ZipCodeMetrics,
   TerritoryMetrics,
-  TerritoryFilters
+  TerritoryFilters,
+  TerritoryBooking
 } from '../models/types';
 
 @Injectable({
@@ -362,6 +363,104 @@ export class TerritoryService {
       };
     } catch (error) {
       console.error('Error fetching territory metrics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch upcoming confirmed and pending requested bookings for territory view
+   */
+  getTerritoryBookings(): Observable<{ upcoming: TerritoryBooking[]; requested: TerritoryBooking[] }> {
+    return from(this.fetchTerritoryBookings());
+  }
+
+  private async fetchTerritoryBookings(): Promise<{ upcoming: TerritoryBooking[]; requested: TerritoryBooking[] }> {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Fetch upcoming confirmed and pending bookings in parallel
+      const [upcomingResult, requestedResult] = await Promise.all([
+        this.supabase
+          .from('bookings')
+          .select('id, client_id, status, scheduled_date, time_slot, shift_preference, total_amount, zip_code, latitude, longitude, service_name, created_at')
+          .eq('status', 'confirmed')
+          .gte('scheduled_date', today)
+          .order('scheduled_date', { ascending: true })
+          .limit(20),
+        this.supabase
+          .from('bookings')
+          .select('id, client_id, status, scheduled_date, time_slot, shift_preference, total_amount, zip_code, latitude, longitude, service_name, created_at')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(20)
+      ]);
+
+      if (upcomingResult.error) throw upcomingResult.error;
+      if (requestedResult.error) throw requestedResult.error;
+
+      const allBookings = [...(upcomingResult.data || []), ...(requestedResult.data || [])];
+      if (allBookings.length === 0) {
+        return { upcoming: [], requested: [] };
+      }
+
+      // Collect unique client IDs and booking IDs
+      const clientIds = [...new Set(allBookings.map(b => b.client_id))];
+      const bookingIds = allBookings.map(b => b.id);
+
+      // Batch-fetch client names and booking pets in parallel
+      const [clientsResult, petsResult] = await Promise.all([
+        this.supabase
+          .from('users')
+          .select('id, first_name, last_name')
+          .in('id', clientIds),
+        this.supabase
+          .from('booking_pets')
+          .select('booking_id, pet_id, pets(name)')
+          .in('booking_id', bookingIds)
+      ]);
+
+      // Build lookup maps
+      const clientNameMap = new Map<string, string>();
+      (clientsResult.data || []).forEach((u: any) => {
+        clientNameMap.set(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown');
+      });
+
+      const petsByBookingMap = new Map<string, string[]>();
+      (petsResult.data || []).forEach((bp: any) => {
+        if (!petsByBookingMap.has(bp.booking_id)) {
+          petsByBookingMap.set(bp.booking_id, []);
+        }
+        const petName = bp.pets?.name || 'Unknown';
+        petsByBookingMap.get(bp.booking_id)!.push(petName);
+      });
+
+      // Transform bookings
+      const transform = (booking: any): TerritoryBooking => {
+        const pets = petsByBookingMap.get(booking.id) || [];
+        return {
+          id: booking.id,
+          client_name: clientNameMap.get(booking.client_id) || 'Unknown',
+          status: booking.status,
+          scheduled_date: booking.scheduled_date,
+          time_slot: booking.time_slot || undefined,
+          shift_preference: booking.shift_preference || undefined,
+          total_amount: parseFloat(booking.total_amount) || 0,
+          zip_code: booking.zip_code || undefined,
+          latitude: booking.latitude ? parseFloat(booking.latitude) : undefined,
+          longitude: booking.longitude ? parseFloat(booking.longitude) : undefined,
+          pet_count: pets.length || 1,
+          pet_names: pets,
+          service_name: booking.service_name || undefined,
+          created_at: booking.created_at
+        };
+      };
+
+      return {
+        upcoming: (upcomingResult.data || []).map(transform),
+        requested: (requestedResult.data || []).map(transform)
+      };
+    } catch (error) {
+      console.error('Error fetching territory bookings:', error);
       throw error;
     }
   }

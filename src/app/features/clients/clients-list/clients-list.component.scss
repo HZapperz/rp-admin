@@ -1187,5 +1187,40 @@
       border-color: #d1d5db;
     }
   }
+
+  &.review-request {
+    color: #d97706;
+
+    &:hover:not(:disabled) {
+      background: #fffbeb;
+      border-color: #fcd34d;
+    }
+
+    &.sending {
+      color: #9ca3af;
+      cursor: not-allowed;
+
+      .spin {
+        animation: spin 1s linear infinite;
+      }
+    }
+
+    &.sent {
+      color: #16a34a;
+      background: #f0fdf4;
+      border-color: #86efac;
+      cursor: default;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 

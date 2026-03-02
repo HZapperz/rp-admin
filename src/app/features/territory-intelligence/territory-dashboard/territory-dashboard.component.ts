@@ -9,11 +9,13 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import mapboxgl from 'mapbox-gl';
 import { environment } from '../../../../environments/environment';
 import { TerritoryService } from '../../../core/services/territory.service';
 import {
   TerritoryCustomer,
+  TerritoryBooking,
   ZipCodeMetrics,
   TerritoryMetrics,
   TerritoryFilters
@@ -28,9 +30,11 @@ import {
 })
 export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   private territoryService = inject(TerritoryService);
+  private router = inject(Router);
   @ViewChild('mapCanvas') mapCanvas!: ElementRef<HTMLDivElement>;
   map: mapboxgl.Map | null = null;
   private mapMarkers: mapboxgl.Marker[] = [];
+  private bookingMarkers: mapboxgl.Marker[] = [];
 
   // State
   customers: TerritoryCustomer[] = [];
@@ -38,6 +42,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   territoryMetrics: TerritoryMetrics | null = null;
   selectedCustomer: TerritoryCustomer | null = null;
   loading = false;
+
+  // Booking state
+  upcomingBookings: TerritoryBooking[] = [];
+  requestedBookings: TerritoryBooking[] = [];
+  bookingsLoading = false;
+  showUpcoming = true;
+  showRequested = true;
+  showBookingMarkers = true;
 
   // Filter state
   filters: TerritoryFilters = {
@@ -113,6 +125,21 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       error: (err) => {
         console.error('Error loading territory metrics:', err);
         this.loading = false;
+      }
+    });
+
+    // Load territory bookings
+    this.bookingsLoading = true;
+    this.territoryService.getTerritoryBookings().subscribe({
+      next: ({ upcoming, requested }) => {
+        this.upcomingBookings = upcoming;
+        this.requestedBookings = requested;
+        this.bookingsLoading = false;
+        this.renderBookingMarkers();
+      },
+      error: (err) => {
+        console.error('Error loading territory bookings:', err);
+        this.bookingsLoading = false;
       }
     });
   }
@@ -354,10 +381,128 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   }
 
   /**
+   * Navigate to booking detail page
+   */
+  openBookingDetail(id: string): void {
+    this.router.navigate(['/bookings/details', id]);
+  }
+
+  /**
+   * Fly map to booking location
+   */
+  flyToBooking(booking: TerritoryBooking): void {
+    if (this.map && booking.latitude && booking.longitude) {
+      this.map.flyTo({
+        center: [booking.longitude, booking.latitude],
+        zoom: 14,
+        duration: 1000
+      });
+    }
+  }
+
+  /**
+   * Get display string for booking time
+   */
+  getTimeDisplay(booking: TerritoryBooking): string {
+    if (booking.time_slot) return booking.time_slot;
+    if (booking.shift_preference) {
+      const labels: Record<string, string> = {
+        'morning': 'Morning',
+        'afternoon': 'Afternoon',
+        'evening': 'Evening'
+      };
+      return labels[booking.shift_preference] || booking.shift_preference;
+    }
+    return 'TBD';
+  }
+
+  /**
+   * Toggle upcoming bookings section
+   */
+  toggleUpcoming(): void {
+    this.showUpcoming = !this.showUpcoming;
+  }
+
+  /**
+   * Toggle requested bookings section
+   */
+  toggleRequested(): void {
+    this.showRequested = !this.showRequested;
+  }
+
+  /**
+   * Toggle booking markers visibility on map
+   */
+  toggleBookingMarkers(): void {
+    this.showBookingMarkers = !this.showBookingMarkers;
+    if (this.showBookingMarkers) {
+      this.renderBookingMarkers();
+    } else {
+      this.clearBookingMarkers();
+    }
+  }
+
+  /**
+   * Render diamond-shaped booking markers on the map
+   */
+  private renderBookingMarkers(): void {
+    if (!this.map || !this.showBookingMarkers) return;
+
+    this.clearBookingMarkers();
+
+    const allBookings = [
+      ...this.upcomingBookings.map(b => ({ ...b, markerColor: '#2196f3' })),
+      ...this.requestedBookings.map(b => ({ ...b, markerColor: '#ff9800' }))
+    ];
+
+    allBookings.forEach(booking => {
+      if (!booking.latitude || !booking.longitude) return;
+
+      const el = document.createElement('div');
+      el.className = 'booking-marker';
+      el.style.width = '14px';
+      el.style.height = '14px';
+      el.style.backgroundColor = booking.markerColor;
+      el.style.transform = 'rotate(45deg)';
+      el.style.border = '2px solid white';
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+      el.style.cursor = 'pointer';
+      el.style.transition = 'opacity 0.2s ease, box-shadow 0.2s ease';
+
+      el.addEventListener('mouseenter', () => {
+        el.style.opacity = '0.8';
+        el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.opacity = '1';
+        el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+      });
+      el.addEventListener('click', () => {
+        this.openBookingDetail(booking.id);
+      });
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([booking.longitude!, booking.latitude!])
+        .addTo(this.map!);
+
+      this.bookingMarkers.push(marker);
+    });
+  }
+
+  /**
+   * Clear booking markers from the map
+   */
+  private clearBookingMarkers(): void {
+    this.bookingMarkers.forEach(marker => marker.remove());
+    this.bookingMarkers = [];
+  }
+
+  /**
    * Cleanup map resources
    */
   private cleanupMap(): void {
     this.clearMarkers();
+    this.clearBookingMarkers();
     if (this.map) {
       this.map.remove();
       this.map = null;

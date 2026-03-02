@@ -44,7 +44,11 @@ export class ClientsListComponent implements OnInit {
 
   // Segment configurations
   segmentConfigs = CLIENT_SEGMENT_CONFIGS;
-  segmentList: ClientSegment[] = ['all', 'vip', 'at_risk', 'upcoming', 'new'];
+  segmentList: ClientSegment[] = ['all', 'vip', 'at_risk', 'upcoming', 'new', 'needs_review'];
+
+  // Google review request state
+  sendingReviewRequest = new Set<string>();
+  reviewSentClients = new Set<string>();
 
   constructor(public clientService: ClientService, private router: Router) {}
 
@@ -105,6 +109,7 @@ export class ClientsListComponent implements OnInit {
       case 'at_risk': return this.stats.at_risk_count;
       case 'upcoming': return this.stats.upcoming_count;
       case 'new': return this.stats.new_count;
+      case 'needs_review': return this.stats.needs_review_count;
       default: return this.stats.total;
     }
   }
@@ -225,6 +230,36 @@ export class ClientsListComponent implements OnInit {
     await this.clientService.logClientActivity(client.id, 'note', 'Marked outreach complete');
     // Refresh data
     this.loadData();
+  }
+
+  onSendReviewRequest(client: ClientWithEngagement, event: Event): void {
+    event.stopPropagation();
+    if (this.sendingReviewRequest.has(client.id) || this.reviewSentClients.has(client.id)) {
+      return;
+    }
+
+    this.sendingReviewRequest.add(client.id);
+
+    this.clientService.sendGoogleReviewRequest(client).subscribe({
+      next: () => {
+        this.sendingReviewRequest.delete(client.id);
+        this.reviewSentClients.add(client.id);
+        // Remove from the current list if on the needs_review segment
+        if (this.selectedSegment === 'needs_review') {
+          this.clients = this.clients.filter(c => c.id !== client.id);
+          this.filteredClients = this.filteredClients.filter(c => c.id !== client.id);
+          // Update the badge count
+          if (this.stats) {
+            this.stats = { ...this.stats, needs_review_count: Math.max(0, this.stats.needs_review_count - 1) };
+          }
+        }
+      },
+      error: (err) => {
+        this.sendingReviewRequest.delete(client.id);
+        console.error('Error sending review request:', err);
+        alert('Failed to send review request. Please try again.');
+      }
+    });
   }
 
   viewClientDetail(clientId: string): void {
