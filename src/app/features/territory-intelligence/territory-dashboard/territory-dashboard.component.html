@@ -346,7 +346,7 @@
 
       <!-- Booking Cards -->
       <div
-        *ngFor="let booking of dayBookings"
+        *ngFor="let booking of dayBookings; let i = index"
         class="booking-mini-card"
         [class.confirmed]="booking.status === 'confirmed'"
         [class.pending]="booking.status === 'pending'"
@@ -355,7 +355,10 @@
         (mouseenter)="flyToDayBooking(booking)"
       >
         <div class="mini-card-top">
-          <span class="mini-card-time">{{ getDayBookingTimeDisplay(booking) }}</span>
+          <span class="mini-card-time">
+            <span class="mini-card-sequence" [class.confirmed]="booking.status === 'confirmed' || booking.status === 'in_progress'" [class.pending]="booking.status === 'pending'">{{ i + 1 }}</span>
+            {{ getDayBookingTimeDisplay(booking) }}
+          </span>
           <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
         </div>
         <div class="mini-card-client-row">
@@ -390,11 +393,11 @@
     <!-- Legend -->
     <div class="day-legend">
       <div class="legend-item">
-        <span class="legend-color diamond" style="background-color: #2196f3;"></span>
+        <span class="legend-color-circle" style="background-color: #2196f3;">1</span>
         <span class="legend-label">Confirmed</span>
       </div>
       <div class="legend-item">
-        <span class="legend-color diamond" style="background-color: #ff9800;"></span>
+        <span class="legend-color-circle" style="background-color: #ff9800;">2</span>
         <span class="legend-label">Pending</span>
       </div>
     </div>

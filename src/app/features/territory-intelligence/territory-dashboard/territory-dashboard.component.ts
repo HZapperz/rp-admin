@@ -15,6 +15,7 @@ import { environment } from '../../../../environments/environment';
 import { TerritoryService } from '../../../core/services/territory.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService, GroomerWithStats } from '../../../core/services/groomer.service';
+import { SupabaseService } from '../../../core/services/supabase.service';
 import {
   TerritoryCustomer,
   ZipCodeMetrics,
@@ -35,6 +36,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   private territoryService = inject(TerritoryService);
   private bookingService = inject(BookingService);
   private groomerService = inject(GroomerService);
+  private supabase = inject(SupabaseService);
   private router = inject(Router);
   @ViewChild('mapCanvas') mapCanvas!: ElementRef<HTMLDivElement>;
   map: mapboxgl.Map | null = null;
@@ -185,13 +187,17 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     }
 
     this.bookingService.getAllBookings(filters).subscribe({
-      next: (bookings) => {
-        // Sort by scheduled time
+      next: async (bookings) => {
+        // Sort by scheduled_time_start (the actual correct time)
         this.dayBookings = bookings.sort((a, b) => {
-          const timeA = a.assigned_time_slot || a.scheduled_time_start || '';
-          const timeB = b.assigned_time_slot || b.scheduled_time_start || '';
+          const timeA = a.scheduled_time_start || '99:99';
+          const timeB = b.scheduled_time_start || '99:99';
           return timeA.localeCompare(timeB);
         });
+
+        // Enrich bookings with address coordinates
+        await this.enrichBookingsWithCoordinates(this.dayBookings);
+
         this.dayBookingsLoading = false;
         this.renderDayBookingMarkers();
       },
@@ -200,6 +206,45 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.dayBookingsLoading = false;
       }
     });
+  }
+
+  /**
+   * Look up lat/lng from the addresses table for bookings missing coordinates
+   */
+  private async enrichBookingsWithCoordinates(bookings: BookingWithDetails[]): Promise<void> {
+    const clientIds = [...new Set(bookings.filter(b => !b.latitude || !b.longitude).map(b => b.client_id))];
+    if (clientIds.length === 0) return;
+
+    const { data: addresses, error } = await this.supabase
+      .from('addresses')
+      .select('user_id, street, latitude, longitude')
+      .in('user_id', clientIds)
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
+
+    if (error || !addresses) return;
+
+    // Build lookup: client_id -> { lat, lng } (use first address with coords)
+    const coordsLookup: Record<string, { lat: number; lng: number }> = {};
+    for (const addr of addresses) {
+      if (!coordsLookup[addr.user_id]) {
+        coordsLookup[addr.user_id] = {
+          lat: parseFloat(addr.latitude),
+          lng: parseFloat(addr.longitude)
+        };
+      }
+    }
+
+    // Enrich bookings
+    for (const booking of bookings) {
+      if (!booking.latitude || !booking.longitude) {
+        const coords = coordsLookup[booking.client_id];
+        if (coords) {
+          booking.latitude = coords.lat;
+          booking.longitude = coords.lng;
+        }
+      }
+    }
   }
 
   prevDay(): void {
@@ -342,23 +387,33 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
     const bounds = new mapboxgl.LngLatBounds();
     let hasMarkers = false;
+    let sequence = 0;
 
     this.dayBookings.forEach(booking => {
       if (!booking.latitude || !booking.longitude) return;
 
+      sequence++;
       const isConfirmed = booking.status === 'confirmed' || booking.status === 'in_progress';
       const markerColor = isConfirmed ? '#2196f3' : '#ff9800';
 
       const el = document.createElement('div');
-      el.className = 'booking-marker';
-      el.style.width = '14px';
-      el.style.height = '14px';
+      el.className = 'booking-marker-numbered';
+      el.style.width = '28px';
+      el.style.height = '28px';
       el.style.backgroundColor = markerColor;
-      el.style.transform = 'rotate(45deg)';
+      el.style.borderRadius = '50%';
       el.style.border = '2px solid white';
       el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
       el.style.cursor = 'pointer';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.color = 'white';
+      el.style.fontSize = '12px';
+      el.style.fontWeight = '700';
+      el.style.lineHeight = '1';
       el.style.transition = 'opacity 0.2s ease, box-shadow 0.2s ease';
+      el.textContent = String(sequence);
 
       el.addEventListener('mouseenter', () => {
         el.style.opacity = '0.8';
@@ -490,13 +545,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   }
 
   getDayBookingTimeDisplay(booking: BookingWithDetails): string {
-    // Try assigned_time_slot first (e.g. "14:00:00")
-    if (booking.assigned_time_slot) {
-      return this.formatTimeString(booking.assigned_time_slot);
-    }
-    // Try scheduled_time_start
+    // Use scheduled_time_start/end as the source of truth
     if (booking.scheduled_time_start && booking.scheduled_time_start !== '00:00:00') {
-      return this.formatTimeString(booking.scheduled_time_start);
+      const start = this.formatTimeString(booking.scheduled_time_start);
+      if (booking.scheduled_time_end && booking.scheduled_time_end !== '00:00:00') {
+        const end = this.formatTimeString(booking.scheduled_time_end);
+        return `${start} - ${end}`;
+      }
+      return start;
     }
     // Fallback to shift preference label
     if (booking.shift_preference) {
