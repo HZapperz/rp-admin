@@ -42,6 +42,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   map: mapboxgl.Map | null = null;
   private mapMarkers: mapboxgl.Marker[] = [];
   private dayBookingMarkers: mapboxgl.Marker[] = [];
+  private flyToSuppressed = false;
 
   // Tab state
   activeTab: 'territory' | 'bookings' = 'territory';
@@ -173,6 +174,8 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
   loadDayBookings(): void {
     this.dayBookingsLoading = true;
+    // Suppress flyTo during load so mouseenter on newly rendered cards doesn't hijack the map
+    this.flyToSuppressed = true;
 
     const filters: BookingFilters = {
       status: ['pending', 'confirmed', 'in_progress'],
@@ -188,8 +191,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
     this.bookingService.getAllBookings(filters).subscribe({
       next: async (bookings) => {
-        // Sort by scheduled_time_start (the actual correct time)
+        // Sort: confirmed/in_progress first (by time), then pending at end
         this.dayBookings = bookings.sort((a, b) => {
+          const aPending = a.status === 'pending' ? 1 : 0;
+          const bPending = b.status === 'pending' ? 1 : 0;
+          if (aPending !== bPending) return aPending - bPending;
           const timeA = a.scheduled_time_start || '99:99';
           const timeB = b.scheduled_time_start || '99:99';
           return timeA.localeCompare(timeB);
@@ -200,10 +206,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
         this.dayBookingsLoading = false;
         this.renderDayBookingMarkers();
+
+        // Allow flyTo again after fitBounds animation completes
+        setTimeout(() => { this.flyToSuppressed = false; }, 1000);
       },
       error: (err) => {
         console.error('Error loading day bookings:', err);
         this.dayBookingsLoading = false;
+        this.flyToSuppressed = false;
       }
     });
   }
@@ -392,9 +402,10 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.dayBookings.forEach(booking => {
       if (!booking.latitude || !booking.longitude) return;
 
-      sequence++;
-      const isConfirmed = booking.status === 'confirmed' || booking.status === 'in_progress';
-      const markerColor = isConfirmed ? '#2196f3' : '#ff9800';
+      const isPending = booking.status === 'pending';
+      if (!isPending) sequence++;
+      const markerLabel = isPending ? '!' : String(sequence);
+      const markerColor = isPending ? '#ff9800' : '#2196f3';
 
       const el = document.createElement('div');
       el.className = 'booking-marker-numbered';
@@ -409,11 +420,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       el.style.alignItems = 'center';
       el.style.justifyContent = 'center';
       el.style.color = 'white';
-      el.style.fontSize = '12px';
+      el.style.fontSize = isPending ? '14px' : '12px';
       el.style.fontWeight = '700';
       el.style.lineHeight = '1';
       el.style.transition = 'opacity 0.2s ease, box-shadow 0.2s ease';
-      el.textContent = String(sequence);
+      el.textContent = markerLabel;
 
       el.addEventListener('mouseenter', () => {
         el.style.opacity = '0.8';
@@ -531,6 +542,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   // =========================================================================
 
   flyToDayBooking(booking: BookingWithDetails): void {
+    if (this.flyToSuppressed) return;
     if (this.map && booking.latitude && booking.longitude) {
       this.map.flyTo({
         center: [booking.longitude, booking.latitude],
@@ -589,6 +601,22 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       return `${booking.groomer.first_name} ${booking.groomer.last_name}`;
     }
     return 'Unassigned';
+  }
+
+  getConfirmedCount(): number {
+    return this.dayBookings.filter(b => b.status !== 'pending').length;
+  }
+
+  getBookingSequenceLabel(index: number): string {
+    // Pending bookings get "!", confirmed/in_progress get their sequence number
+    const booking = this.dayBookings[index];
+    if (booking.status === 'pending') return '!';
+    // Count non-pending bookings up to and including this index
+    let seq = 0;
+    for (let i = 0; i <= index; i++) {
+      if (this.dayBookings[i].status !== 'pending') seq++;
+    }
+    return String(seq);
   }
 
   getPetCount(booking: BookingWithDetails): number {

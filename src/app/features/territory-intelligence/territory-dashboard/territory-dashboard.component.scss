@@ -842,6 +842,11 @@
     font-size: 18px;
     color: $gray-500;
   }
+
+  .pending-count {
+    color: #ff9800;
+    font-weight: $font-weight-normal;
+  }
 }
 
 // Booking List

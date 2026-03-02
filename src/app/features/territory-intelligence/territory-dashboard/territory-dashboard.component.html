@@ -328,7 +328,7 @@
     <!-- Day Summary -->
     <div class="day-summary">
       <span class="material-icons">event_note</span>
-      <span *ngIf="!dayBookingsLoading">{{ dayBookings.length }} booking{{ dayBookings.length !== 1 ? 's' : '' }}</span>
+      <span *ngIf="!dayBookingsLoading">{{ getConfirmedCount() }} stop{{ getConfirmedCount() !== 1 ? 's' : '' }}<span *ngIf="dayBookings.length - getConfirmedCount() > 0" class="pending-count"> + {{ dayBookings.length - getConfirmedCount() }} pending</span></span>
       <span *ngIf="dayBookingsLoading">Loading...</span>
     </div>
 
@@ -356,7 +356,7 @@
       >
         <div class="mini-card-top">
           <span class="mini-card-time">
-            <span class="mini-card-sequence" [class.confirmed]="booking.status === 'confirmed' || booking.status === 'in_progress'" [class.pending]="booking.status === 'pending'">{{ i + 1 }}</span>
+            <span class="mini-card-sequence" [class.confirmed]="booking.status === 'confirmed' || booking.status === 'in_progress'" [class.pending]="booking.status === 'pending'">{{ getBookingSequenceLabel(i) }}</span>
             {{ getDayBookingTimeDisplay(booking) }}
           </span>
           <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
@@ -397,7 +397,7 @@
         <span class="legend-label">Confirmed</span>
       </div>
       <div class="legend-item">
-        <span class="legend-color-circle" style="background-color: #ff9800;">2</span>
+        <span class="legend-color-circle" style="background-color: #ff9800;">!</span>
         <span class="legend-label">Pending</span>
       </div>
     </div>
