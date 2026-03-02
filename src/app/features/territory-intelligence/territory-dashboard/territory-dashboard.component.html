@@ -1,6 +1,28 @@
-<div class="territory-container">
-  <!-- Left Sidebar - Filters -->
-  <aside class="territory-sidebar" [class.hidden]="!showFilters">
+<!-- Tab Navigation -->
+<div class="territory-tab-navigation">
+  <button
+    class="tab-btn"
+    [class.active]="activeTab === 'territory'"
+    (click)="setTab('territory')"
+  >
+    <span class="material-icons">map</span>
+    Territory Map
+  </button>
+  <button
+    class="tab-btn"
+    [class.active]="activeTab === 'bookings'"
+    (click)="setTab('bookings')"
+  >
+    <span class="material-icons">calendar_today</span>
+    Bookings by Day
+  </button>
+</div>
+
+<!-- Tab Content -->
+<div class="territory-tab-content" [class.mode-territory]="activeTab === 'territory'" [class.mode-bookings]="activeTab === 'bookings'">
+
+  <!-- Left Sidebar - Filters (Territory mode only) -->
+  <aside class="territory-sidebar" *ngIf="activeTab === 'territory'" [class.hidden]="!showFilters">
     <div class="sidebar-header">
       <h2>Filters</h2>
       <button class="btn-icon" (click)="toggleFilters()" title="Close filters">
@@ -74,35 +96,36 @@
     </div>
   </aside>
 
-  <!-- Center - Map Area -->
+  <!-- Center - Shared Map (always present) -->
   <main class="territory-map-container">
     <!-- Map Controls -->
     <div class="map-controls">
-      <button class="btn-icon-lg" (click)="toggleFilters()" *ngIf="!showFilters" title="Show filters">
-        <span class="material-icons">filter_list</span>
-      </button>
+      <!-- Territory-only controls -->
+      <ng-container *ngIf="activeTab === 'territory'">
+        <button class="btn-icon-lg" (click)="toggleFilters()" *ngIf="!showFilters" title="Show filters">
+          <span class="material-icons">filter_list</span>
+        </button>
+        <button class="btn-icon-lg" (click)="toggleViewMode()" title="Toggle view mode">
+          <span class="material-icons">{{ viewMode === 'markers' ? 'layers' : 'place' }}</span>
+        </button>
+      </ng-container>
+      <!-- Shared controls -->
       <button class="btn-icon-lg" (click)="resetMapView()" title="Reset view">
         <span class="material-icons">my_location</span>
-      </button>
-      <button class="btn-icon-lg" (click)="toggleViewMode()" title="Toggle view mode">
-        <span class="material-icons">{{ viewMode === 'markers' ? 'layers' : 'place' }}</span>
-      </button>
-      <button class="btn-icon-lg" [class.active]="showBookingMarkers" (click)="toggleBookingMarkers()" title="Toggle booking markers">
-        <span class="material-icons">event</span>
       </button>
     </div>
 
     <!-- Loading Overlay -->
-    <div class="loading-overlay" *ngIf="loading">
+    <div class="loading-overlay" *ngIf="loading && activeTab === 'territory'">
       <div class="spinner"></div>
       <p>Loading territory data...</p>
     </div>
 
-    <!-- Map Container -->
+    <!-- Map Canvas (never destroyed) -->
     <div class="map-canvas" #mapCanvas></div>
 
-    <!-- Customer Detail Popup -->
-    <div class="detail-card" *ngIf="selectedCustomer" [@slideIn]>
+    <!-- Customer Detail Popup (Territory only) -->
+    <div class="detail-card" *ngIf="selectedCustomer && activeTab === 'territory'">
       <div class="detail-header">
         <div>
           <h3>{{ selectedCustomer.name }}</h3>
@@ -168,8 +191,8 @@
     </div>
   </main>
 
-  <!-- Right Panel - Metrics -->
-  <aside class="territory-panel">
+  <!-- Right Panel - Territory Insights (Territory mode only) -->
+  <aside class="territory-panel" *ngIf="activeTab === 'territory'">
     <div class="panel-header">
       <h2>Territory Insights</h2>
     </div>
@@ -248,116 +271,6 @@
           </div>
         </div>
 
-        <!-- Upcoming Appointments -->
-        <div class="panel-section">
-          <div class="section-header-collapsible" (click)="toggleUpcoming()">
-            <h3 class="section-title">
-              Upcoming Appointments
-              <span class="booking-count-badge upcoming" *ngIf="upcomingBookings.length > 0">{{ upcomingBookings.length }}</span>
-            </h3>
-            <span class="material-icons chevron" [class.collapsed]="!showUpcoming">expand_more</span>
-          </div>
-
-          <div *ngIf="showUpcoming" class="booking-list">
-            <div *ngIf="bookingsLoading" class="booking-list-loading">
-              <div class="spinner-sm"></div>
-            </div>
-            <div *ngIf="!bookingsLoading && upcomingBookings.length === 0" class="booking-list-empty">
-              No upcoming appointments
-            </div>
-            <div
-              *ngFor="let booking of upcomingBookings"
-              class="booking-mini-card upcoming"
-              (click)="openBookingDetail(booking.id)"
-              (mouseenter)="flyToBooking(booking)"
-            >
-              <div class="mini-card-top">
-                <span class="mini-card-client">{{ booking.client_name }}</span>
-                <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
-              </div>
-              <div class="mini-card-details">
-                <span class="mini-card-detail">
-                  <span class="material-icons">calendar_today</span>
-                  {{ formatDate(booking.scheduled_date) }}
-                </span>
-                <span class="mini-card-detail">
-                  <span class="material-icons">schedule</span>
-                  {{ getTimeDisplay(booking) }}
-                </span>
-              </div>
-              <div class="mini-card-details">
-                <span class="mini-card-detail" *ngIf="booking.zip_code">
-                  <span class="material-icons">location_on</span>
-                  {{ booking.zip_code }}
-                </span>
-                <span class="mini-card-detail">
-                  <span class="material-icons">pets</span>
-                  {{ booking.pet_count }} {{ booking.pet_count === 1 ? 'pet' : 'pets' }}
-                </span>
-              </div>
-              <div class="mini-card-bottom">
-                <span class="booking-status-badge confirmed">Confirmed</span>
-                <span class="mini-card-service" *ngIf="booking.service_name">{{ booking.service_name }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Requested Appointments -->
-        <div class="panel-section">
-          <div class="section-header-collapsible" (click)="toggleRequested()">
-            <h3 class="section-title">
-              Requested Appointments
-              <span class="booking-count-badge requested" *ngIf="requestedBookings.length > 0">{{ requestedBookings.length }}</span>
-            </h3>
-            <span class="material-icons chevron" [class.collapsed]="!showRequested">expand_more</span>
-          </div>
-
-          <div *ngIf="showRequested" class="booking-list">
-            <div *ngIf="bookingsLoading" class="booking-list-loading">
-              <div class="spinner-sm"></div>
-            </div>
-            <div *ngIf="!bookingsLoading && requestedBookings.length === 0" class="booking-list-empty">
-              No pending requests
-            </div>
-            <div
-              *ngFor="let booking of requestedBookings"
-              class="booking-mini-card requested"
-              (click)="openBookingDetail(booking.id)"
-              (mouseenter)="flyToBooking(booking)"
-            >
-              <div class="mini-card-top">
-                <span class="mini-card-client">{{ booking.client_name }}</span>
-                <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
-              </div>
-              <div class="mini-card-details">
-                <span class="mini-card-detail">
-                  <span class="material-icons">calendar_today</span>
-                  {{ formatDate(booking.scheduled_date) }}
-                </span>
-                <span class="mini-card-detail">
-                  <span class="material-icons">schedule</span>
-                  {{ getTimeDisplay(booking) }}
-                </span>
-              </div>
-              <div class="mini-card-details">
-                <span class="mini-card-detail" *ngIf="booking.zip_code">
-                  <span class="material-icons">location_on</span>
-                  {{ booking.zip_code }}
-                </span>
-                <span class="mini-card-detail">
-                  <span class="material-icons">pets</span>
-                  {{ booking.pet_count }} {{ booking.pet_count === 1 ? 'pet' : 'pets' }}
-                </span>
-              </div>
-              <div class="mini-card-bottom">
-                <span class="booking-status-badge pending">Pending</span>
-                <span class="mini-card-service" *ngIf="booking.service_name">{{ booking.service_name }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Legend -->
         <div class="panel-section">
           <h3 class="section-title">Status Legend</h3>
@@ -366,19 +279,123 @@
               <span class="legend-color" [style.background-color]="option.color"></span>
               <span class="legend-label">{{ option.label }}</span>
             </div>
-
-            <div class="legend-divider"></div>
-
-            <div class="legend-item">
-              <span class="legend-color diamond" style="background-color: #2196f3;"></span>
-              <span class="legend-label">Upcoming Booking</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color diamond" style="background-color: #ff9800;"></span>
-              <span class="legend-label">Requested Booking</span>
-            </div>
           </div>
         </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Panel - Bookings by Day (Bookings mode only) -->
+  <aside class="bookings-day-panel" *ngIf="activeTab === 'bookings'">
+    <!-- Day Navigator -->
+    <div class="day-navigator">
+      <button class="btn-nav" (click)="prevDay()" title="Previous day">
+        <span class="material-icons">chevron_left</span>
+      </button>
+      <div class="day-display">
+        <span class="day-label">{{ getSelectedDateDisplay() }}</span>
+        <button class="btn-today" *ngIf="!isToday()" (click)="goToToday()">Today</button>
+      </div>
+      <button class="btn-nav" (click)="nextDay()" title="Next day">
+        <span class="material-icons">chevron_right</span>
+      </button>
+    </div>
+
+    <!-- Date Picker -->
+    <div class="day-date-picker">
+      <input
+        type="date"
+        class="input-field"
+        [(ngModel)]="selectedDate"
+        (change)="onDateChange()"
+      />
+    </div>
+
+    <!-- Groomer Filter -->
+    <div class="day-groomer-filter">
+      <select
+        class="input-field"
+        [(ngModel)]="selectedGroomerId"
+        (change)="onGroomerFilterChange()"
+      >
+        <option value="">All Groomers</option>
+        <option *ngFor="let groomer of groomers" [value]="groomer.id">
+          {{ groomer.first_name }} {{ groomer.last_name }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Day Summary -->
+    <div class="day-summary">
+      <span class="material-icons">event_note</span>
+      <span *ngIf="!dayBookingsLoading">{{ dayBookings.length }} booking{{ dayBookings.length !== 1 ? 's' : '' }}</span>
+      <span *ngIf="dayBookingsLoading">Loading...</span>
+    </div>
+
+    <!-- Booking List -->
+    <div class="day-booking-list">
+      <!-- Loading -->
+      <div *ngIf="dayBookingsLoading" class="booking-list-loading">
+        <div class="spinner-sm"></div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!dayBookingsLoading && dayBookings.length === 0" class="booking-list-empty">
+        No bookings for this day
+      </div>
+
+      <!-- Booking Cards -->
+      <div
+        *ngFor="let booking of dayBookings"
+        class="booking-mini-card"
+        [class.confirmed]="booking.status === 'confirmed'"
+        [class.pending]="booking.status === 'pending'"
+        [class.in-progress]="booking.status === 'in_progress'"
+        (click)="openBookingDetail(booking.id)"
+        (mouseenter)="flyToDayBooking(booking)"
+      >
+        <div class="mini-card-top">
+          <span class="mini-card-time">{{ getDayBookingTimeDisplay(booking) }}</span>
+          <span class="mini-card-amount">{{ formatCurrency(booking.total_amount) }}</span>
+        </div>
+        <div class="mini-card-client-row">
+          <span class="mini-card-client">{{ getClientName(booking) }}</span>
+        </div>
+        <div class="mini-card-details">
+          <span class="mini-card-detail" *ngIf="booking.service_name">
+            <span class="material-icons">content_cut</span>
+            {{ booking.service_name }}
+          </span>
+          <span class="mini-card-detail">
+            <span class="material-icons">pets</span>
+            {{ getPetCount(booking) }} {{ getPetCount(booking) === 1 ? 'pet' : 'pets' }}
+          </span>
+        </div>
+        <div class="mini-card-details">
+          <span class="mini-card-detail" *ngIf="booking.zip_code">
+            <span class="material-icons">location_on</span>
+            {{ booking.zip_code }}
+          </span>
+          <span class="mini-card-detail">
+            <span class="material-icons">person</span>
+            {{ getGroomerName(booking) }}
+          </span>
+        </div>
+        <div class="mini-card-bottom">
+          <span [class]="getBookingStatusClass(booking.status)">{{ getBookingStatusLabel(booking.status) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="day-legend">
+      <div class="legend-item">
+        <span class="legend-color diamond" style="background-color: #2196f3;"></span>
+        <span class="legend-label">Confirmed</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color diamond" style="background-color: #ff9800;"></span>
+        <span class="legend-label">Pending</span>
       </div>
     </div>
   </aside>

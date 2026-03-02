@@ -1,21 +1,83 @@
 @use '../../../../theme/design-tokens' as *;
 
-.territory-container {
-  display: grid;
-  grid-template-columns: 260px 1fr 280px;
-  height: calc(100vh - 64px); // Account for header
-  background-color: $gray-100;
-  gap: 0;
-  overflow: hidden;
+// ============================================================================
+// TAB NAVIGATION
+// ============================================================================
 
-  @media (max-width: $breakpoint-lg) {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+.territory-tab-navigation {
+  display: flex;
+  background-color: #ffffff;
+  border-bottom: 1px solid $gray-200;
+  padding: 0 $spacing-4;
+  gap: $spacing-1;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  padding: $spacing-3 $spacing-4;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $gray-600;
+  cursor: pointer;
+  transition: all $transition-fast;
+  white-space: nowrap;
+
+  .material-icons {
+    font-size: 18px;
+  }
+
+  &:hover {
+    color: $gray-900;
+    background-color: $gray-50;
+  }
+
+  &.active {
+    color: $primary-600;
+    border-bottom-color: $primary-600;
+
+    .material-icons {
+      color: $primary-600;
+    }
   }
 }
 
 // ============================================================================
-// LEFT SIDEBAR - FILTERS
+// TAB CONTENT - MODE-BASED LAYOUTS
+// ============================================================================
+
+.territory-tab-content {
+  display: grid;
+  height: calc(100vh - 64px - 45px); // header + tab bar
+  background-color: $gray-100;
+  gap: 0;
+  overflow: hidden;
+
+  &.mode-territory {
+    grid-template-columns: 260px 1fr 280px;
+
+    @media (max-width: $breakpoint-lg) {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+  }
+
+  &.mode-bookings {
+    grid-template-columns: 1fr 340px;
+
+    @media (max-width: $breakpoint-lg) {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
+    }
+  }
+}
+
+// ============================================================================
+// LEFT SIDEBAR - FILTERS (TERRITORY MODE)
 // ============================================================================
 
 .territory-sidebar {
@@ -43,6 +105,8 @@
     height: calc(100vh - 64px);
     z-index: $z-index-fixed;
     box-shadow: $shadow-lg;
+    width: 300px;
+    max-width: 80vw;
   }
 }
 
@@ -141,6 +205,8 @@
   border-radius: $radius-base;
   font-size: $font-size-sm;
   transition: border-color $transition-fast;
+  width: 100%;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -172,7 +238,7 @@
 }
 
 // ============================================================================
-// CENTER - MAP AREA
+// CENTER - MAP AREA (SHARED)
 // ============================================================================
 
 .territory-map-container {
@@ -219,6 +285,19 @@
   .material-icons {
     font-size: 24px;
     color: $gray-700;
+  }
+
+  &.active {
+    background-color: $primary-50;
+    box-shadow: $shadow-base, inset 0 0 0 2px $primary-300;
+
+    .material-icons {
+      color: $primary-600;
+    }
+
+    &:hover {
+      background-color: $primary-100;
+    }
   }
 }
 
@@ -394,7 +473,7 @@
 }
 
 // ============================================================================
-// RIGHT PANEL - METRICS
+// RIGHT PANEL - TERRITORY INSIGHTS
 // ============================================================================
 
 .territory-panel {
@@ -613,7 +692,7 @@
   color: $gray-600;
 }
 
-// Legend
+// Legend (shared between territory and bookings panels)
 .legend {
   display: flex;
   flex-direction: column;
@@ -643,83 +722,136 @@
   }
 }
 
-.legend-divider {
-  height: 1px;
-  background-color: $gray-200;
-  margin: $spacing-2 0;
-}
-
 .legend-label {
   font-size: $font-size-sm;
   color: $gray-700;
 }
 
 // ============================================================================
-// BOOKING SECTIONS
+// BOOKINGS BY DAY PANEL
 // ============================================================================
 
-// Collapsible section header
-.section-header-collapsible {
+.bookings-day-panel {
+  background-color: #ffffff;
+  border-left: 1px solid $gray-200;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  padding: $spacing-2;
-  margin: 0 (-$spacing-2);
-  border-radius: $radius-base;
-  transition: background-color $transition-fast;
+  flex-direction: column;
+  overflow: hidden;
 
-  &:hover {
-    background-color: $gray-50;
-  }
-
-  .section-title {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: $spacing-2;
-  }
-
-  .chevron {
-    font-size: 20px;
-    color: $gray-500;
-    transition: transform $transition-base;
-
-    &.collapsed {
-      transform: rotate(-90deg);
-    }
+  @media (max-width: $breakpoint-lg) {
+    border-left: none;
+    border-top: 1px solid $gray-200;
+    max-height: 50vh;
   }
 }
 
-// Booking count badge
-.booking-count-badge {
-  display: inline-flex;
+// Day Navigator
+.day-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-4;
+  border-bottom: 1px solid $gray-200;
+  gap: $spacing-2;
+}
+
+.btn-nav {
+  width: 36px;
+  height: 36px;
+  background-color: $gray-100;
+  border: 1px solid $gray-200;
+  border-radius: $radius-base;
+  cursor: pointer;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 $spacing-2;
-  border-radius: $radius-full;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-bold;
-  color: #ffffff;
-  line-height: 1;
+  transition: all $transition-fast;
+  flex-shrink: 0;
 
-  &.upcoming {
-    background-color: $primary-500;
+  &:hover {
+    background-color: $gray-200;
+    border-color: $gray-300;
   }
 
-  &.requested {
-    background-color: $warning;
+  .material-icons {
+    font-size: 20px;
+    color: $gray-700;
   }
 }
 
-// Booking list
-.booking-list {
+.day-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-1;
+  flex: 1;
+  min-width: 0;
+}
+
+.day-label {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $gray-900;
+  white-space: nowrap;
+}
+
+.btn-today {
+  padding: $spacing-1 $spacing-3;
+  background-color: $primary-50;
+  border: 1px solid $primary-200;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  color: $primary-600;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background-color: $primary-100;
+    border-color: $primary-300;
+  }
+}
+
+// Date Picker & Groomer Filter
+.day-date-picker,
+.day-groomer-filter {
+  padding: $spacing-2 $spacing-4;
+}
+
+.day-groomer-filter {
+  padding-bottom: $spacing-3;
+  border-bottom: 1px solid $gray-200;
+
+  select.input-field {
+    appearance: auto;
+  }
+}
+
+// Day Summary
+.day-summary {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  padding: $spacing-3 $spacing-4;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $gray-700;
+  background-color: $gray-50;
+
+  .material-icons {
+    font-size: 18px;
+    color: $gray-500;
+  }
+}
+
+// Booking List
+.day-booking-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-3 $spacing-4;
   display: flex;
   flex-direction: column;
   gap: $spacing-2;
-  margin-top: $spacing-3;
 }
 
 .booking-list-loading {
@@ -732,7 +864,7 @@
   font-size: $font-size-xs;
   color: $gray-500;
   text-align: center;
-  padding: $spacing-4 0;
+  padding: $spacing-8 0;
 }
 
 // Booking mini card
@@ -744,12 +876,16 @@
   border-left: 3px solid transparent;
   transition: all $transition-fast;
 
-  &.upcoming {
+  &.confirmed {
     border-left-color: $primary-500;
   }
 
-  &.requested {
+  &.pending {
     border-left-color: $warning;
+  }
+
+  &.in-progress {
+    border-left-color: $success;
   }
 
   &:hover {
@@ -763,6 +899,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: $spacing-1;
+}
+
+.mini-card-time {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  color: $primary-600;
+}
+
+.mini-card-amount {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $gray-800;
+}
+
+.mini-card-client-row {
   margin-bottom: $spacing-2;
 }
 
@@ -773,13 +925,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60%;
-}
-
-.mini-card-amount {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  color: $gray-800;
 }
 
 .mini-card-details {
@@ -808,15 +953,6 @@
   margin-top: $spacing-2;
 }
 
-.mini-card-service {
-  font-size: $font-size-xs;
-  color: $gray-500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 55%;
-}
-
 // Booking status badge
 .booking-status-badge {
   display: inline-block;
@@ -836,20 +972,20 @@
     background-color: #fff3e0;
     color: #e65100;
   }
+
+  &.in-progress {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
 }
 
-// Active state for booking markers toggle button
-.btn-icon-lg.active {
-  background-color: $primary-50;
-  box-shadow: $shadow-base, inset 0 0 0 2px $primary-300;
-
-  .material-icons {
-    color: $primary-600;
-  }
-
-  &:hover {
-    background-color: $primary-100;
-  }
+// Day Legend (bottom of bookings panel)
+.day-legend {
+  display: flex;
+  gap: $spacing-4;
+  padding: $spacing-3 $spacing-4;
+  border-top: 1px solid $gray-200;
+  background-color: $gray-50;
 }
 
 // ============================================================================
@@ -857,13 +993,8 @@
 // ============================================================================
 
 @media (max-width: $breakpoint-lg) {
-  .territory-container {
+  .territory-tab-content.mode-territory {
     grid-template-columns: 1fr;
-  }
-
-  .territory-sidebar {
-    width: 300px;
-    max-width: 80vw;
   }
 
   .territory-panel {

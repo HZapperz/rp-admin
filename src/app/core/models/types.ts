@@ -137,6 +137,9 @@ export interface Booking {
   approval_email_sent_at?: string;
   tip_payment_intent_id?: string;
   tip_charged_at?: string;
+  // Geocoding fields
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface BookingPet {
