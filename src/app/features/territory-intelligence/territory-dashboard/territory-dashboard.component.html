@@ -352,7 +352,6 @@
         [class.pending]="booking.status === 'pending'"
         [class.in-progress]="booking.status === 'in_progress'"
         (click)="openBookingDetail(booking.id)"
-        (mouseenter)="flyToDayBooking(booking)"
       >
         <div class="mini-card-top">
           <span class="mini-card-time">
