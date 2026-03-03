@@ -48,7 +48,7 @@ export class DashboardComponent implements OnInit {
 
   // Time grid settings
   dayStartHour = 8;  // 8 AM
-  dayEndHour = 18;   // 6 PM
+  dayEndHour = 21;   // 9 PM
   timeSlots: string[] = [];
 
   constructor(

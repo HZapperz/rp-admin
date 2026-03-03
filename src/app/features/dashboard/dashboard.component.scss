@@ -599,7 +599,7 @@
   background: #f8fafc;
 
   .time-label-header {
-    height: 52px;
+    height: calc(52px + 0.5rem);
     border-bottom: 1px solid #e2e8f0;
   }
 
@@ -693,11 +693,11 @@
   position: relative;
   padding-top: 0.5rem;
   // Height = number of hours * height per hour + padding
-  // 11 hours (8 AM to 6 PM) * 60px = 660px
-  height: calc(11 * 60px + 0.5rem);
+  // 14 hours (8 AM to 9 PM) * 60px = 840px
+  height: calc(14 * 60px + 0.5rem);
 
   @media (min-width: 768px) {
-    height: calc(11 * 70px + 0.5rem);
+    height: calc(14 * 70px + 0.5rem);
   }
 }
 
