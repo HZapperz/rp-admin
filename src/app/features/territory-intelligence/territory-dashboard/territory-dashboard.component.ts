@@ -379,10 +379,6 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   }
 
   private getMarkerSize(ltv: number): number {
-    if (ltv === 0) return 8;
-    if (ltv < 200) return 10;
-    if (ltv < 500) return 12;
-    if (ltv < 1000) return 16;
     return 20;
   }
 
