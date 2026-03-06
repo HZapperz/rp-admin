@@ -182,6 +182,76 @@
           </div>
         }
 
+        <!-- Sequences -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3>Sequences</h3>
+            <div class="sequence-header-actions">
+              <div class="start-seq-wrapper">
+                <button class="icon-action-btn" (click)="toggleStartSequenceMenu()">
+                  <span class="material-icons">add</span>
+                  Start
+                </button>
+                @if (showStartSequenceMenu) {
+                  <div class="start-seq-menu">
+                    @for (type of sequenceTypes; track type) {
+                      <button class="start-seq-item" (click)="startSequence(type)">
+                        <span class="material-icons" [style.color]="getSeqTypeConfig(type).color">{{ getSeqTypeConfig(type).icon }}</span>
+                        {{ getSeqTypeConfig(type).label }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+              @if (activeSequences.length > 0) {
+                <button class="icon-action-btn danger" (click)="cancelAllSequences()" [disabled]="isCancellingSequences">
+                  <span class="material-icons">cancel</span>
+                  {{ isCancellingSequences ? 'Cancelling...' : 'Cancel All' }}
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (isLoadingSequences) {
+            <div class="activities-loading">
+              <div class="spinner-sm"></div>
+            </div>
+          } @else if (userSequences.length === 0) {
+            <p class="no-activities">No sequences for this user</p>
+          } @else {
+            <div class="sequences-list">
+              @for (seq of userSequences; track seq.id) {
+                <div class="sequence-item" [class.seq-active]="seq.status === 'active'">
+                  <div class="seq-top">
+                    <span
+                      class="type-badge"
+                      [style.color]="getSeqTypeConfig(seq.sequence_type).color"
+                      [style.background-color]="getSeqTypeConfig(seq.sequence_type).bgColor"
+                    >
+                      <span class="material-icons seq-type-icon">{{ getSeqTypeConfig(seq.sequence_type).icon }}</span>
+                      {{ getSeqTypeConfig(seq.sequence_type).label }}
+                    </span>
+                    <span
+                      class="seq-status-badge"
+                      [style.color]="getSeqStatusColor(seq.status)"
+                      [style.background-color]="getSeqStatusBg(seq.status)"
+                    >{{ seq.status }}</span>
+                  </div>
+                  <div class="seq-details">
+                    <span class="seq-step">Step {{ seq.current_step }}/{{ seq.total_steps }}</span>
+                    <span class="seq-divider">&bull;</span>
+                    <span class="seq-time">Started {{ formatRelativeTime(seq.started_at) }}</span>
+                    @if (seq.next_step_due && seq.status === 'active') {
+                      <span class="seq-divider">&bull;</span>
+                      <span class="seq-next">Next {{ formatRelativeTime(seq.next_step_due) }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
         <!-- Activity Timeline -->
         <div class="section-card">
           <div class="section-header">

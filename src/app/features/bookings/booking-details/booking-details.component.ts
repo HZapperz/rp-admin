@@ -87,6 +87,7 @@ export class BookingDetailsComponent implements OnInit {
 
   // Groomer assignment
   showAssignmentForm = false;
+  isChangeGroomerMode = false;
   availableGroomers: any[] = [];
   selectedGroomerId: string = '';
   selectedTimeSlot: { label: string; start: string; end: string } | null = null;
@@ -779,8 +780,89 @@ export class BookingDetailsComponent implements OnInit {
     }
   }
 
+  async showGroomerChange() {
+    if (!this.booking) return;
+
+    this.isChangeGroomerMode = true;
+
+    // Pre-populate with existing booking data
+    this.selectedGroomerId = this.booking.groomer_id || '';
+    this.selectedDate = this.booking.scheduled_date || '';
+    this.selectedTimeSlot = null;
+    this.dynamicAvailableSlots = [];
+    this.groomerAvailabilityInfo = null;
+    this.groomerUnavailableReason = '';
+    this.useCustomTimeSlot = false;
+    this.customStartTime = '';
+    this.customEndTime = '';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    this.minDate = today.toISOString().split('T')[0];
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 90);
+    this.maxDate = maxDate.toISOString().split('T')[0];
+
+    try {
+      this.availableGroomers = await this.groomerService.getAvailableGroomers();
+      this.showAssignmentForm = true;
+      if (this.selectedGroomerId && this.selectedDate) {
+        await this.loadAvailableSlots();
+      }
+    } catch (error) {
+      console.error('Error fetching groomers:', error);
+      alert('Failed to load groomers. Please try again.');
+    }
+  }
+
+  async changeGroomerConfirm() {
+    if (!this.booking || !this.selectedGroomerId) {
+      alert('Please select a groomer');
+      return;
+    }
+    if (this.assigningGroomer) return;
+
+    let timeSlotStart: string | undefined;
+    let timeSlotEnd: string | undefined;
+
+    if (this.useCustomTimeSlot && this.isCustomTimeValid()) {
+      timeSlotStart = this.convertTo24Hour(this.customStartTime);
+      timeSlotEnd = this.convertTo24Hour(this.customEndTime);
+    } else if (this.selectedTimeSlot) {
+      timeSlotStart = this.selectedTimeSlot.start;
+      timeSlotEnd = this.selectedTimeSlot.end;
+    }
+
+    this.assigningGroomer = true;
+    try {
+      const success = await this.bookingService.reassignGroomer(
+        this.booking.id,
+        this.selectedGroomerId,
+        this.selectedDate || undefined,
+        timeSlotStart,
+        timeSlotEnd
+      );
+
+      if (!success) {
+        alert('Failed to change groomer. Please try again.');
+        return;
+      }
+
+      alert('Groomer changed successfully!');
+      this.showAssignmentForm = false;
+      this.isChangeGroomerMode = false;
+      await this.loadBookingDetails(this.booking.id);
+    } catch (error) {
+      console.error('Error changing groomer:', error);
+      alert('Failed to change groomer. Please try again.');
+    } finally {
+      this.assigningGroomer = false;
+    }
+  }
+
   hideAssignmentForm() {
     this.showAssignmentForm = false;
+    this.isChangeGroomerMode = false;
     this.selectedGroomerId = '';
     this.selectedTimeSlot = null;
     this.selectedDate = '';

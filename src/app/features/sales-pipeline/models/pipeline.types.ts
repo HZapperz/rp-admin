@@ -331,3 +331,76 @@ export function getActivityIcon(type: ContactActivityType): string {
     case 'AUTO_ACTION': return 'smart_toy';
   }
 }
+
+// ==================== SEQUENCE MONITORING TYPES ====================
+
+export type SequenceType = 'welcome' | 'abandoned_booking' | 'post_service' | 'winback';
+export type SequenceStatus = 'active' | 'completed' | 'cancelled' | 'converted';
+
+export interface SequenceStats {
+  [sequenceType: string]: {
+    active: number;
+    completed: number;
+    cancelled: number;
+    converted: number;
+    total: number;
+  };
+}
+
+export interface SequenceInstanceWithDetails {
+  id: string;
+  user_id: string;
+  sequence_type: string;
+  sequence_name: string;
+  status: SequenceStatus;
+  current_step: number;
+  total_steps: number;
+  metadata: Record<string, any>;
+  started_at: string;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  // Joined user data
+  user_name: string;
+  user_phone: string;
+  user_email: string;
+  // Computed
+  next_step_due: string | null;
+  days_active: number;
+  // Step log (loaded on expand)
+  steps?: SequenceStepLog[];
+}
+
+export interface SequenceStepLog {
+  id: string;
+  instance_id: string;
+  step_number: number;
+  channel: string;
+  template_name: string;
+  scheduled_for: string;
+  status: 'pending' | 'sent' | 'failed' | 'cancelled' | 'skipped';
+  sent_at: string | null;
+  twilio_sid: string | null;
+  error_message: string | null;
+  attempts: number;
+}
+
+export interface SequenceOverview {
+  stats: SequenceStats;
+  total_active: number;
+  total_sent_today: number;
+  total_converted: number;
+  conversion_rate: number;
+  instances: SequenceInstanceWithDetails[];
+}
+
+export const SEQUENCE_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
+  'welcome':           { label: 'Welcome',      color: '#3b82f6', bgColor: '#eff6ff', icon: 'waving_hand' },
+  'abandoned_booking': { label: 'Abandoned',     color: '#f97316', bgColor: '#fff7ed', icon: 'shopping_cart' },
+  'post_service':      { label: 'Post-Service',  color: '#22c55e', bgColor: '#f0fdf4', icon: 'star' },
+  'winback':           { label: 'Winback',       color: '#8b5cf6', bgColor: '#f5f3ff', icon: 'replay' },
+};
+
+export function getSequenceTypeConfig(type: string) {
+  return SEQUENCE_TYPE_CONFIG[type] || { label: type, color: '#6b7280', bgColor: '#f9fafb', icon: 'auto_mode' };
+}

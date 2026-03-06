@@ -14,9 +14,11 @@ import {
   ContactActivityType,
   ContactOutcome,
   SuggestedAction,
+  SequenceInstanceWithDetails,
   getActivityIcon,
   getPriorityLevel,
-  getPriorityColor
+  getPriorityColor,
+  getSequenceTypeConfig
 } from '../../models/pipeline.types';
 import { SalesPipelineService } from '../../services/sales-pipeline.service';
 import { SMSConversation, SMSMessage } from '../../../../core/services/sms.service';
@@ -73,6 +75,13 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
   noteText = '';
   isSavingNote = false;
 
+  // Sequences
+  userSequences: SequenceInstanceWithDetails[] = [];
+  isLoadingSequences = false;
+  showStartSequenceMenu = false;
+  isCancellingSequences = false;
+  sequenceTypes = ['welcome', 'abandoned_booking', 'post_service', 'winback'];
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -128,9 +137,10 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
         ).slice(0, 20);
         this.isLoading = false;
 
-        // Load conversation and fresh activities
+        // Load conversation, fresh activities, and sequences
         this.loadConversation();
         this.loadActivities();
+        this.loadSequences();
       },
       error: (err) => {
         console.error('Error loading lead:', err);
@@ -515,6 +525,88 @@ export class LeadDetailComponent implements OnInit, OnDestroy, AfterViewChecked 
     };
 
     return badges[intent] || null;
+  }
+
+  // Sequence methods
+  loadSequences(): void {
+    if (!this.lead) return;
+
+    this.isLoadingSequences = true;
+    this.pipelineService.getActiveSequences({ user_id: this.lead.user_id }).subscribe({
+      next: (sequences) => {
+        this.userSequences = sequences;
+        this.isLoadingSequences = false;
+      },
+      error: () => {
+        this.isLoadingSequences = false;
+      }
+    });
+  }
+
+  getSeqTypeConfig(type: string) {
+    return getSequenceTypeConfig(type);
+  }
+
+  getSeqStatusColor(status: string): string {
+    switch (status) {
+      case 'active': return '#3b82f6';
+      case 'completed': return '#22c55e';
+      case 'converted': return '#eab308';
+      case 'cancelled': return '#6b7280';
+      default: return '#9ca3af';
+    }
+  }
+
+  getSeqStatusBg(status: string): string {
+    switch (status) {
+      case 'active': return '#eff6ff';
+      case 'completed': return '#f0fdf4';
+      case 'converted': return '#fefce8';
+      case 'cancelled': return '#f9fafb';
+      default: return '#f9fafb';
+    }
+  }
+
+  toggleStartSequenceMenu(): void {
+    this.showStartSequenceMenu = !this.showStartSequenceMenu;
+  }
+
+  startSequence(type: string): void {
+    if (!this.lead) return;
+
+    this.showStartSequenceMenu = false;
+    this.pipelineService.startSequence(this.lead.user_id, type).subscribe({
+      next: () => {
+        this.loadSequences();
+      },
+      error: (err) => {
+        console.error('Error starting sequence:', err);
+      }
+    });
+  }
+
+  cancelAllSequences(): void {
+    if (!this.lead || this.isCancellingSequences) return;
+
+    this.isCancellingSequences = true;
+    this.pipelineService.cancelSequence(this.lead.user_id, 'Admin cancelled from lead detail').subscribe({
+      next: () => {
+        this.isCancellingSequences = false;
+        this.loadSequences();
+      },
+      error: (err) => {
+        console.error('Error cancelling sequences:', err);
+        this.isCancellingSequences = false;
+      }
+    });
+  }
+
+  get activeSequences(): SequenceInstanceWithDetails[] {
+    return this.userSequences.filter(s => s.status === 'active');
+  }
+
+  get completedSequences(): SequenceInstanceWithDetails[] {
+    return this.userSequences.filter(s => s.status !== 'active');
   }
 
   private scrollToBottom(): void {

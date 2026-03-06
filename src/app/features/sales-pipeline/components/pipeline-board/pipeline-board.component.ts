@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -27,6 +27,7 @@ import { BulkSmsComponent } from '../bulk-sms/bulk-sms.component';
   imports: [
     CommonModule,
     FormsModule,
+    RouterModule,
     ComposeSmsComponent,
     BulkSmsComponent
   ],

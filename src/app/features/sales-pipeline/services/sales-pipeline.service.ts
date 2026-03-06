@@ -29,6 +29,10 @@ import {
   SuggestedAction,
   PipelineNudge,
   PipelineAutomation,
+  SequenceStats,
+  SequenceInstanceWithDetails,
+  SequenceStepLog,
+  SequenceOverview,
   calculateDaysInStage,
   getCompletionCount,
   getCompletionPercentage,
@@ -1149,6 +1153,192 @@ export class SalesPipelineService {
     }
 
     return results;
+  }
+
+  // ==================== SEQUENCE MONITORING ====================
+
+  getSequenceStats(): Observable<SequenceStats> {
+    return this.http.get<SequenceStats>(
+      `${this.smsServiceUrl}/sequences/stats`,
+      { headers: this.getSmsServiceHeaders() }
+    ).pipe(catchError(() => of({} as SequenceStats)));
+  }
+
+  getActiveSequences(filters?: { user_id?: string; sequence_type?: string }): Observable<SequenceInstanceWithDetails[]> {
+    return from(this.fetchSequenceInstances(filters));
+  }
+
+  cancelSequence(userId: string, reason: string, sequenceType?: string): Observable<any> {
+    const body: any = { user_id: userId, reason };
+    if (sequenceType) body.sequence_type = sequenceType;
+
+    return this.http.post(
+      `${this.smsServiceUrl}/sequences/cancel`,
+      body,
+      { headers: this.getSmsServiceHeaders() }
+    );
+  }
+
+  startSequence(userId: string, sequenceType: string): Observable<any> {
+    return this.http.post(
+      `${this.smsServiceUrl}/sequences/start`,
+      { user_id: userId, sequence_type: sequenceType },
+      { headers: this.getSmsServiceHeaders() }
+    );
+  }
+
+  getSequenceStepLog(instanceId: string): Observable<SequenceStepLog[]> {
+    return from(this.fetchSequenceStepLog(instanceId));
+  }
+
+  getSequenceOverview(): Observable<SequenceOverview> {
+    return from(this.fetchSequenceOverview());
+  }
+
+  private async fetchSequenceInstances(filters?: { user_id?: string; sequence_type?: string; status?: string }): Promise<SequenceInstanceWithDetails[]> {
+    let query = this.supabase
+      .from('sms_sequence_instances')
+      .select(`
+        id, user_id, sequence_id, status, current_step, metadata,
+        started_at, completed_at, cancelled_at, cancel_reason,
+        sms_sequences!inner (name, sequence_type, steps)
+      `)
+      .order('started_at', { ascending: false })
+      .limit(200);
+
+    if (filters?.user_id) {
+      query = query.eq('user_id', filters.user_id);
+    }
+    if (filters?.sequence_type) {
+      query = query.eq('sms_sequences.sequence_type', filters.sequence_type);
+    }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    const { data: instances, error } = await query;
+    if (error) throw error;
+    if (!instances || instances.length === 0) return [];
+
+    // Batch fetch user data
+    const userIds = [...new Set(instances.map((i: any) => i.user_id))];
+    const { data: users } = await this.supabase
+      .from('users')
+      .select('id, first_name, last_name, phone, email')
+      .in('id', userIds);
+
+    const usersMap = new Map((users || []).map(u => [u.id, u]));
+
+    // Fetch next pending step for active instances
+    const activeIds = instances.filter((i: any) => i.status === 'active').map((i: any) => i.id);
+    let nextStepsMap = new Map<string, string>();
+    if (activeIds.length > 0) {
+      const { data: nextSteps } = await this.supabase
+        .from('sms_sequence_step_log')
+        .select('instance_id, scheduled_for')
+        .in('instance_id', activeIds)
+        .eq('status', 'pending')
+        .order('scheduled_for', { ascending: true });
+
+      for (const step of nextSteps || []) {
+        if (!nextStepsMap.has(step.instance_id)) {
+          nextStepsMap.set(step.instance_id, step.scheduled_for);
+        }
+      }
+    }
+
+    return instances.map((inst: any) => {
+      const user = usersMap.get(inst.user_id);
+      const seq = inst.sms_sequences;
+      const totalSteps = Array.isArray(seq?.steps) ? seq.steps.length : 0;
+      const startedAt = new Date(inst.started_at);
+      const daysActive = Math.floor((Date.now() - startedAt.getTime()) / (1000 * 60 * 60 * 24));
+
+      return {
+        id: inst.id,
+        user_id: inst.user_id,
+        sequence_type: seq?.sequence_type || 'unknown',
+        sequence_name: seq?.name || 'Unknown',
+        status: inst.status,
+        current_step: inst.current_step,
+        total_steps: totalSteps,
+        metadata: inst.metadata || {},
+        started_at: inst.started_at,
+        completed_at: inst.completed_at,
+        cancelled_at: inst.cancelled_at,
+        cancel_reason: inst.cancel_reason,
+        user_name: user ? `${user.first_name} ${user.last_name}` : 'Unknown',
+        user_phone: user?.phone || '',
+        user_email: user?.email || '',
+        next_step_due: nextStepsMap.get(inst.id) || null,
+        days_active: daysActive
+      } as SequenceInstanceWithDetails;
+    });
+  }
+
+  private async fetchSequenceStepLog(instanceId: string): Promise<SequenceStepLog[]> {
+    const { data, error } = await this.supabase
+      .from('sms_sequence_step_log')
+      .select('*')
+      .eq('instance_id', instanceId)
+      .order('step_number', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((s: any) => ({
+      id: s.id,
+      instance_id: s.instance_id,
+      step_number: s.step_number,
+      channel: s.channel || 'sms',
+      template_name: s.template_name || `Step ${s.step_number}`,
+      scheduled_for: s.scheduled_for,
+      status: s.status,
+      sent_at: s.sent_at,
+      twilio_sid: s.twilio_sid,
+      error_message: s.error_message,
+      attempts: s.attempts || 0
+    }));
+  }
+
+  private async fetchSequenceOverview(): Promise<SequenceOverview> {
+    // Fetch all instances
+    const instances = await this.fetchSequenceInstances();
+
+    // Build stats
+    const stats: SequenceStats = {};
+    let totalActive = 0;
+    let totalConverted = 0;
+
+    for (const inst of instances) {
+      if (!stats[inst.sequence_type]) {
+        stats[inst.sequence_type] = { active: 0, completed: 0, cancelled: 0, converted: 0, total: 0 };
+      }
+      stats[inst.sequence_type].total++;
+      stats[inst.sequence_type][inst.status]++;
+
+      if (inst.status === 'active') totalActive++;
+      if (inst.status === 'converted') totalConverted++;
+    }
+
+    // Count messages sent today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: sentToday } = await this.supabase
+      .from('sms_sequence_step_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'sent')
+      .gte('sent_at', todayStart.toISOString());
+
+    const totalAll = instances.length;
+    const conversionRate = totalAll > 0 ? (totalConverted / totalAll) * 100 : 0;
+
+    return {
+      stats,
+      total_active: totalActive,
+      total_sent_today: sentToday || 0,
+      total_converted: totalConverted,
+      conversion_rate: Math.round(conversionRate * 10) / 10,
+      instances
+    };
   }
 
   // ==================== HELPERS ====================

@@ -1,4 +1,16 @@
 <div class="pipeline-container">
+  <!-- Top Nav: Pipeline | Sequences -->
+  <div class="pipeline-nav">
+    <a routerLink="/sales-pipeline" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+      <span class="material-icons">view_kanban</span>
+      Pipeline
+    </a>
+    <a routerLink="/sales-pipeline/sequences" routerLinkActive="active">
+      <span class="material-icons">auto_mode</span>
+      Sequences
+    </a>
+  </div>
+
   <!-- Header -->
   <div class="pipeline-header">
     <div class="header-left">

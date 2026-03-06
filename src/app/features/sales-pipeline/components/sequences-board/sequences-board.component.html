@@ -1,0 +1,343 @@
+<div class="sequences-container">
+  <!-- Top Nav: Pipeline | Sequences -->
+  <div class="pipeline-nav">
+    <a routerLink="/sales-pipeline" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+      <span class="material-icons">view_kanban</span>
+      Pipeline
+    </a>
+    <a routerLink="/sales-pipeline/sequences" routerLinkActive="active">
+      <span class="material-icons">auto_mode</span>
+      Sequences
+    </a>
+  </div>
+
+  <!-- Header -->
+  <div class="sequences-header">
+    <div class="header-left">
+      <h1 class="page-title">SMS Sequences</h1>
+      <p class="page-subtitle">Monitor automated messaging sequences</p>
+    </div>
+    <div class="header-actions">
+      <div class="search-box">
+        <span class="material-icons search-icon">search</span>
+        <input
+          type="text"
+          placeholder="Search by name or phone..."
+          [value]="searchTerm"
+          (input)="onSearch($event)"
+        />
+        @if (searchTerm) {
+          <button class="clear-search" (click)="clearSearch()">
+            <span class="material-icons">close</span>
+          </button>
+        }
+      </div>
+      <button class="action-btn refresh-btn" (click)="loadData()" [disabled]="isLoading">
+        <span class="material-icons" [class.spinning]="isLoading">refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading sequences...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error) {
+    <div class="error-container">
+      <span class="material-icons">error_outline</span>
+      <p>{{ error }}</p>
+      <button class="retry-btn" (click)="loadData()">Retry</button>
+    </div>
+  }
+
+  @if (!isLoading && !error && overview) {
+    <!-- Stats Cards -->
+    <div class="stats-bar">
+      <div class="stat-item active-stat">
+        <span class="stat-value">{{ overview.total_active }}</span>
+        <span class="stat-label">Active</span>
+      </div>
+      <div class="stat-item sent-stat">
+        <span class="stat-value">{{ overview.total_sent_today }}</span>
+        <span class="stat-label">Sent Today</span>
+      </div>
+      <div class="stat-item converted-stat">
+        <span class="stat-value">{{ overview.total_converted }}</span>
+        <span class="stat-label">Converted</span>
+      </div>
+      <div class="stat-item rate-stat">
+        <span class="stat-value">{{ overview.conversion_rate }}%</span>
+        <span class="stat-label">Conv. Rate</span>
+      </div>
+      <div class="stat-item total-stat">
+        <span class="stat-value">{{ overview.instances.length }}</span>
+        <span class="stat-label">Total</span>
+      </div>
+    </div>
+
+    <!-- Funnel Cards -->
+    <div class="funnel-row">
+      @for (entry of sequenceTypes.slice(1); track entry.key) {
+        @if (overview.stats[entry.key]) {
+          <div class="funnel-card" [style.border-top-color]="getTypeConfig(entry.key).color">
+            <div class="funnel-header">
+              <span class="material-icons" [style.color]="getTypeConfig(entry.key).color">{{ entry.icon }}</span>
+              <span class="funnel-title">{{ entry.label }}</span>
+            </div>
+            <div class="funnel-steps">
+              <div class="funnel-step">
+                <span class="funnel-count">{{ getFunnelData(entry.key).started }}</span>
+                <span class="funnel-label">Started</span>
+              </div>
+              <span class="material-icons funnel-arrow">arrow_forward</span>
+              <div class="funnel-step">
+                <span class="funnel-count">{{ getFunnelData(entry.key).completed }}</span>
+                <span class="funnel-label">Completed</span>
+              </div>
+              <span class="material-icons funnel-arrow">arrow_forward</span>
+              <div class="funnel-step converted">
+                <span class="funnel-count">{{ getFunnelData(entry.key).converted }}</span>
+                <span class="funnel-label">Converted</span>
+              </div>
+            </div>
+            @if (getFunnelData(entry.key).started > 0) {
+              <div class="funnel-rate">
+                {{ ((getFunnelData(entry.key).converted / getFunnelData(entry.key).started) * 100).toFixed(1) }}% conversion
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Sequence Type Tabs -->
+    <div class="stage-tabs">
+      @for (type of sequenceTypes; track type.key) {
+        <button
+          class="stage-tab"
+          [class.active]="selectedType === type.key"
+          [style.--tab-color]="type.key === 'all' ? '#374151' : getTypeConfig(type.key).color"
+          [style.--tab-bg]="type.key === 'all' ? '#f3f4f6' : getTypeConfig(type.key).bgColor"
+          (click)="selectType(type.key)"
+        >
+          <span class="material-icons tab-icon">{{ type.icon }}</span>
+          <span class="tab-label">{{ type.label }}</span>
+          <span class="tab-count">{{ getTypeCount(type.key) }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- Instances Table -->
+    <div class="instances-table-container">
+      @if (filteredInstances.length === 0) {
+        <div class="empty-state">
+          <span class="material-icons empty-icon">auto_mode</span>
+          <p>No sequences found</p>
+        </div>
+      } @else {
+        <table class="instances-table">
+          <thead>
+            <tr>
+              <th class="col-expand"></th>
+              <th class="col-name sortable" (click)="onSort('user_name')">
+                Name
+                @if (sortColumn === 'user_name') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-type sortable" (click)="onSort('sequence_type')">
+                Type
+                @if (sortColumn === 'sequence_type') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-status sortable" (click)="onSort('status')">
+                Status
+                @if (sortColumn === 'status') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-step">Step</th>
+              <th class="col-started sortable" (click)="onSort('started_at')">
+                Started
+                @if (sortColumn === 'started_at') {
+                  <span class="sort-arrow">{{ sortDirection === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                }
+              </th>
+              <th class="col-next">Next Step</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (inst of filteredInstances; track inst.id) {
+              <!-- Main Row -->
+              <tr
+                class="instance-row"
+                [class.expanded]="expandedRows.has(inst.id)"
+                [class.status-active]="inst.status === 'active'"
+                (click)="toggleRow(inst)"
+              >
+                <td class="col-expand">
+                  <span class="material-icons expand-icon" [class.rotated]="expandedRows.has(inst.id)">
+                    chevron_right
+                  </span>
+                </td>
+                <td class="col-name">
+                  <div class="name-cell">
+                    <div class="avatar-sm" [style.background-color]="getTypeConfig(inst.sequence_type).color">
+                      {{ inst.user_name.charAt(0) }}
+                    </div>
+                    <div class="name-info">
+                      <span class="lead-name">{{ inst.user_name }}</span>
+                      <span class="lead-phone">{{ formatPhone(inst.user_phone) }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="col-type">
+                  <span
+                    class="type-badge"
+                    [style.color]="getTypeConfig(inst.sequence_type).color"
+                    [style.background-color]="getTypeConfig(inst.sequence_type).bgColor"
+                  >
+                    <span class="material-icons type-icon">{{ getTypeConfig(inst.sequence_type).icon }}</span>
+                    {{ getTypeConfig(inst.sequence_type).label }}
+                  </span>
+                </td>
+                <td class="col-status">
+                  <span
+                    class="status-badge"
+                    [style.color]="getStatusColor(inst.status)"
+                    [style.background-color]="getStatusBg(inst.status)"
+                  >
+                    {{ inst.status }}
+                  </span>
+                </td>
+                <td class="col-step">
+                  <span class="step-progress">{{ inst.current_step }}/{{ inst.total_steps }}</span>
+                  <div class="step-bar">
+                    <div
+                      class="step-fill"
+                      [style.width.%]="inst.total_steps > 0 ? (inst.current_step / inst.total_steps) * 100 : 0"
+                      [style.background-color]="getStatusColor(inst.status)"
+                    ></div>
+                  </div>
+                </td>
+                <td class="col-started">
+                  <span class="relative-time">{{ formatRelativeTime(inst.started_at) }}</span>
+                  <span class="abs-time">{{ formatDateTime(inst.started_at) }}</span>
+                </td>
+                <td class="col-next">
+                  @if (inst.status === 'active' && inst.next_step_due) {
+                    <span class="next-due">{{ formatRelativeTime(inst.next_step_due) }}</span>
+                  } @else {
+                    <span class="no-next">-</span>
+                  }
+                </td>
+                <td class="col-actions">
+                  <div class="row-actions">
+                    @if (inst.status === 'active') {
+                      <button class="icon-btn cancel-icon" title="Cancel sequence" (click)="openCancelModal(inst, $event)">
+                        <span class="material-icons">cancel</span>
+                      </button>
+                    }
+                    <button class="icon-btn" title="View in pipeline" (click)="viewInPipeline(inst, $event)">
+                      <span class="material-icons">open_in_new</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Expanded Step Log -->
+              @if (expandedRows.has(inst.id)) {
+                <tr class="step-log-row">
+                  <td [attr.colspan]="8">
+                    <div class="step-log-container">
+                      @if (loadingSteps.has(inst.id)) {
+                        <div class="steps-loading">
+                          <div class="spinner-sm"></div>
+                          <span>Loading steps...</span>
+                        </div>
+                      } @else if (inst.steps && inst.steps.length > 0) {
+                        <div class="step-timeline">
+                          @for (step of inst.steps; track step.id) {
+                            <div class="step-item" [class]="'step-' + step.status">
+                              <span
+                                class="material-icons step-status-icon"
+                                [style.color]="getStepStatusColor(step.status)"
+                              >{{ getStepStatusIcon(step.status) }}</span>
+                              <div class="step-info">
+                                <span class="step-name">
+                                  Step {{ step.step_number }}: {{ step.template_name }}
+                                </span>
+                                <span class="step-channel">{{ step.channel }}</span>
+                              </div>
+                              <div class="step-timing">
+                                @if (step.sent_at) {
+                                  <span class="step-sent">Sent {{ formatRelativeTime(step.sent_at) }}</span>
+                                } @else if (step.status === 'pending') {
+                                  <span class="step-scheduled">Due {{ formatRelativeTime(step.scheduled_for) }}</span>
+                                } @else if (step.status === 'failed') {
+                                  <span class="step-error">{{ step.error_message || 'Failed' }}</span>
+                                } @else {
+                                  <span class="step-status-text">{{ step.status }}</span>
+                                }
+                              </div>
+                              @if (step.twilio_sid) {
+                                <span class="twilio-sid" title="{{ step.twilio_sid }}">
+                                  {{ step.twilio_sid.substring(0, 10) }}...
+                                </span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="no-steps">No step log available</p>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+</div>
+
+<!-- Cancel Sequence Modal -->
+@if (showCancelModal && cancelTarget) {
+  <div class="modal-overlay" (click)="closeCancelModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Cancel Sequence</h3>
+        <button class="modal-close" (click)="closeCancelModal()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Cancel the <strong>{{ getTypeConfig(cancelTarget.sequence_type).label }}</strong> sequence for <strong>{{ cancelTarget.user_name }}</strong>?</p>
+        <p class="modal-sub">This will stop all pending messages in this sequence.</p>
+        <div class="modal-field">
+          <label>Reason (optional)</label>
+          <textarea
+            [(ngModel)]="cancelReason"
+            placeholder="Why is this sequence being cancelled?"
+            rows="2"
+          ></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" (click)="closeCancelModal()">Keep Active</button>
+        <button class="confirm-cancel-btn" (click)="confirmCancel()" [disabled]="isCancelling">
+          {{ isCancelling ? 'Cancelling...' : 'Cancel Sequence' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

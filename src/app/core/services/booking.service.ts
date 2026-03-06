@@ -352,6 +352,28 @@ export class BookingService {
     return true;
   }
 
+  async reassignGroomer(bookingId: string, groomerId: string, scheduledDate?: string, timeSlotStart?: string, timeSlotEnd?: string): Promise<boolean> {
+    const updateData: any = {
+      groomer_id: groomerId,
+      updated_at: new Date().toISOString()
+    };
+    if (scheduledDate) updateData.scheduled_date = scheduledDate;
+    if (timeSlotStart) updateData.scheduled_time_start = timeSlotStart;
+    if (timeSlotEnd) updateData.scheduled_time_end = timeSlotEnd;
+
+    const { error } = await this.supabase
+      .from('bookings')
+      .update(updateData)
+      .eq('id', bookingId);
+
+    if (error) {
+      console.error('Error reassigning groomer:', error);
+      return false;
+    }
+
+    return true;
+  }
+
   async updateBookingStatus(bookingId: string, status: BookingStatus): Promise<boolean> {
     const { error } = await this.supabase
       .from('bookings')
