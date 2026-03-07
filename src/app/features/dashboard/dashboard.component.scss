@@ -229,6 +229,12 @@
     flex: 1;
     text-align: center;
 
+    &.tips-value {
+      .stat-number {
+        opacity: 0.9;
+      }
+    }
+
     &.pending-value {
       .stat-number {
         opacity: 0.85;
@@ -302,6 +308,23 @@
 
     &:hover {
       box-shadow: 0 8px 28px -4px rgba(122, 158, 142, 0.45);
+    }
+
+    // 3 values need more compact numbers
+    .stat-number {
+      font-size: 1.375rem;
+
+      @media (min-width: 768px) {
+        font-size: 1.625rem;
+      }
+    }
+
+    .stat-values {
+      gap: 0.625rem;
+
+      @media (min-width: 768px) {
+        gap: 0.875rem;
+      }
     }
   }
 }

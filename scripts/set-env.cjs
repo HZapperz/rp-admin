@@ -5,6 +5,7 @@ const path = require('path');
 const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 const apiUrl = process.env.API_URL || 'https://www.royalpawzusa.com';
 const googleReviewUrl = process.env.GOOGLE_REVIEW_URL || 'https://g.page/r/YOUR_PLACE_ID/review';
+const smsServiceApiKey = process.env.SMS_SERVICE_API_KEY || '';
 
 console.log('Setting environment variables...');
 console.log('API URL:', apiUrl);
@@ -26,8 +27,8 @@ export const environment = {
   },
   stripePublishableKey: '${stripePublishableKey}',
   smsService: {
-    url: 'https://royalpawz-sms.herokuapp.com',
-    apiKey: ''
+    url: 'https://royalpawz-sms-432fff90ed59.herokuapp.com',
+    apiKey: '${smsServiceApiKey}'
   },
   googleReviewUrl: '${googleReviewUrl}'
 };

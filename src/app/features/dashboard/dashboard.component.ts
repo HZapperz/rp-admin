@@ -29,7 +29,7 @@ export class DashboardComponent implements OnInit {
   kpiCards = {
     bookings: { completed: 0, pending: 0 },
     pets: { completed: 0, pending: 0 },
-    revenue: { collected: 0, pending: 0 }
+    revenue: { collected: 0, tips: 0, pending: 0 }
   };
 
   kpiPeriod: 'week' | 'month' = 'week';
@@ -175,15 +175,18 @@ export class DashboardComponent implements OnInit {
             return sum + (b.pets?.length || 0);
           }, 0);
 
-          // Calculate revenue - collected (completed) vs pending (confirmed + in_progress)
-          // Exclude tips from revenue calculation
+          // Revenue breakdown:
+          // collected = subtotal_before_tax (actual business earnings, excludes tax & tips)
+          // tips = tip_amount (pass-through to groomers)
+          // pending = subtotal_before_tax of upcoming bookings
           const revenueCollected = completedBookings.reduce((sum, b) => {
-            const revenue = (b.total_amount || 0) - (b.tip_amount || 0);
-            return sum + revenue;
+            return sum + (b.subtotal_before_tax || 0);
+          }, 0);
+          const revenueTips = completedBookings.reduce((sum, b) => {
+            return sum + (b.tip_amount || 0);
           }, 0);
           const revenuePending = pendingBookings.reduce((sum, b) => {
-            const revenue = (b.total_amount || 0) - (b.tip_amount || 0);
-            return sum + revenue;
+            return sum + (b.subtotal_before_tax || 0);
           }, 0);
 
           this.kpiCards = {
@@ -197,6 +200,7 @@ export class DashboardComponent implements OnInit {
             },
             revenue: {
               collected: revenueCollected,
+              tips: revenueTips,
               pending: revenuePending
             }
           };

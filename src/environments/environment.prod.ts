@@ -10,7 +10,7 @@ export const environment = {
   },
   stripePublishableKey: '',
   smsService: {
-    url: 'https://royalpawz-sms.herokuapp.com',
+    url: 'https://royalpawz-sms-432fff90ed59.herokuapp.com',
     apiKey: ''
   },
   googleReviewUrl: 'https://g.page/r/YOUR_PLACE_ID/review'
