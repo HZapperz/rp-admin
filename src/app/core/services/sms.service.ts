@@ -55,6 +55,7 @@ export interface ConversationStats {
 
 export interface SendReplyRequest {
   content: string;
+  phone: string;
   media_urls?: string[];
 }
 
@@ -308,30 +309,26 @@ export class SMSService {
       })
       .eq('id', conversationId);
 
-    // Actually send via Python SMS service
-    const smsUrl = environment.smsService.url;
-    const smsKey = environment.smsService.apiKey;
-    if (smsUrl && smsKey) {
-      const res = await fetch(`${smsUrl}/conversations/${conversationId}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-Key': smsKey },
-        body: JSON.stringify({ content: request.content, media_urls: request.media_urls || [] }),
-      });
-      if (res.ok) {
-        const sent = await res.json();
-        // Update the DB record with twilio_sid and status
-        await this.supabase
-          .from('sms_messages')
-          .update({ twilio_sid: sent.twilio_sid, status: 'sent' })
-          .eq('id', message.id);
-        message.twilio_sid = sent.twilio_sid;
-        message.status = 'sent';
-        return {
-          status: 'sent',
-          message: message as SMSMessage,
-          twilio_sid: sent.twilio_sid
-        };
-      }
+    // Send via Vercel Edge Function (keeps API key server-side)
+    const res = await fetch('/api/send-sms-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: request.phone, content: request.content }),
+    });
+
+    if (res.ok) {
+      const sent = await res.json();
+      await this.supabase
+        .from('sms_messages')
+        .update({ twilio_sid: sent.twilio_sid, status: 'sent' })
+        .eq('id', message.id);
+      message.twilio_sid = sent.twilio_sid;
+      message.status = 'sent';
+      return {
+        status: 'sent',
+        message: message as SMSMessage,
+        twilio_sid: sent.twilio_sid
+      };
     }
 
     return {

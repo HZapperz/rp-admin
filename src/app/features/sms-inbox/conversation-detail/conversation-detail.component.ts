@@ -99,7 +99,7 @@ export class ConversationDetailComponent implements OnInit, OnDestroy, AfterView
     const content = this.newMessage.trim();
     this.newMessage = '';
 
-    this.smsService.sendReply(this.conversationId, { content }).subscribe({
+    this.smsService.sendReply(this.conversationId, { content, phone: this.conversation?.phone_number || '' }).subscribe({
       next: (response) => {
         this.messages.push(response.message);
         this.shouldScrollToBottom = true;
