@@ -104,6 +104,11 @@ export const routes: Routes = [
           import('./features/email-campaign/email-campaign.routes').then(m => m.routes)
       },
       {
+        path: 'sms-inbox',
+        loadChildren: () =>
+          import('./features/sms-inbox/sms-inbox.routes').then(m => m.routes)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

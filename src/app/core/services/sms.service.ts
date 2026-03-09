@@ -2,14 +2,13 @@
  * SMS Service for Angular Admin
  *
  * Provides methods for interacting with SMS conversations.
- * Uses Supabase directly until the Python SMS service is deployed.
  */
 
 import { Injectable, inject } from '@angular/core';
-import { Observable, BehaviorSubject, from, of, throwError } from 'rxjs';
-import { map, tap, catchError, switchMap } from 'rxjs/operators';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Observable, BehaviorSubject, from } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { SupabaseService } from './supabase.service';
 
 // Types
 export interface SMSConversation {
@@ -63,18 +62,12 @@ export interface SendReplyRequest {
   providedIn: 'root'
 })
 export class SMSService {
-  private supabase: SupabaseClient;
+  private supabaseService = inject(SupabaseService);
+  private get supabase() { return this.supabaseService.client; }
 
   // Observable for unread count (for sidebar badge)
   private unreadCountSubject = new BehaviorSubject<number>(0);
   public unreadCount$ = this.unreadCountSubject.asObservable();
-
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.serviceRoleKey
-    );
-  }
 
   /**
    * Get conversation statistics
@@ -188,10 +181,10 @@ export class SMSService {
       if (conv.user_id) {
         const { data: user } = await this.supabase
           .from('users')
-          .select('full_name')
+          .select('first_name, last_name')
           .eq('id', conv.user_id)
           .single();
-        userName = user?.full_name;
+        userName = user ? `${user.first_name} ${user.last_name}`.trim() : undefined;
       }
 
       // Get last message
@@ -241,10 +234,10 @@ export class SMSService {
     if (conv.user_id) {
       const { data: user } = await this.supabase
         .from('users')
-        .select('full_name')
+        .select('first_name, last_name')
         .eq('id', conv.user_id)
         .single();
-      userName = user?.full_name;
+      userName = user ? `${user.first_name} ${user.last_name}`.trim() : undefined;
     }
 
     // Get messages
@@ -272,9 +265,7 @@ export class SMSService {
   }
 
   /**
-   * Send a reply in a conversation
-   * Note: This creates the message record but doesn't actually send via Twilio.
-   * The Python SMS service will handle actual sending when deployed.
+   * Send a reply in a conversation — inserts DB record then calls Python SMS service
    */
   sendReply(conversationId: string, request: SendReplyRequest, adminId?: string): Observable<{
     status: string;
@@ -296,7 +287,7 @@ export class SMSService {
       message_type: 'admin_response',
       content: request.content,
       media_urls: request.media_urls || [],
-      status: 'pending', // Will be updated when SMS service sends it
+      status: 'pending',
       created_at: new Date().toISOString()
     };
 
@@ -317,10 +308,36 @@ export class SMSService {
       })
       .eq('id', conversationId);
 
+    // Actually send via Python SMS service
+    const smsUrl = environment.smsService.url;
+    const smsKey = environment.smsService.apiKey;
+    if (smsUrl && smsKey) {
+      const res = await fetch(`${smsUrl}/conversations/${conversationId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': smsKey },
+        body: JSON.stringify({ content: request.content, media_urls: request.media_urls || [] }),
+      });
+      if (res.ok) {
+        const sent = await res.json();
+        // Update the DB record with twilio_sid and status
+        await this.supabase
+          .from('sms_messages')
+          .update({ twilio_sid: sent.twilio_sid, status: 'sent' })
+          .eq('id', message.id);
+        message.twilio_sid = sent.twilio_sid;
+        message.status = 'sent';
+        return {
+          status: 'sent',
+          message: message as SMSMessage,
+          twilio_sid: sent.twilio_sid
+        };
+      }
+    }
+
     return {
       status: 'queued',
       message: message as SMSMessage,
-      twilio_sid: '' // Will be populated by SMS service
+      twilio_sid: ''
     };
   }
 
