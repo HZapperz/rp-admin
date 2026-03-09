@@ -1263,47 +1263,23 @@ export class BookingDetailsComponent implements OnInit {
         alert('Booking approved! However, there was an issue sending some confirmation emails.');
       }
 
-      // Step 4: Send SMS confirmation and schedule reminders (fire-and-forget)
-      const smsUrl = environment.smsService.url;
-      const smsKey = environment.smsService.apiKey;
+      // Step 4: Send SMS confirmation and schedule reminders via Edge Function (fire-and-forget)
       const clientPhone = updatedBooking.client?.phone;
       const petName = updatedBooking.pets?.[0]?.pet?.name || 'your pet';
 
-      if (clientPhone && smsKey) {
-        // Send booking confirmed text
-        fetch(`${smsUrl}/webhooks/royalpawz/event`, {
+      if (clientPhone) {
+        fetch('/api/send-booking-sms', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-API-Key': smsKey },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            event_type: 'booking.confirmed',
-            recipient: {
-              user_id: updatedBooking.client_id,
-              phone: clientPhone,
-              name: updatedBooking.client?.first_name,
-              type: 'client',
-            },
             booking_id: updatedBooking.id,
-            data: {
-              pet_name: petName,
-              date: updatedBooking.scheduled_date,
-              time: updatedBooking.scheduled_time_start,
-            },
+            user_id: updatedBooking.client_id,
+            client_phone: clientPhone,
+            client_first_name: updatedBooking.client?.first_name || '',
+            pet_name: petName,
+            scheduled_date: updatedBooking.scheduled_date,
+            scheduled_time: updatedBooking.scheduled_time_start,
           }),
-        }).catch(() => null);
-
-        // Schedule 24h reminder + review request
-        const params = new URLSearchParams({
-          booking_id: updatedBooking.id,
-          user_id: updatedBooking.client_id,
-          pet_name: petName,
-          scheduled_date: updatedBooking.scheduled_date,
-          scheduled_time: updatedBooking.scheduled_time_start,
-          phone: clientPhone,
-          name: updatedBooking.client?.first_name || '',
-        });
-        fetch(`${smsUrl}/webhooks/royalpawz/booking-created?${params}`, {
-          method: 'POST',
-          headers: { 'X-API-Key': smsKey },
         }).catch(() => null);
       }
 
