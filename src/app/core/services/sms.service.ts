@@ -288,7 +288,7 @@ export class SMSService {
       message_type: 'admin_response',
       content: request.content,
       media_urls: request.media_urls || [],
-      status: 'pending',
+      status: 'queued',
       created_at: new Date().toISOString()
     };
 
