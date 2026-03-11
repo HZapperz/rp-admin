@@ -306,7 +306,7 @@ export class BookingDetailsComponent implements OnInit {
     try {
       const { error } = await this.supabase
         .from('bookings')
-        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .update({ status: 'pending', groomer_id: null, updated_at: new Date().toISOString() })
         .eq('id', this.booking.id);
 
       if (error) throw error;
