@@ -298,6 +298,27 @@ export class BookingDetailsComponent implements OnInit {
     }
   }
 
+  async revertToPending() {
+    if (!this.booking) return;
+    if (!confirm('Set this booking back to Pending? No email will be sent to the client.')) return;
+
+    this.isUpdatingStatus = true;
+    try {
+      const { error } = await this.supabase
+        .from('bookings')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', this.booking.id);
+
+      if (error) throw error;
+      await this.loadBookingDetails(this.booking.id);
+    } catch (err: any) {
+      console.error('Error reverting booking to pending:', err);
+      alert('Failed to revert booking status: ' + (err.message || 'Unknown error'));
+    } finally {
+      this.isUpdatingStatus = false;
+    }
+  }
+
   async loadBookingDetails(id: string) {
     try {
       this.loading = true;

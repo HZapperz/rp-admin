@@ -647,6 +647,12 @@
   &:hover:not(:disabled) { background: #e5e7eb; }
 }
 
+.btn-revert-pending {
+  background: #fef3c7;
+  color: #92400e;
+  &:hover:not(:disabled) { background: #fde68a; }
+}
+
 .btn-cancel-small {
   background: #fee2e2;
   color: #dc2626;

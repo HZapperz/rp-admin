@@ -251,6 +251,13 @@
                   {{ isUpdatingStatus ? '...' : 'Complete' }}
                 </button>
                 <button
+                  *ngIf="booking.status === 'confirmed' || booking.status === 'in_progress'"
+                  (click)="revertToPending()"
+                  class="btn-action btn-revert-pending"
+                  [disabled]="isUpdatingStatus">
+                  Set to Pending
+                </button>
+                <button
                   *ngIf="booking.status === 'confirmed'"
                   (click)="openTimeChangeModal()"
                   class="btn-action btn-change-time-small">

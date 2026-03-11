@@ -175,11 +175,11 @@
                     (click)="openBookingDetail(booking)">
                     <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
                     <div class="tgb-client">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</div>
-                    <div class="tgb-service">{{ booking.service_name }}</div>
-                    <div class="tgb-duration">{{ getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) }}</div>
                     @if (booking.groomer) {
                       <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
                     }
+                    <div class="tgb-service">{{ booking.service_name }}</div>
+                    <div class="tgb-duration">{{ getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) }}</div>
                   </div>
                 }
               </div>
