@@ -36,9 +36,9 @@
       </div>
 
       <div class="stat-card highlight-green">
-        <div class="stat-value">{{ analytics.signups | number }}</div>
-        <div class="stat-label">Signups</div>
-        <div class="stat-rate">{{ analytics.signupRate }}% of sessions</div>
+        <div class="stat-value">{{ analytics.bookEntries | number }}</div>
+        <div class="stat-label">Book Entries</div>
+        <div class="stat-rate">{{ analytics.bookingRate }}% booked</div>
       </div>
 
       <div class="stat-card highlight-blue">
@@ -49,8 +49,8 @@
 
       <div class="stat-card highlight-purple">
         <div class="stat-value">{{ analytics.conversions | number }}</div>
-        <div class="stat-label">Conversions</div>
-        <div class="stat-rate">{{ analytics.conversionRate }}% of sessions</div>
+        <div class="stat-label">Bookings Made</div>
+        <div class="stat-rate">{{ analytics.bookingRate }}% of /book entries</div>
       </div>
     </div>
 

@@ -73,6 +73,8 @@ export interface SessionAnalytics {
   bounceRate: number;
   signupRate: number;
   conversionRate: number;
+  bookEntries: number;
+  bookingRate: number;
 }
 
 @Injectable({
@@ -245,7 +247,7 @@ export class SessionRecordingService {
     const startDate = this.calculateStartDate(period);
 
     let query = this.supabase.from('recording_sessions')
-      .select('page_views, has_signed_up, is_converted, rage_clicks, user_id');
+      .select('page_views, has_signed_up, is_converted, rage_clicks, user_id, pages_visited, initial_url');
 
     if (startDate) {
       query = query.gte('started_at', startDate.toISOString());
@@ -284,6 +286,8 @@ export class SessionRecordingService {
     is_converted: boolean;
     rage_clicks: number;
     user_id: string | null;
+    pages_visited: string[] | null;
+    initial_url: string | null;
   }>): SessionAnalytics {
     const totalSessions = sessions.length;
     const signups = sessions.filter(s => s.has_signed_up).length;
@@ -293,6 +297,23 @@ export class SessionRecordingService {
     const sessionsWithRageClicks = sessions.filter(s => s.rage_clicks > 0).length;
     const totalRageClicks = sessions.reduce((sum, s) => sum + (s.rage_clicks || 0), 0);
     const totalPageViews = sessions.reduce((sum, s) => sum + (s.page_views || 0), 0);
+
+    const bookEntries = sessions.filter(s => {
+      if (s.initial_url) {
+        try {
+          const path = new URL(s.initial_url).pathname;
+          if (path === '/book' || path.startsWith('/book/')) return true;
+        } catch {
+          if (s.initial_url.includes('/book')) return true;
+        }
+      }
+      const pages = s.pages_visited as string[] | null;
+      return Array.isArray(pages) && pages.some(p => p === '/book');
+    }).length;
+
+    const bookingRate = bookEntries > 0
+      ? Math.round((conversions / bookEntries) * 1000) / 10
+      : 0;
 
     return {
       totalSessions,
@@ -306,6 +327,8 @@ export class SessionRecordingService {
       bounceRate: totalSessions > 0 ? Math.round((bounces / totalSessions) * 1000) / 10 : 0,
       signupRate: totalSessions > 0 ? Math.round((signups / totalSessions) * 1000) / 10 : 0,
       conversionRate: totalSessions > 0 ? Math.round((conversions / totalSessions) * 1000) / 10 : 0,
+      bookEntries,
+      bookingRate,
     };
   }
 
