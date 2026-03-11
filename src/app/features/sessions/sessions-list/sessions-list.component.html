@@ -12,14 +12,14 @@
       <div class="stat-period">Last 7 days <span class="view-more">View Details</span></div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">{{ stats.signedUp }}</div>
-      <div class="stat-label">Signed Up</div>
-      <div class="stat-rate">{{ getSignupRate() }} of visitors</div>
+      <div class="stat-value">{{ stats.bookEntries }}</div>
+      <div class="stat-label">Book Entries</div>
+      <div class="stat-rate">Visited /book</div>
     </div>
     <div class="stat-card highlight">
-      <div class="stat-value">{{ stats.converted }}</div>
-      <div class="stat-label">Converted</div>
-      <div class="stat-rate">{{ getConversionRate() }} of signups</div>
+      <div class="stat-value">{{ stats.bookingRate }}%</div>
+      <div class="stat-label">Booking Rate</div>
+      <div class="stat-rate">Of /book entries</div>
     </div>
     <div class="stat-card warning" *ngIf="stats.withRageClicks > 0">
       <div class="stat-value">{{ stats.withRageClicks }}</div>

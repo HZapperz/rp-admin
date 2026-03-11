@@ -207,8 +207,8 @@ export class SessionRecordingService {
    */
   getFunnelStats(days = 7): Observable<{
     total: number;
-    signedUp: number;
-    converted: number;
+    bookEntries: number;
+    bookingRate: number;
     withRageClicks: number;
   }> {
     return from(this.fetchFunnelStats(days));
@@ -219,7 +219,7 @@ export class SessionRecordingService {
     startDate.setDate(startDate.getDate() - days);
 
     const { data, error } = await this.supabase.from('recording_sessions')
-      .select('is_converted, has_signed_up, user_id, rage_clicks')
+      .select('is_converted, rage_clicks, pages_visited, initial_url')
       .gte('started_at', startDate.toISOString());
 
     if (error) {
@@ -228,10 +228,24 @@ export class SessionRecordingService {
     }
 
     const sessions = data || [];
+    const converted = sessions.filter(s => s.is_converted).length;
+    const bookEntries = sessions.filter(s => {
+      if (s.initial_url) {
+        try {
+          const path = new URL(s.initial_url).pathname;
+          if (path === '/book' || path.startsWith('/book/')) return true;
+        } catch {
+          if (s.initial_url.includes('/book')) return true;
+        }
+      }
+      const pages = s.pages_visited as string[] | null;
+      return Array.isArray(pages) && pages.some(p => p === '/book');
+    }).length;
+
     return {
       total: sessions.length,
-      signedUp: sessions.filter(s => s.has_signed_up).length,
-      converted: sessions.filter(s => s.is_converted).length,
+      bookEntries,
+      bookingRate: bookEntries > 0 ? Math.round((converted / bookEntries) * 1000) / 10 : 0,
       withRageClicks: sessions.filter(s => s.rage_clicks > 0).length,
     };
   }

@@ -28,8 +28,8 @@ export class SessionsListComponent implements OnInit {
   // Stats
   stats = {
     total: 0,
-    signedUp: 0,
-    converted: 0,
+    bookEntries: 0,
+    bookingRate: 0,
     withRageClicks: 0
   };
 
@@ -127,15 +127,6 @@ export class SessionsListComponent implements OnInit {
     }
   }
 
-  getConversionRate(): string {
-    if (this.stats.signedUp === 0) return '0%';
-    return ((this.stats.converted / this.stats.signedUp) * 100).toFixed(1) + '%';
-  }
-
-  getSignupRate(): string {
-    if (this.stats.total === 0) return '0%';
-    return ((this.stats.signedUp / this.stats.total) * 100).toFixed(1) + '%';
-  }
 
   goToAnalytics() {
     this.router.navigate(['/sessions/analytics']);
