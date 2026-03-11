@@ -222,6 +222,9 @@
                     (click)="openBookingDetail(booking)">
                     <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
                     <div class="tgb-client">{{ booking.client?.first_name }}</div>
+                    @if (booking.groomer) {
+                      <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
+                    }
                   </div>
                 }
               </div>
