@@ -376,7 +376,10 @@ export class DashboardComponent implements OnInit {
       bookings,
       isToday: date.getTime() === today.getTime(),
       isCurrentMonth,
-      dailyRevenue: bookings.reduce((sum, b) => sum + (b.subtotal_before_tax || 0), 0),
+      dailyRevenue: bookings.reduce((sum, b) => {
+        const preTax = b.subtotal_before_tax ?? (b.total_amount - (b.tax_amount || 0) - (b.tip_amount || 0));
+        return sum + Math.max(0, preTax);
+      }, 0),
       dailyGroomCount: bookings.reduce((sum, b) => sum + (b.pets?.length || 0), 0),
       shiftAvailability: { ...shiftData }
     };

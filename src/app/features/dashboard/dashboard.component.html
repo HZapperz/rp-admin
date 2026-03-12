@@ -195,11 +195,11 @@
           <div class="time-labels">
             <div class="time-label-header"></div>
             <div class="day-stats-labels">
-              <div class="stat-label">Revenue</div>
-              <div class="stat-label">Grooms</div>
-              <div class="stat-label">Morning</div>
-              <div class="stat-label">Afternoon</div>
-              <div class="stat-label">Evening</div>
+              <div class="stat-label">Rev</div>
+              <div class="stat-label">Pets</div>
+              <div class="stat-label">Morn</div>
+              <div class="stat-label">Aft</div>
+              <div class="stat-label">Eve</div>
             </div>
             @for (time of timeSlots; track time) {
               <div class="time-label">{{ time }}</div>
@@ -216,23 +216,32 @@
               <div class="day-stats-panel">
                 <div class="stat-row revenue">${{ slot.dailyRevenue | number:'1.0-0' }}</div>
                 <div class="stat-row grooms">{{ slot.dailyGroomCount }} 🐾</div>
-                <div class="stat-row shift-toggle" [class.off]="!slot.shiftAvailability.morning">
-                  <input type="checkbox"
-                         [checked]="slot.shiftAvailability.morning"
-                         [disabled]="savingShifts.has(getDateStr(slot.date) + ':morning')"
-                         (change)="toggleShift(slot, 'morning', $event)">
+                <div class="stat-row shift-toggle">
+                  <label class="toggle" [class.on]="slot.shiftAvailability.morning" [class.saving]="savingShifts.has(getDateStr(slot.date) + ':morning')">
+                    <input type="checkbox"
+                           [checked]="slot.shiftAvailability.morning"
+                           [disabled]="savingShifts.has(getDateStr(slot.date) + ':morning')"
+                           (change)="toggleShift(slot, 'morning', $event)">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
                 </div>
-                <div class="stat-row shift-toggle" [class.off]="!slot.shiftAvailability.afternoon">
-                  <input type="checkbox"
-                         [checked]="slot.shiftAvailability.afternoon"
-                         [disabled]="savingShifts.has(getDateStr(slot.date) + ':afternoon')"
-                         (change)="toggleShift(slot, 'afternoon', $event)">
+                <div class="stat-row shift-toggle">
+                  <label class="toggle" [class.on]="slot.shiftAvailability.afternoon" [class.saving]="savingShifts.has(getDateStr(slot.date) + ':afternoon')">
+                    <input type="checkbox"
+                           [checked]="slot.shiftAvailability.afternoon"
+                           [disabled]="savingShifts.has(getDateStr(slot.date) + ':afternoon')"
+                           (change)="toggleShift(slot, 'afternoon', $event)">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
                 </div>
-                <div class="stat-row shift-toggle" [class.off]="!slot.shiftAvailability.evening">
-                  <input type="checkbox"
-                         [checked]="slot.shiftAvailability.evening"
-                         [disabled]="savingShifts.has(getDateStr(slot.date) + ':evening')"
-                         (change)="toggleShift(slot, 'evening', $event)">
+                <div class="stat-row shift-toggle">
+                  <label class="toggle" [class.on]="slot.shiftAvailability.evening" [class.saving]="savingShifts.has(getDateStr(slot.date) + ':evening')">
+                    <input type="checkbox"
+                           [checked]="slot.shiftAvailability.evening"
+                           [disabled]="savingShifts.has(getDateStr(slot.date) + ':evening')"
+                           (change)="toggleShift(slot, 'evening', $event)">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
                 </div>
               </div>
               <div class="time-grid-body">
