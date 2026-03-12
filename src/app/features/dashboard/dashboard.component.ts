@@ -5,16 +5,25 @@ import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
 import { KPIData, BookingWithDetails } from '../../core/models/types';
 import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
-import { BusinessSettingsService, OperatingDay, OperatingHours } from '../../core/services/business-settings.service';
+import { BusinessSettingsService, OperatingDay, OperatingHours, ShiftDateAvailability } from '../../core/services/business-settings.service';
 
 
 type ScheduleView = 'day' | 'week' | 'month';
+
+interface ShiftAvailability {
+  morning: boolean;
+  afternoon: boolean;
+  evening: boolean;
+}
 
 interface DaySlot {
   date: Date;
   bookings: BookingWithDetails[];
   isToday: boolean;
   isCurrentMonth: boolean;
+  dailyRevenue: number;
+  dailyGroomCount: number;
+  shiftAvailability: ShiftAvailability;
 }
 
 @Component({
@@ -41,6 +50,10 @@ export class DashboardComponent implements OnInit {
   currentDate = new Date();
   scheduleSlots: DaySlot[] = [];
   allBookings: BookingWithDetails[] = [];
+
+  // Shift availability
+  shiftAvailabilityMap = new Map<string, ShiftAvailability>();
+  savingShifts = new Set<string>();
 
   // Business Settings Modal
   showBusinessSettingsModal = false;
@@ -225,6 +238,7 @@ export class DashboardComponent implements OnInit {
         next: (bookings) => {
           this.allBookings = bookings;
           this.generateScheduleSlots();
+          this.loadShiftAvailability();
         },
         error: (err) => {
           console.error('Error loading schedule:', err);
@@ -233,6 +247,28 @@ export class DashboardComponent implements OnInit {
     } catch (err) {
       console.error('Error:', err);
     }
+  }
+
+  private loadShiftAvailability(): void {
+    if (this.scheduleSlots.length === 0) return;
+    const first = this.scheduleSlots[0].date;
+    const last = this.scheduleSlots[this.scheduleSlots.length - 1].date;
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const start = fmt(first);
+    const end = fmt(last);
+    this.businessSettingsService.getShiftAvailabilityForRange(start, end).subscribe({
+      next: (rows) => {
+        // Reset map for this date range (all defaults = true)
+        this.shiftAvailabilityMap.clear();
+        for (const row of rows) {
+          const existing = this.shiftAvailabilityMap.get(row.date) ?? { morning: true, afternoon: true, evening: true };
+          existing[row.shift] = row.is_available;
+          this.shiftAvailabilityMap.set(row.date, existing);
+        }
+        this.generateScheduleSlots();
+      },
+      error: (err) => console.error('Error loading shift availability:', err)
+    });
   }
 
   changeView(view: ScheduleView): void {
@@ -254,8 +290,10 @@ export class DashboardComponent implements OnInit {
         1
       );
     }
+    this.shiftAvailabilityMap.clear();
     this.generateScheduleSlots();
     this.loadKPIs(); // Update KPIs for the new period
+    this.loadShiftAvailability();
   }
 
   nextPeriod(): void {
@@ -272,14 +310,18 @@ export class DashboardComponent implements OnInit {
         1
       );
     }
+    this.shiftAvailabilityMap.clear();
     this.generateScheduleSlots();
     this.loadKPIs(); // Update KPIs for the new period
+    this.loadShiftAvailability();
   }
 
   goToToday(): void {
     this.currentDate = new Date();
+    this.shiftAvailabilityMap.clear();
     this.generateScheduleSlots();
     this.loadKPIs(); // Update KPIs for current period
+    this.loadShiftAvailability();
   }
 
   private generateScheduleSlots(): void {
@@ -327,12 +369,52 @@ export class DashboardComponent implements OnInit {
       })
       .sort((a, b) => (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || ''));
 
+    const shiftData = this.shiftAvailabilityMap.get(dateStr) ?? { morning: true, afternoon: true, evening: true };
+
     return {
       date: new Date(date),
       bookings,
       isToday: date.getTime() === today.getTime(),
-      isCurrentMonth
+      isCurrentMonth,
+      dailyRevenue: bookings.reduce((sum, b) => sum + (b.subtotal_before_tax || 0), 0),
+      dailyGroomCount: bookings.reduce((sum, b) => sum + (b.pets?.length || 0), 0),
+      shiftAvailability: { ...shiftData }
     };
+  }
+
+  getDateStr(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  toggleShift(slot: DaySlot, shift: 'morning' | 'afternoon' | 'evening', event: Event): void {
+    const isAvailable = (event.target as HTMLInputElement).checked;
+    const dateStr = this.getDateStr(slot.date);
+    const key = `${dateStr}:${shift}`;
+    if (this.savingShifts.has(key)) {
+      (event.target as HTMLInputElement).checked = !isAvailable;
+      return;
+    }
+    // Optimistic update
+    slot.shiftAvailability[shift] = isAvailable;
+    this.savingShifts.add(key);
+    this.businessSettingsService.upsertShiftAvailability(dateStr, shift, isAvailable).subscribe({
+      next: (success) => {
+        if (!success) {
+          // Revert on failure
+          slot.shiftAvailability[shift] = !isAvailable;
+        } else {
+          // Sync map
+          const existing = this.shiftAvailabilityMap.get(dateStr) ?? { morning: true, afternoon: true, evening: true };
+          existing[shift] = isAvailable;
+          this.shiftAvailabilityMap.set(dateStr, existing);
+        }
+        this.savingShifts.delete(key);
+      },
+      error: () => {
+        slot.shiftAvailability[shift] = !isAvailable;
+        this.savingShifts.delete(key);
+      }
+    });
   }
 
   private getStartOfWeek(date: Date): Date {

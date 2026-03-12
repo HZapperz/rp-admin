@@ -194,6 +194,13 @@
           <!-- Time Labels Column -->
           <div class="time-labels">
             <div class="time-label-header"></div>
+            <div class="day-stats-labels">
+              <div class="stat-label">Revenue</div>
+              <div class="stat-label">Grooms</div>
+              <div class="stat-label">Morning</div>
+              <div class="stat-label">Afternoon</div>
+              <div class="stat-label">Evening</div>
+            </div>
             @for (time of timeSlots; track time) {
               <div class="time-label">{{ time }}</div>
             }
@@ -205,6 +212,28 @@
               <div class="time-grid-header" [class.today]="slot.isToday">
                 <div class="day-name">{{ slot.date | date:'EEE' }}</div>
                 <div class="day-date">{{ slot.date | date:'d' }}</div>
+              </div>
+              <div class="day-stats-panel">
+                <div class="stat-row revenue">${{ slot.dailyRevenue | number:'1.0-0' }}</div>
+                <div class="stat-row grooms">{{ slot.dailyGroomCount }} 🐾</div>
+                <div class="stat-row shift-toggle" [class.off]="!slot.shiftAvailability.morning">
+                  <input type="checkbox"
+                         [checked]="slot.shiftAvailability.morning"
+                         [disabled]="savingShifts.has(getDateStr(slot.date) + ':morning')"
+                         (change)="toggleShift(slot, 'morning', $event)">
+                </div>
+                <div class="stat-row shift-toggle" [class.off]="!slot.shiftAvailability.afternoon">
+                  <input type="checkbox"
+                         [checked]="slot.shiftAvailability.afternoon"
+                         [disabled]="savingShifts.has(getDateStr(slot.date) + ':afternoon')"
+                         (change)="toggleShift(slot, 'afternoon', $event)">
+                </div>
+                <div class="stat-row shift-toggle" [class.off]="!slot.shiftAvailability.evening">
+                  <input type="checkbox"
+                         [checked]="slot.shiftAvailability.evening"
+                         [disabled]="savingShifts.has(getDateStr(slot.date) + ':evening')"
+                         (change)="toggleShift(slot, 'evening', $event)">
+                </div>
               </div>
               <div class="time-grid-body">
                 <!-- Hour lines -->

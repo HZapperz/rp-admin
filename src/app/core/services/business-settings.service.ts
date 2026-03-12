@@ -63,6 +63,15 @@ export interface BookingConflict {
   status: string;
 }
 
+export interface ShiftDateAvailability {
+  id: string;
+  date: string; // YYYY-MM-DD
+  shift: 'morning' | 'afternoon' | 'evening';
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface BookingTimeSlot {
   id: string;
   label: string;
@@ -475,6 +484,41 @@ export class BusinessSettingsService {
       map(response => !response.error),
       catchError(error => {
         console.error('Error cancelling bookings:', error);
+        return of(false);
+      })
+    );
+  }
+
+  // =======================
+  // SHIFT DATE AVAILABILITY
+  // =======================
+
+  getShiftAvailabilityForRange(start: string, end: string): Observable<ShiftDateAvailability[]> {
+    return from(
+      this.supabase.from('shift_date_availability')
+        .select('*')
+        .gte('date', start)
+        .lte('date', end)
+    ).pipe(
+      map(response => response.data || []),
+      catchError(error => {
+        console.error('Error fetching shift availability:', error);
+        return of([]);
+      })
+    );
+  }
+
+  upsertShiftAvailability(date: string, shift: string, isAvailable: boolean): Observable<boolean> {
+    return from(
+      this.supabase.from('shift_date_availability')
+        .upsert(
+          { date, shift, is_available: isAvailable, updated_at: new Date().toISOString() },
+          { onConflict: 'date,shift' }
+        )
+    ).pipe(
+      map(response => !response.error),
+      catchError(error => {
+        console.error('Error saving shift availability:', error);
         return of(false);
       })
     );
