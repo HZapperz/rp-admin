@@ -48,6 +48,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Services', route: '/services', icon: 'spa' },
     { label: 'Time Slots', route: '/time-slots', icon: 'schedule' },
     { label: 'Sessions', route: '/sessions', icon: 'videocam' },
+    { label: 'AB Tests', route: '/ab-tests', icon: 'science' },
     { label: 'Analytics', route: '/analytics', icon: 'analytics' },
     { label: 'Reports', route: '/reports', icon: 'assessment' },
     { label: 'Complaints', route: '/complaints', icon: 'feedback' },

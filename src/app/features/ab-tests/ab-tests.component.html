@@ -1,0 +1,83 @@
+<div class="ab-container">
+  <div class="page-header">
+    <h1>A/B Tests</h1>
+    <p class="subtitle">Funnel comparison across variants. Each row counts unique sessions per step.</p>
+  </div>
+
+  <div class="period-selector">
+    @for (p of periods; track p.value) {
+      <button
+        class="period-btn"
+        [class.active]="selectedPeriod === p.value"
+        (click)="selectPeriod(p.value)"
+      >{{ p.label }}</button>
+    }
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  } @else if (result) {
+
+    <div class="test-card">
+      <div class="test-header">
+        <div class="test-title">{{ result.testName }}</div>
+        <div class="test-meta">
+          <span class="variant-pill pill-a">A: Intro → ZIP &nbsp;({{ result.totalA }} sessions)</span>
+          <span class="variant-pill pill-b">B: ZIP First &nbsp;({{ result.totalB }} sessions)</span>
+        </div>
+      </div>
+
+      <div class="funnel-table-wrap">
+        <table class="funnel-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th class="col-a">A — Sessions</th>
+              <th class="col-a">A — Rate</th>
+              <th class="col-b">B — Sessions</th>
+              <th class="col-b">B — Rate</th>
+              <th>B lift vs A</th>
+              <th>Winner</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (step of funnelSteps; track step.event) {
+              <tr [class.winner-row-b]="getWinner(step.event) === 'B'" [class.winner-row-a]="getWinner(step.event) === 'A'">
+                <td class="step-label">{{ step.label }}</td>
+                <td class="col-a num">{{ getCount('A', step.event) }}</td>
+                <td class="col-a rate">{{ getRate('A', step.event) }}</td>
+                <td class="col-b num">{{ getCount('B', step.event) }}</td>
+                <td class="col-b rate">{{ getRate('B', step.event) }}</td>
+                <td class="lift" [class.lift-pos]="getWinner(step.event) === 'B'" [class.lift-neg]="getWinner(step.event) === 'A'">
+                  {{ getLift(step.event) }}
+                </td>
+                <td class="winner-cell">
+                  @if (getWinner(step.event) === 'A') {
+                    <span class="badge badge-a">A</span>
+                  } @else if (getWinner(step.event) === 'B') {
+                    <span class="badge badge-b">B</span>
+                  } @else {
+                    <span class="badge badge-tie">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="data-note">
+        Lift = (B rate − A rate) / A rate. Positive = B outperforms A at this step.
+        Rates are each step's count ÷ total unique sessions that entered /book.
+      </p>
+    </div>
+
+  } @else {
+    <div class="empty-state">
+      <p>No A/B test data yet. Data will appear once users start the /book flow.</p>
+    </div>
+  }
+</div>
