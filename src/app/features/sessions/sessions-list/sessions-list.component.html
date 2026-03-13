@@ -37,6 +37,7 @@
         <option value="converted">Converted</option>
         <option value="signed_up">Signed Up (not converted)</option>
         <option value="dropped">Dropped (anonymous)</option>
+        <option value="abandoned">Abandoned Bookings</option>
       </select>
     </div>
 
@@ -70,14 +71,42 @@
   </div>
 
   <!-- Empty State -->
-  <div class="empty-state" *ngIf="!isLoading && sessions.length === 0">
+  <div class="empty-state" *ngIf="!isLoading && sessions.length === 0 && abandonedBookings.length === 0">
     <span class="material-icons">videocam_off</span>
     <h3>No sessions found</h3>
     <p>Try adjusting your filters or wait for more sessions to be recorded.</p>
   </div>
 
+  <!-- Abandoned Bookings Table -->
+  <div class="sessions-table" *ngIf="!isLoading && statusFilter === 'abandoned' && abandonedBookings.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Started</th>
+          <th>Stopped At</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let booking of abandonedBookings" class="session-row">
+          <td class="user-cell">{{ getAbandonedUserDisplay(booking) }}</td>
+          <td class="user-cell">{{ booking.email || '-' }}</td>
+          <td class="date-cell">{{ booking.phone || '-' }}</td>
+          <td class="date-cell">{{ formatDate(booking.created_at) }}</td>
+          <td class="url-cell">{{ getAbandonedStepLabel(booking) }}</td>
+          <td class="status-cell">
+            <span class="status-badge status-abandoned">Abandoned</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- Sessions Table -->
-  <div class="sessions-table" *ngIf="!isLoading && sessions.length > 0">
+  <div class="sessions-table" *ngIf="!isLoading && statusFilter !== 'abandoned' && sessions.length > 0">
     <table>
       <thead>
         <tr>

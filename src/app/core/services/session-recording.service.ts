@@ -52,8 +52,22 @@ export interface RecordingSessionEvent {
   created_at: string;
 }
 
+export interface AbandonedBooking {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  last_step: string | null;
+  session_data: any;
+  recovery_link: string | null;
+  created_at: string;
+  updated_at: string | null;
+  recovered_at: string | null;
+  booking_id: string | null;
+  user: { first_name: string | null; last_name: string | null; email: string | null } | null;
+}
+
 export interface SessionFilters {
-  status?: 'all' | 'converted' | 'dropped' | 'signed_up';
+  status?: 'all' | 'converted' | 'dropped' | 'signed_up' | 'abandoned';
   hasRageClicks?: boolean;
   hideNoEvents?: boolean;
   startDate?: string;
@@ -147,6 +161,47 @@ export class SessionRecordingService {
     return sessions.map(s => ({
       ...s,
       user: s.user_id ? userMap.get(s.user_id) || null : null
+    }));
+  }
+
+  /**
+   * Get abandoned bookings (contact info collected but booking not completed)
+   */
+  getAbandonedBookings(limit = 100): Observable<AbandonedBooking[]> {
+    return from(this.fetchAbandonedBookings(limit));
+  }
+
+  private async fetchAbandonedBookings(limit: number): Promise<AbandonedBooking[]> {
+    const { data, error } = await this.supabase.from('abandoned_bookings')
+      .select('*')
+      .is('recovered_at', null)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching abandoned bookings:', error);
+      throw error;
+    }
+
+    const bookings: AbandonedBooking[] = (data || []).map((b: any) => ({ ...b, user: null }));
+    return this.attachUsersToAbandoned(bookings);
+  }
+
+  private async attachUsersToAbandoned(bookings: AbandonedBooking[]): Promise<AbandonedBooking[]> {
+    const emails = [...new Set(bookings.map(b => b.email).filter(Boolean))] as string[];
+    if (emails.length === 0) return bookings;
+
+    const { data: users, error } = await this.supabase.from('users')
+      .select('email, first_name, last_name')
+      .in('email', emails);
+
+    if (error || !users) return bookings;
+
+    const userMap = new Map(users.map((u: any) => [u.email, { first_name: u.first_name, last_name: u.last_name, email: u.email }]));
+
+    return bookings.map(b => ({
+      ...b,
+      user: b.email ? userMap.get(b.email) || null : null,
     }));
   }
 

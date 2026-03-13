@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import {
   SessionRecordingService,
   RecordingSession,
+  AbandonedBooking,
   SessionFilters,
   SessionUser
 } from '../../../core/services/session-recording.service';
@@ -18,10 +19,11 @@ import {
 })
 export class SessionsListComponent implements OnInit {
   sessions: RecordingSession[] = [];
+  abandonedBookings: AbandonedBooking[] = [];
   isLoading = true;
 
   // Filters
-  statusFilter: 'all' | 'converted' | 'dropped' | 'signed_up' = 'all';
+  statusFilter: 'all' | 'converted' | 'dropped' | 'signed_up' | 'abandoned' = 'all';
   hasRageClicksFilter = false;
   hideNoEventsFilter = true; // Default to hiding sessions without replay data
 
@@ -54,6 +56,22 @@ export class SessionsListComponent implements OnInit {
 
   loadSessions() {
     this.isLoading = true;
+    this.sessions = [];
+    this.abandonedBookings = [];
+
+    if (this.statusFilter === 'abandoned') {
+      this.sessionService.getAbandonedBookings(100).subscribe({
+        next: (bookings) => {
+          this.abandonedBookings = bookings;
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('Error loading abandoned bookings:', err);
+          this.isLoading = false;
+        }
+      });
+      return;
+    }
 
     const filters: SessionFilters = {
       status: this.statusFilter,
@@ -127,6 +145,27 @@ export class SessionsListComponent implements OnInit {
     }
   }
 
+
+  getAbandonedUserDisplay(booking: AbandonedBooking): string {
+    if (booking.user) {
+      const name = [booking.user.first_name, booking.user.last_name].filter(Boolean).join(' ');
+      if (name) return name;
+    }
+    return booking.email || 'Unknown';
+  }
+
+  getAbandonedStepLabel(booking: AbandonedBooking): string {
+    const stepLabels: Record<string, string> = {
+      contact: 'Contact Info',
+      details: 'Address',
+      checkout: 'Checkout',
+      schedule: 'Schedule',
+      customize: 'Service',
+      pets: 'Pets',
+    };
+    const step = booking.last_step || '';
+    return stepLabels[step] || step || 'Unknown';
+  }
 
   goToAnalytics() {
     this.router.navigate(['/sessions/analytics']);
