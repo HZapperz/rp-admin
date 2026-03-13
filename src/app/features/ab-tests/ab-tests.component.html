@@ -1,7 +1,7 @@
 <div class="ab-container">
   <div class="page-header">
     <h1>A/B Tests</h1>
-    <p class="subtitle">Funnel comparison across variants. Each row counts unique sessions per step.</p>
+    <p class="subtitle">Testing whether showing an intro screen first (A) or going straight to ZIP (B) drives more bookings.</p>
   </div>
 
   <div class="period-selector">
@@ -22,57 +22,122 @@
   } @else if (result) {
 
     <div class="test-card">
+
+      <!-- Card Header -->
       <div class="test-header">
-        <div class="test-title">{{ result.testName }}</div>
-        <div class="test-meta">
-          <span class="variant-pill pill-a">A: Intro → ZIP &nbsp;({{ result.totalA }} sessions)</span>
-          <span class="variant-pill pill-b">B: ZIP First &nbsp;({{ result.totalB }} sessions)</span>
+        <div>
+          <div class="test-title">{{ result.testName }}</div>
+          <div class="test-desc">Does showing an intro screen first (A) or going straight to ZIP (B) drive more bookings?</div>
+        </div>
+        <span class="period-badge">{{ result.period }}</span>
+      </div>
+
+      <!-- Total Entries Section -->
+      <div class="card-section">
+        <div class="section-label">Total Sessions Entered /book</div>
+        <div class="total-number">{{ result.totalEntered }}</div>
+        <div class="split-bars">
+          <div class="split-bar-a">
+            <span class="bar-label">A: Intro → ZIP</span>
+            <span class="bar-count">{{ result.entriesA }} sessions</span>
+            <span class="bar-pct">{{ splitPct(result.entriesA, result.totalEntered) }}</span>
+          </div>
+          <div class="split-bar-b">
+            <span class="bar-label">B: ZIP First</span>
+            <span class="bar-count">{{ result.entriesB }} sessions</span>
+            <span class="bar-pct">{{ splitPct(result.entriesB, result.totalEntered) }}</span>
+          </div>
         </div>
       </div>
 
-      <div class="funnel-table-wrap">
-        <table class="funnel-table">
-          <thead>
-            <tr>
-              <th>Step</th>
-              <th class="col-a">A — Sessions</th>
-              <th class="col-a">A — Rate</th>
-              <th class="col-b">B — Sessions</th>
-              <th class="col-b">B — Rate</th>
-              <th>B lift vs A</th>
-              <th>Winner</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (step of funnelSteps; track step.event) {
-              <tr [class.winner-row-b]="getWinner(step.event) === 'B'" [class.winner-row-a]="getWinner(step.event) === 'A'">
-                <td class="step-label">{{ step.label }}</td>
-                <td class="col-a num">{{ getCount('A', step.event) }}</td>
-                <td class="col-a rate">{{ getRate('A', step.event) }}</td>
-                <td class="col-b num">{{ getCount('B', step.event) }}</td>
-                <td class="col-b rate">{{ getRate('B', step.event) }}</td>
-                <td class="lift" [class.lift-pos]="getWinner(step.event) === 'B'" [class.lift-neg]="getWinner(step.event) === 'A'">
-                  {{ getLift(step.event) }}
-                </td>
-                <td class="winner-cell">
-                  @if (getWinner(step.event) === 'A') {
-                    <span class="badge badge-a">A</span>
-                  } @else if (getWinner(step.event) === 'B') {
-                    <span class="badge badge-b">B</span>
-                  } @else {
-                    <span class="badge badge-tie">—</span>
-                  }
-                </td>
-              </tr>
+      <!-- Booking Conversion Rate — Hero Metric -->
+      <div class="card-section">
+        <div class="section-label">
+          Booking Conversion Rate
+          <span class="north-star-badge">North Star</span>
+        </div>
+        <div class="metric-grid">
+          <div class="metric-card metric-card-a" [class.metric-winner]="getConvertedWinner() === 'A'">
+            <div class="metric-variant">
+              <span class="variant-pill pill-a">A</span>
+              <span class="variant-name">Intro → ZIP</span>
+              @if (getConvertedWinner() === 'A') {
+                <span class="winner-crown">★ Winner</span>
+              }
+            </div>
+            <div class="metric-rate">{{ formatRate(result.convertedRateA) }}</div>
+            <div class="metric-sub">{{ result.convertedCountA }} of {{ result.entriesA }} booked</div>
+          </div>
+          <div class="metric-card metric-card-b" [class.metric-winner]="getConvertedWinner() === 'B'">
+            <div class="metric-variant">
+              <span class="variant-pill pill-b">B</span>
+              <span class="variant-name">ZIP First</span>
+              @if (getConvertedWinner() === 'B') {
+                <span class="winner-crown">★ Winner</span>
+              }
+            </div>
+            <div class="metric-rate">{{ formatRate(result.convertedRateB) }}</div>
+            <div class="metric-sub">{{ result.convertedCountB }} of {{ result.entriesB }} booked</div>
+          </div>
+        </div>
+
+        @if (result.convertedCountA === 0 && result.convertedCountB === 0) {
+          <p class="no-data-note">No bookings recorded yet — conversion tracking was just fixed. Data will accumulate from new sessions.</p>
+        } @else {
+          <div class="lift-row">
+            <span class="lift-label">B lift vs A:</span>
+            <span class="lift-value"
+              [class.lift-pos]="getConvertedWinner() === 'B'"
+              [class.lift-neg]="getConvertedWinner() === 'A'">
+              {{ getConvertedLift() }}
+            </span>
+            <span class="lift-sep">•</span>
+            <span class="lift-label">Winner:</span>
+            @if (getConvertedWinner() === 'A') {
+              <span class="winner-badge badge-a">A</span>
+            } @else if (getConvertedWinner() === 'B') {
+              <span class="winner-badge badge-b">B</span>
+            } @else {
+              <span class="winner-badge badge-tie">Tie</span>
             }
-          </tbody>
-        </table>
+          </div>
+        }
       </div>
 
-      <p class="data-note">
-        Lift = (B rate − A rate) / A rate. Positive = B outperforms A at this step.
-        Rates are each step's count ÷ total unique sessions that entered /book.
-      </p>
+      <!-- ZIP Submission Rate — Secondary -->
+      <div class="card-section">
+        <div class="section-label">ZIP Submission Rate <span class="secondary-label">funnel step</span></div>
+        <div class="zip-row">
+          <div class="zip-stat zip-stat-a">
+            <span class="variant-pill pill-a">A</span>
+            <span class="zip-rate">{{ formatRate(result.zipRateA) }}</span>
+            <span class="zip-sub">{{ result.zipCountA }}/{{ result.entriesA }}</span>
+          </div>
+          <div class="zip-divider"></div>
+          <div class="zip-stat zip-stat-b">
+            <span class="variant-pill pill-b">B</span>
+            <span class="zip-rate">{{ formatRate(result.zipRateB) }}</span>
+            <span class="zip-sub">{{ result.zipCountB }}/{{ result.entriesB }}</span>
+          </div>
+          @if (getZipWinner()) {
+            <div class="zip-winner">
+              Winner:
+              @if (getZipWinner() === 'A') { <span class="winner-badge badge-a">A</span> }
+              @else if (getZipWinner() === 'B') { <span class="winner-badge badge-b">B</span> }
+              @else { <span class="winner-badge badge-tie">Tie</span> }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Footnote -->
+      <div class="card-section intro-section">
+        <p class="intro-note">
+          &#8505; Variant A — intro screen clicks: {{ result.introCountA }} of {{ result.entriesA }} sessions
+          <span class="intro-context">(context only — intro always precedes ZIP in Variant A)</span>
+        </p>
+      </div>
+
     </div>
 
   } @else {

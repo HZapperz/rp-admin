@@ -2,32 +2,25 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../../core/services/supabase.service';
 
-interface FunnelStep {
-  event: string;
-  label: string;
-}
-
-interface VariantData {
-  [event: string]: number;
-}
-
 interface TestResult {
   testName: string;
   period: string;
-  variantA: VariantData;
-  variantB: VariantData;
-  totalA: number;
-  totalB: number;
+  totalEntered: number;
+  entriesA: number;
+  entriesB: number;
+  // Hero: bookings converted
+  convertedCountA: number;
+  convertedCountB: number;
+  convertedRateA: number;
+  convertedRateB: number;
+  // Secondary: ZIP submitted
+  zipCountA: number;
+  zipCountB: number;
+  zipRateA: number;
+  zipRateB: number;
+  // Footnote
+  introCountA: number;
 }
-
-const FUNNEL_STEPS: FunnelStep[] = [
-  { event: 'entered',       label: 'Entered /book' },
-  { event: 'intro_started', label: 'Started Intro (A only)' },
-  { event: 'zip_submitted', label: 'Submitted ZIP' },
-  { event: 'pets_reached',  label: 'Reached Pets' },
-  { event: 'contact_reached', label: 'Reached Contact' },
-  { event: 'converted',     label: 'Converted' },
-];
 
 type Period = '7d' | '30d' | 'all';
 
@@ -42,7 +35,6 @@ export class AbTestsComponent implements OnInit {
   result: TestResult | null = null;
   isLoading = true;
   selectedPeriod: Period = '7d';
-  funnelSteps = FUNNEL_STEPS;
 
   periods: { value: Period; label: string }[] = [
     { value: '7d',  label: '7 Days' },
@@ -77,10 +69,6 @@ export class AbTestsComponent implements OnInit {
       return;
     }
 
-    // Count unique sessions per variant+event
-    const counts: { A: VariantData; B: VariantData } = { A: {}, B: {} };
-
-    // Use sets to deduplicate by session_id
     const sets: { A: { [event: string]: Set<string> }; B: { [event: string]: Set<string> } } = {
       A: {}, B: {}
     };
@@ -91,19 +79,35 @@ export class AbTestsComponent implements OnInit {
       sets[v][row.event].add(row.session_id);
     }
 
-    for (const v of ['A', 'B'] as const) {
-      for (const [event, set] of Object.entries(sets[v])) {
-        counts[v][event] = set.size;
-      }
-    }
+    // Union of all session_ids per variant = total participants
+    const allSessionsA = new Set<string>();
+    const allSessionsB = new Set<string>();
+    for (const s of Object.values(sets.A)) for (const id of s) allSessionsA.add(id);
+    for (const s of Object.values(sets.B)) for (const id of s) allSessionsB.add(id);
+
+    const entriesA = allSessionsA.size;
+    const entriesB = allSessionsB.size;
+
+    const convertedCountA = sets.A['converted']?.size ?? 0;
+    const convertedCountB = sets.B['converted']?.size ?? 0;
+    const zipCountA = sets.A['zip_submitted']?.size ?? 0;
+    const zipCountB = sets.B['zip_submitted']?.size ?? 0;
 
     this.result = {
       testName: 'Intro Screen vs. ZIP First',
       period: this.periods.find(p => p.value === this.selectedPeriod)?.label ?? '',
-      variantA: counts.A,
-      variantB: counts.B,
-      totalA: counts.A['entered'] ?? 0,
-      totalB: counts.B['entered'] ?? 0,
+      totalEntered: entriesA + entriesB,
+      entriesA,
+      entriesB,
+      convertedCountA,
+      convertedCountB,
+      convertedRateA: entriesA > 0 ? convertedCountA / entriesA : 0,
+      convertedRateB: entriesB > 0 ? convertedCountB / entriesB : 0,
+      zipCountA,
+      zipCountB,
+      zipRateA: entriesA > 0 ? zipCountA / entriesA : 0,
+      zipRateB: entriesB > 0 ? zipCountB / entriesB : 0,
+      introCountA: sets.A['intro_started']?.size ?? 0,
     };
 
     this.isLoading = false;
@@ -114,35 +118,34 @@ export class AbTestsComponent implements OnInit {
     this.load();
   }
 
-  getCount(variant: 'A' | 'B', event: string): number {
-    if (!this.result) return 0;
-    const data = variant === 'A' ? this.result.variantA : this.result.variantB;
-    return data[event] ?? 0;
-  }
-
-  getRate(variant: 'A' | 'B', event: string): string {
-    const total = variant === 'A' ? this.result?.totalA : this.result?.totalB;
-    if (!total) return '—';
-    const count = this.getCount(variant, event);
-    return (count / total * 100).toFixed(1) + '%';
-  }
-
-  getWinner(event: string): 'A' | 'B' | 'tie' | null {
+  getConvertedWinner(): 'A' | 'B' | 'tie' | null {
     if (!this.result) return null;
-    const rateA = this.result.totalA > 0 ? this.getCount('A', event) / this.result.totalA : 0;
-    const rateB = this.result.totalB > 0 ? this.getCount('B', event) / this.result.totalB : 0;
-    if (Math.abs(rateA - rateB) < 0.01) return 'tie';
-    return rateA > rateB ? 'A' : 'B';
+    const { convertedRateA, convertedRateB } = this.result;
+    if (Math.abs(convertedRateA - convertedRateB) < 0.01) return 'tie';
+    return convertedRateA > convertedRateB ? 'A' : 'B';
   }
 
-  getLift(event: string): string {
-    if (!this.result || !this.result.totalA || !this.result.totalB) return '—';
-    const rateA = this.getCount('A', event) / this.result.totalA;
-    const rateB = this.getCount('B', event) / this.result.totalB;
-    if (!rateA) return '—';
-    const lift = ((rateB - rateA) / rateA) * 100;
+  getConvertedLift(): string {
+    if (!this.result || !this.result.convertedRateA) return '—';
+    const lift = ((this.result.convertedRateB - this.result.convertedRateA) / this.result.convertedRateA) * 100;
     const sign = lift > 0 ? '+' : '';
     return `${sign}${lift.toFixed(1)}%`;
+  }
+
+  getZipWinner(): 'A' | 'B' | 'tie' | null {
+    if (!this.result) return null;
+    const { zipRateA, zipRateB } = this.result;
+    if (Math.abs(zipRateA - zipRateB) < 0.01) return 'tie';
+    return zipRateA > zipRateB ? 'A' : 'B';
+  }
+
+  formatRate(rate: number): string {
+    return (rate * 100).toFixed(1) + '%';
+  }
+
+  splitPct(n: number, total: number): string {
+    if (!total) return '0%';
+    return (n / total * 100).toFixed(0) + '%';
   }
 
   private getCutoff(period: Period): string | null {
