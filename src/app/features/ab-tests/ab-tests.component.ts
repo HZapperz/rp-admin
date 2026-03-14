@@ -79,14 +79,9 @@ export class AbTestsComponent implements OnInit {
       sets[v][row.event].add(row.session_id);
     }
 
-    // Union of all session_ids per variant = total participants
-    const allSessionsA = new Set<string>();
-    const allSessionsB = new Set<string>();
-    for (const s of Object.values(sets.A)) for (const id of s) allSessionsA.add(id);
-    for (const s of Object.values(sets.B)) for (const id of s) allSessionsB.add(id);
-
-    const entriesA = allSessionsA.size;
-    const entriesB = allSessionsB.size;
+    // Count only 'entered' events as session participants (union-of-all inflates A via intro_started orphans)
+    const entriesA = sets.A['entered']?.size ?? 0;
+    const entriesB = sets.B['entered']?.size ?? 0;
 
     const convertedCountA = sets.A['converted']?.size ?? 0;
     const convertedCountB = sets.B['converted']?.size ?? 0;
