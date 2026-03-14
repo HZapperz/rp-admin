@@ -375,3 +375,183 @@
   color: #6b7280;
   font-size: 14px;
 }
+
+// ── Status badges ─────────────────────────────────────────
+.test-meta { margin-bottom: 6px; }
+
+.status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &.status-live { background: #dcfce7; color: #166534; }
+  &.status-concluded { background: #f3f4f6; color: #6b7280; }
+}
+
+// ── Section context ───────────────────────────────────────
+.section-context {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.empty-section {
+  padding: 24px;
+  font-size: 13px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+// ── Abandoned leads grid ──────────────────────────────────
+.abandon-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.abandon-card {
+  border-radius: 12px;
+  padding: 16px 20px;
+  border: 1px solid #e5e7eb;
+}
+
+.abandon-card-a { border-color: #bfdbfe; background: #eff6ff; }
+.abandon-card-b { border-color: #bbf7d0; background: #f0fdf4; }
+
+.abandon-variant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.abandon-count {
+  font-size: 36px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.abandon-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.abandon-note {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.insight-note {
+  font-size: 13px;
+  color: #374151;
+  background: #fefce8;
+  border: 1px solid #fef08a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+// ── Funnel table ──────────────────────────────────────────
+.funnel-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.funnel-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px;
+  gap: 0;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+
+  &:last-child { border-bottom: none; }
+
+  span:nth-child(2), span:nth-child(3) {
+    text-align: right;
+    font-weight: 600;
+  }
+}
+
+.funnel-header {
+  background: #f9fafb;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+
+  span { font-weight: 700; }
+}
+
+.funnel-row-highlight {
+  background: #f0fdf4;
+  font-weight: 700;
+  color: #111827;
+}
+
+// ── Concluded section ─────────────────────────────────────
+.concluded-header {
+  margin: 32px 0 12px;
+}
+
+.concluded-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+.test-card-concluded {
+  opacity: 0.75;
+}
+
+.concluded-metrics {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.concluded-metric {
+  .cm-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    margin-bottom: 4px;
+  }
+
+  .cm-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #374151;
+    line-height: 1;
+  }
+
+  .cm-sub {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 2px;
+  }
+}

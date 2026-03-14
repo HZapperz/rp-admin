@@ -1,16 +1,14 @@
 <div class="ab-container">
   <div class="page-header">
     <h1>A/B Tests</h1>
-    <p class="subtitle">Testing whether showing an intro screen first (A) or going straight to ZIP (B) drives more bookings.</p>
+    <p class="subtitle">Funnel experiments on the /book flow.</p>
   </div>
 
   <div class="period-selector">
     @for (p of periods; track p.value) {
-      <button
-        class="period-btn"
-        [class.active]="selectedPeriod === p.value"
-        (click)="selectPeriod(p.value)"
-      >{{ p.label }}</button>
+      <button class="period-btn" [class.active]="selectedPeriod === p.value" (click)="selectPeriod(p.value)">
+        {{ p.label }}
+      </button>
     }
   </div>
 
@@ -19,130 +17,252 @@
       <div class="spinner"></div>
       <p>Loading...</p>
     </div>
-  } @else if (result) {
+  } @else {
 
+    <!-- ═══ ACTIVE TEST ════════════════════════════════════════ -->
     <div class="test-card">
-
-      <!-- Card Header -->
       <div class="test-header">
         <div>
-          <div class="test-title">{{ result.testName }}</div>
-          <div class="test-desc">Does showing an intro screen first (A) or going straight to ZIP (B) drive more bookings?</div>
+          <div class="test-meta"><span class="status-badge status-live">Live</span></div>
+          <div class="test-title">Info Placement — Early vs. Late</div>
+          <div class="test-desc">
+            <strong>A (control):</strong> pets → customize → schedule → <em>info</em> → checkout &nbsp;|&nbsp;
+            <strong>B (test):</strong> pets → <em>info</em> → customize → schedule → checkout
+          </div>
+          <div class="test-hypothesis">
+            Hypothesis: collecting contact info earlier (B) captures more recoverable leads even if it increases drop-off.
+            Counter-hypothesis: info late (A) maximises conversion by delaying commitment.
+          </div>
         </div>
-        <span class="period-badge">{{ result.period }}</span>
+        @if (infoPlacement) {
+          <span class="period-badge">{{ infoPlacement.period }}</span>
+        }
       </div>
 
-      <!-- Total Entries Section -->
-      <div class="card-section">
-        <div class="section-label">Total Sessions Entered /book</div>
-        <div class="total-number">{{ result.totalEntered }}</div>
-        <div class="split-bars">
-          <div class="split-bar-a">
-            <span class="bar-label">A: Intro → ZIP</span>
-            <span class="bar-count">{{ result.entriesA }} sessions</span>
-            <span class="bar-pct">{{ splitPct(result.entriesA, result.totalEntered) }}</span>
-          </div>
-          <div class="split-bar-b">
-            <span class="bar-label">B: ZIP First</span>
-            <span class="bar-count">{{ result.entriesB }} sessions</span>
-            <span class="bar-pct">{{ splitPct(result.entriesB, result.totalEntered) }}</span>
-          </div>
-        </div>
-      </div>
+      @if (!infoPlacement || infoPlacement.totalEntered === 0) {
+        <div class="empty-section">No data yet — accumulating from live sessions.</div>
+      } @else {
 
-      <!-- Booking Conversion Rate — Hero Metric -->
-      <div class="card-section">
-        <div class="section-label">
-          Booking Conversion Rate
-          <span class="north-star-badge">North Star</span>
-        </div>
-        <div class="metric-grid">
-          <div class="metric-card metric-card-a" [class.metric-winner]="getConvertedWinner() === 'A'">
-            <div class="metric-variant">
-              <span class="variant-pill pill-a">A</span>
-              <span class="variant-name">Intro → ZIP</span>
-              @if (getConvertedWinner() === 'A') {
-                <span class="winner-crown">★ Winner</span>
-              }
+        <!-- Traffic split -->
+        <div class="card-section">
+          <div class="section-label">Sessions Entered /book</div>
+          <div class="total-number">{{ infoPlacement.totalEntered }}</div>
+          <div class="split-bars">
+            <div class="split-bar-a">
+              <span class="bar-label">A: Info late (control)</span>
+              <span class="bar-count">{{ infoPlacement.entriesA }} sessions</span>
+              <span class="bar-pct">{{ splitPct(infoPlacement.entriesA, infoPlacement.totalEntered) }}</span>
             </div>
-            <div class="metric-rate">{{ formatRate(result.convertedRateA) }}</div>
-            <div class="metric-sub">{{ result.convertedCountA }} of {{ result.entriesA }} booked</div>
-          </div>
-          <div class="metric-card metric-card-b" [class.metric-winner]="getConvertedWinner() === 'B'">
-            <div class="metric-variant">
-              <span class="variant-pill pill-b">B</span>
-              <span class="variant-name">ZIP First</span>
-              @if (getConvertedWinner() === 'B') {
-                <span class="winner-crown">★ Winner</span>
-              }
+            <div class="split-bar-b">
+              <span class="bar-label">B: Info early (test)</span>
+              <span class="bar-count">{{ infoPlacement.entriesB }} sessions</span>
+              <span class="bar-pct">{{ splitPct(infoPlacement.entriesB, infoPlacement.totalEntered) }}</span>
             </div>
-            <div class="metric-rate">{{ formatRate(result.convertedRateB) }}</div>
-            <div class="metric-sub">{{ result.convertedCountB }} of {{ result.entriesB }} booked</div>
           </div>
         </div>
 
-        @if (result.convertedCountA === 0 && result.convertedCountB === 0) {
-          <p class="no-data-note">No bookings recorded yet — conversion tracking was just fixed. Data will accumulate from new sessions.</p>
-        } @else {
+        <!-- Lead Capture Rate — the key question -->
+        <div class="card-section">
+          <div class="section-label">
+            Lead Capture Rate
+            <span class="north-star-badge">Key Question</span>
+          </div>
+          <div class="section-context">% of sessions that submitted contact info (/book/info). For A this is late-funnel; for B this is after pets.</div>
+          <div class="metric-grid">
+            <div class="metric-card metric-card-a" [class.metric-winner]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'A'">
+              <div class="metric-variant">
+                <span class="variant-pill pill-a">A</span>
+                <span class="variant-name">Info late</span>
+                @if (winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'A') {
+                  <span class="winner-crown">★ More leads</span>
+                }
+              </div>
+              <div class="metric-rate">{{ fmt(infoPlacement.leadCaptureRateA) }}</div>
+              <div class="metric-sub">{{ infoPlacement.leadCaptureCountA }} of {{ infoPlacement.entriesA }} gave contact info</div>
+            </div>
+            <div class="metric-card metric-card-b" [class.metric-winner]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'B'">
+              <div class="metric-variant">
+                <span class="variant-pill pill-b">B</span>
+                <span class="variant-name">Info early</span>
+                @if (winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'B') {
+                  <span class="winner-crown">★ More leads</span>
+                }
+              </div>
+              <div class="metric-rate">{{ fmt(infoPlacement.leadCaptureRateB) }}</div>
+              <div class="metric-sub">{{ infoPlacement.leadCaptureCountB }} of {{ infoPlacement.entriesB }} gave contact info</div>
+            </div>
+          </div>
           <div class="lift-row">
             <span class="lift-label">B lift vs A:</span>
             <span class="lift-value"
-              [class.lift-pos]="getConvertedWinner() === 'B'"
-              [class.lift-neg]="getConvertedWinner() === 'A'">
-              {{ getConvertedLift() }}
+              [class.lift-pos]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'B'"
+              [class.lift-neg]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'A'">
+              {{ lift(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Booking Conversion Rate — North Star -->
+        <div class="card-section">
+          <div class="section-label">
+            Booking Conversion Rate
+            <span class="north-star-badge">North Star</span>
+          </div>
+          <div class="metric-grid">
+            <div class="metric-card metric-card-a" [class.metric-winner]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A'">
+              <div class="metric-variant">
+                <span class="variant-pill pill-a">A</span>
+                <span class="variant-name">Info late</span>
+                @if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A') {
+                  <span class="winner-crown">★ Winner</span>
+                }
+              </div>
+              <div class="metric-rate">{{ fmt(infoPlacement.convertedRateA) }}</div>
+              <div class="metric-sub">{{ infoPlacement.convertedCountA }} of {{ infoPlacement.entriesA }} booked</div>
+            </div>
+            <div class="metric-card metric-card-b" [class.metric-winner]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B'">
+              <div class="metric-variant">
+                <span class="variant-pill pill-b">B</span>
+                <span class="variant-name">Info early</span>
+                @if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B') {
+                  <span class="winner-crown">★ Winner</span>
+                }
+              </div>
+              <div class="metric-rate">{{ fmt(infoPlacement.convertedRateB) }}</div>
+              <div class="metric-sub">{{ infoPlacement.convertedCountB }} of {{ infoPlacement.entriesB }} booked</div>
+            </div>
+          </div>
+          <div class="lift-row">
+            <span class="lift-label">B lift vs A:</span>
+            <span class="lift-value"
+              [class.lift-pos]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B'"
+              [class.lift-neg]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A'">
+              {{ lift(infoPlacement.convertedRateA, infoPlacement.convertedRateB) }}
             </span>
             <span class="lift-sep">•</span>
             <span class="lift-label">Winner:</span>
-            @if (getConvertedWinner() === 'A') {
+            @if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A') {
               <span class="winner-badge badge-a">A</span>
-            } @else if (getConvertedWinner() === 'B') {
+            } @else if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B') {
               <span class="winner-badge badge-b">B</span>
             } @else {
               <span class="winner-badge badge-tie">Tie</span>
             }
           </div>
+        </div>
+
+        <!-- Recoverable Abandoned Leads -->
+        <div class="card-section">
+          <div class="section-label">Recoverable Abandoned Leads <span class="secondary-label">gave info but didn't book</span></div>
+          <div class="section-context">These sessions gave their contact info but didn't complete a booking — they can be followed up via SMS/email.</div>
+          <div class="abandon-grid">
+            <div class="abandon-card abandon-card-a">
+              <div class="abandon-variant"><span class="variant-pill pill-a">A</span> Info late</div>
+              <div class="abandon-count">{{ infoPlacement.abandonedAfterInfoA }}</div>
+              <div class="abandon-sub">leads capturable</div>
+              <div class="abandon-note">out of {{ infoPlacement.leadCaptureCountA }} who gave info</div>
+            </div>
+            <div class="abandon-card abandon-card-b">
+              <div class="abandon-variant"><span class="variant-pill pill-b">B</span> Info early</div>
+              <div class="abandon-count">{{ infoPlacement.abandonedAfterInfoB }}</div>
+              <div class="abandon-sub">leads capturable</div>
+              <div class="abandon-note">out of {{ infoPlacement.leadCaptureCountB }} who gave info</div>
+            </div>
+          </div>
+          @if (infoPlacement.abandonedAfterInfoA > 0 || infoPlacement.abandonedAfterInfoB > 0) {
+            <p class="insight-note">
+              @if (infoPlacement.abandonedAfterInfoB > infoPlacement.abandonedAfterInfoA) {
+                B captures {{ infoPlacement.abandonedAfterInfoB - infoPlacement.abandonedAfterInfoA }} more recoverable leads than A.
+                Even if B converts at a lower rate, SMS follow-up on those leads could close the gap.
+              } @else if (infoPlacement.abandonedAfterInfoA > infoPlacement.abandonedAfterInfoB) {
+                A captures {{ infoPlacement.abandonedAfterInfoA - infoPlacement.abandonedAfterInfoB }} more recoverable leads than B.
+              } @else {
+                Both variants capture the same number of recoverable leads.
+              }
+            </p>
+          }
+        </div>
+
+        <!-- Funnel summary row -->
+        <div class="card-section">
+          <div class="section-label">Funnel Summary</div>
+          <div class="funnel-table">
+            <div class="funnel-row funnel-header">
+              <span>Step</span><span>A rate</span><span>B rate</span>
+            </div>
+            <div class="funnel-row">
+              <span>Info submitted</span>
+              <span>{{ fmt(infoPlacement.leadCaptureRateA) }}</span>
+              <span>{{ fmt(infoPlacement.leadCaptureRateB) }}</span>
+            </div>
+            <div class="funnel-row">
+              <span>Reached checkout</span>
+              <span>{{ fmt(infoPlacement.checkoutRateA) }}</span>
+              <span>{{ fmt(infoPlacement.checkoutRateB) }}</span>
+            </div>
+            <div class="funnel-row funnel-row-highlight">
+              <span>Booked (conversion)</span>
+              <span>{{ fmt(infoPlacement.convertedRateA) }}</span>
+              <span>{{ fmt(infoPlacement.convertedRateB) }}</span>
+            </div>
+          </div>
+        </div>
+
+      }
+    </div>
+
+    <!-- ═══ CONCLUDED TEST ════════════════════════════════════ -->
+    <div class="concluded-header">
+      <span class="concluded-label">Concluded Tests</span>
+    </div>
+
+    <div class="test-card test-card-concluded">
+      <div class="test-header">
+        <div>
+          <div class="test-meta"><span class="status-badge status-concluded">Concluded · Variant A shipped</span></div>
+          <div class="test-title">Intro Screen vs. ZIP First</div>
+          <div class="test-desc">
+            <strong>A (winner):</strong> intro screen → ZIP &nbsp;|&nbsp;
+            <strong>B:</strong> straight to ZIP
+          </div>
+        </div>
+        @if (introZip) {
+          <span class="period-badge">{{ introZip.period }}</span>
         }
       </div>
 
-      <!-- ZIP Submission Rate — Secondary -->
-      <div class="card-section">
-        <div class="section-label">ZIP Submission Rate <span class="secondary-label">funnel step</span></div>
-        <div class="zip-row">
-          <div class="zip-stat zip-stat-a">
-            <span class="variant-pill pill-a">A</span>
-            <span class="zip-rate">{{ formatRate(result.zipRateA) }}</span>
-            <span class="zip-sub">{{ result.zipCountA }}/{{ result.entriesA }}</span>
-          </div>
-          <div class="zip-divider"></div>
-          <div class="zip-stat zip-stat-b">
-            <span class="variant-pill pill-b">B</span>
-            <span class="zip-rate">{{ formatRate(result.zipRateB) }}</span>
-            <span class="zip-sub">{{ result.zipCountB }}/{{ result.entriesB }}</span>
-          </div>
-          @if (getZipWinner()) {
-            <div class="zip-winner">
-              Winner:
-              @if (getZipWinner() === 'A') { <span class="winner-badge badge-a">A</span> }
-              @else if (getZipWinner() === 'B') { <span class="winner-badge badge-b">B</span> }
-              @else { <span class="winner-badge badge-tie">Tie</span> }
+      @if (!introZip || introZip.totalEntered === 0) {
+        <div class="empty-section">No data in this period.</div>
+      } @else {
+        <div class="card-section">
+          <div class="concluded-metrics">
+            <div class="concluded-metric">
+              <div class="cm-label">Sessions</div>
+              <div class="cm-value">{{ introZip.totalEntered }}</div>
+              <div class="cm-sub">{{ introZip.entriesA }} A / {{ introZip.entriesB }} B</div>
             </div>
-          }
+            <div class="concluded-metric">
+              <div class="cm-label">Conversion A</div>
+              <div class="cm-value">{{ fmt(introZip.convertedRateA) }}</div>
+              <div class="cm-sub">{{ introZip.convertedCountA }} bookings</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Conversion B</div>
+              <div class="cm-value">{{ fmt(introZip.convertedRateB) }}</div>
+              <div class="cm-sub">{{ introZip.convertedCountB }} bookings</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Avg value A</div>
+              <div class="cm-value">{{ fmtDollar(introZip.avgValueA) }}</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Avg value B</div>
+              <div class="cm-value">{{ fmtDollar(introZip.avgValueB) }}</div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <!-- Footnote -->
-      <div class="card-section intro-section">
-        <p class="intro-note">
-          &#8505; Variant A — intro screen clicks: {{ result.introCountA }} of {{ result.entriesA }} sessions
-          <span class="intro-context">(context only — intro always precedes ZIP in Variant A)</span>
-        </p>
-      </div>
-
+      }
     </div>
 
-  } @else {
-    <div class="empty-state">
-      <p>No A/B test data yet. Data will appear once users start the /book flow.</p>
-    </div>
   }
 </div>

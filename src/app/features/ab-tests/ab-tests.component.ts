@@ -2,24 +2,44 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../../core/services/supabase.service';
 
-interface TestResult {
-  testName: string;
+// ── Concluded test ────────────────────────────────────────
+interface IntroZipResult {
   period: string;
   totalEntered: number;
   entriesA: number;
   entriesB: number;
-  // Hero: bookings converted
   convertedCountA: number;
   convertedCountB: number;
   convertedRateA: number;
   convertedRateB: number;
-  // Secondary: ZIP submitted
-  zipCountA: number;
-  zipCountB: number;
-  zipRateA: number;
-  zipRateB: number;
-  // Footnote
-  introCountA: number;
+  avgValueA: number;
+  avgValueB: number;
+}
+
+// ── Active test ───────────────────────────────────────────
+interface InfoPlacementResult {
+  period: string;
+  totalEntered: number;
+  entriesA: number;
+  entriesB: number;
+  // Lead capture: sessions that submitted /book/info
+  leadCaptureCountA: number;
+  leadCaptureCountB: number;
+  leadCaptureRateA: number;
+  leadCaptureRateB: number;
+  // Checkout reached
+  checkoutCountA: number;
+  checkoutCountB: number;
+  checkoutRateA: number;
+  checkoutRateB: number;
+  // Converted
+  convertedCountA: number;
+  convertedCountB: number;
+  convertedRateA: number;
+  convertedRateB: number;
+  // Abandoned after info (gave contact but didn't book = recoverable)
+  abandonedAfterInfoA: number;
+  abandonedAfterInfoB: number;
 }
 
 type Period = '7d' | '30d' | 'all';
@@ -32,7 +52,8 @@ type Period = '7d' | '30d' | 'all';
   styleUrls: ['./ab-tests.component.scss']
 })
 export class AbTestsComponent implements OnInit {
-  result: TestResult | null = null;
+  introZip: IntroZipResult | null = null;
+  infoPlacement: InfoPlacementResult | null = null;
   isLoading = true;
   selectedPeriod: Period = '7d';
 
@@ -44,34 +65,77 @@ export class AbTestsComponent implements OnInit {
 
   constructor(private supabase: SupabaseService) {}
 
-  ngOnInit() {
-    this.load();
-  }
+  ngOnInit() { this.load(); }
 
   async load() {
     this.isLoading = true;
-
     const cutoff = this.getCutoff(this.selectedPeriod);
 
+    const [r1, r2] = await Promise.all([
+      this.loadIntroZip(cutoff),
+      this.loadInfoPlacement(cutoff),
+    ]);
+
+    this.introZip = r1;
+    this.infoPlacement = r2;
+    this.isLoading = false;
+  }
+
+  // ── book_intro_vs_zip (concluded) ─────────────────────
+  private async loadIntroZip(cutoff: string | null): Promise<IntroZipResult | null> {
     let query = this.supabase
       .from('ab_test_events')
-      .select('variant, event, session_id')
+      .select('variant, event, session_id, metadata')
       .eq('test_name', 'book_intro_vs_zip');
-
-    if (cutoff) {
-      query = query.gte('created_at', cutoff);
-    }
-
+    if (cutoff) query = query.gte('created_at', cutoff);
     const { data, error } = await query;
+    if (error || !data) return null;
 
-    if (error || !data) {
-      this.isLoading = false;
-      return;
+    const sets: Record<'A' | 'B', Record<string, Set<string>>> = { A: {}, B: {} };
+    const values: Record<'A' | 'B', number[]> = { A: [], B: [] };
+
+    for (const row of data) {
+      const v = row.variant as 'A' | 'B';
+      if (!sets[v][row.event]) sets[v][row.event] = new Set();
+      sets[v][row.event].add(row.session_id);
+      if (row.event === 'converted' && row.metadata?.total) {
+        values[v].push(Number(row.metadata.total));
+      }
     }
 
-    const sets: { A: { [event: string]: Set<string> }; B: { [event: string]: Set<string> } } = {
-      A: {}, B: {}
+    const intersect = (s: Set<string>, base: Set<string>) =>
+      new Set([...s].filter(id => base.has(id)));
+
+    const enteredA = sets.A['entered'] ?? new Set<string>();
+    const enteredB = sets.B['entered'] ?? new Set<string>();
+    const eA = enteredA.size, eB = enteredB.size;
+    const cA = intersect(sets.A['converted'] ?? new Set(), enteredA).size;
+    const cB = intersect(sets.B['converted'] ?? new Set(), enteredB).size;
+    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    return {
+      period: this.periods.find(p => p.value === this.selectedPeriod)?.label ?? '',
+      totalEntered: eA + eB,
+      entriesA: eA, entriesB: eB,
+      convertedCountA: cA, convertedCountB: cB,
+      convertedRateA: eA > 0 ? cA / eA : 0,
+      convertedRateB: eB > 0 ? cB / eB : 0,
+      avgValueA: avg(values.A),
+      avgValueB: avg(values.B),
     };
+  }
+
+  // ── book_info_placement (active) ──────────────────────
+  private async loadInfoPlacement(cutoff: string | null): Promise<InfoPlacementResult | null> {
+    let query = this.supabase
+      .from('ab_test_events')
+      .select('variant, event, session_id, metadata')
+      .eq('test_name', 'book_info_placement');
+    if (cutoff) query = query.gte('created_at', cutoff);
+    const { data, error } = await query;
+    if (error || !data) return null;
+
+    const sets: Record<'A' | 'B', Record<string, Set<string>>> = { A: {}, B: {} };
 
     for (const row of data) {
       const v = row.variant as 'A' | 'B';
@@ -79,81 +143,62 @@ export class AbTestsComponent implements OnInit {
       sets[v][row.event].add(row.session_id);
     }
 
-    // Use only 'entered' sessions as the denominator
-    const enteredA = sets.A['entered'] ?? new Set<string>();
-    const enteredB = sets.B['entered'] ?? new Set<string>();
-    const entriesA = enteredA.size;
-    const entriesB = enteredB.size;
-
-    // Intersect downstream events with entered so rates never exceed 100%
     const intersect = (s: Set<string>, base: Set<string>) =>
       new Set([...s].filter(id => base.has(id)));
 
-    const convertedCountA = intersect(sets.A['converted'] ?? new Set(), enteredA).size;
-    const convertedCountB = intersect(sets.B['converted'] ?? new Set(), enteredB).size;
-    const zipCountA = intersect(sets.A['zip_submitted'] ?? new Set(), enteredA).size;
-    const zipCountB = intersect(sets.B['zip_submitted'] ?? new Set(), enteredB).size;
+    const enteredA = sets.A['entered'] ?? new Set<string>();
+    const enteredB = sets.B['entered'] ?? new Set<string>();
+    const eA = enteredA.size, eB = enteredB.size;
 
-    this.result = {
-      testName: 'Intro Screen vs. ZIP First',
+    const lcA = intersect(sets.A['info_submitted'] ?? new Set(), enteredA).size;
+    const lcB = intersect(sets.B['info_submitted'] ?? new Set(), enteredB).size;
+    const chA = intersect(sets.A['checkout_reached'] ?? new Set(), enteredA).size;
+    const chB = intersect(sets.B['checkout_reached'] ?? new Set(), enteredB).size;
+    const cA  = intersect(sets.A['converted'] ?? new Set(), enteredA).size;
+    const cB  = intersect(sets.B['converted'] ?? new Set(), enteredB).size;
+
+    return {
       period: this.periods.find(p => p.value === this.selectedPeriod)?.label ?? '',
-      totalEntered: entriesA + entriesB,
-      entriesA,
-      entriesB,
-      convertedCountA,
-      convertedCountB,
-      convertedRateA: entriesA > 0 ? convertedCountA / entriesA : 0,
-      convertedRateB: entriesB > 0 ? convertedCountB / entriesB : 0,
-      zipCountA,
-      zipCountB,
-      zipRateA: entriesA > 0 ? zipCountA / entriesA : 0,
-      zipRateB: entriesB > 0 ? zipCountB / entriesB : 0,
-      introCountA: sets.A['intro_started']?.size ?? 0,
+      totalEntered: eA + eB,
+      entriesA: eA, entriesB: eB,
+      leadCaptureCountA: lcA, leadCaptureCountB: lcB,
+      leadCaptureRateA: eA > 0 ? lcA / eA : 0,
+      leadCaptureRateB: eB > 0 ? lcB / eB : 0,
+      checkoutCountA: chA, checkoutCountB: chB,
+      checkoutRateA: eA > 0 ? chA / eA : 0,
+      checkoutRateB: eB > 0 ? chB / eB : 0,
+      convertedCountA: cA, convertedCountB: cB,
+      convertedRateA: eA > 0 ? cA / eA : 0,
+      convertedRateB: eB > 0 ? cB / eB : 0,
+      abandonedAfterInfoA: Math.max(0, lcA - cA),
+      abandonedAfterInfoB: Math.max(0, lcB - cB),
     };
-
-    this.isLoading = false;
   }
 
-  selectPeriod(period: Period) {
-    this.selectedPeriod = period;
-    this.load();
+  selectPeriod(p: Period) { this.selectedPeriod = p; this.load(); }
+
+  // ── Helpers ───────────────────────────────────────────
+  winner(rateA: number, rateB: number): 'A' | 'B' | 'tie' {
+    if (Math.abs(rateA - rateB) < 0.01) return 'tie';
+    return rateA > rateB ? 'A' : 'B';
   }
 
-  getConvertedWinner(): 'A' | 'B' | 'tie' | null {
-    if (!this.result) return null;
-    const { convertedRateA, convertedRateB } = this.result;
-    if (Math.abs(convertedRateA - convertedRateB) < 0.01) return 'tie';
-    return convertedRateA > convertedRateB ? 'A' : 'B';
+  lift(rateA: number, rateB: number): string {
+    if (!rateA) return '—';
+    const pct = ((rateB - rateA) / rateA) * 100;
+    return (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
   }
 
-  getConvertedLift(): string {
-    if (!this.result || !this.result.convertedRateA) return '—';
-    const lift = ((this.result.convertedRateB - this.result.convertedRateA) / this.result.convertedRateA) * 100;
-    const sign = lift > 0 ? '+' : '';
-    return `${sign}${lift.toFixed(1)}%`;
-  }
-
-  getZipWinner(): 'A' | 'B' | 'tie' | null {
-    if (!this.result) return null;
-    const { zipRateA, zipRateB } = this.result;
-    if (Math.abs(zipRateA - zipRateB) < 0.01) return 'tie';
-    return zipRateA > zipRateB ? 'A' : 'B';
-  }
-
-  formatRate(rate: number): string {
-    return (rate * 100).toFixed(1) + '%';
-  }
-
+  fmt(rate: number): string { return (rate * 100).toFixed(1) + '%'; }
+  fmtDollar(n: number): string { return n > 0 ? '$' + n.toFixed(0) : '—'; }
   splitPct(n: number, total: number): string {
-    if (!total) return '0%';
-    return (n / total * 100).toFixed(0) + '%';
+    return total ? (n / total * 100).toFixed(0) + '%' : '0%';
   }
 
-  private getCutoff(period: Period): string | null {
-    if (period === 'all') return null;
-    const days = period === '7d' ? 7 : 30;
+  private getCutoff(p: Period): string | null {
+    if (p === 'all') return null;
     const d = new Date();
-    d.setDate(d.getDate() - days);
+    d.setDate(d.getDate() - (p === '7d' ? 7 : 30));
     return d.toISOString();
   }
 }
