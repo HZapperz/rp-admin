@@ -79,14 +79,20 @@ export class AbTestsComponent implements OnInit {
       sets[v][row.event].add(row.session_id);
     }
 
-    // Count only 'entered' events as session participants (union-of-all inflates A via intro_started orphans)
-    const entriesA = sets.A['entered']?.size ?? 0;
-    const entriesB = sets.B['entered']?.size ?? 0;
+    // Use only 'entered' sessions as the denominator
+    const enteredA = sets.A['entered'] ?? new Set<string>();
+    const enteredB = sets.B['entered'] ?? new Set<string>();
+    const entriesA = enteredA.size;
+    const entriesB = enteredB.size;
 
-    const convertedCountA = sets.A['converted']?.size ?? 0;
-    const convertedCountB = sets.B['converted']?.size ?? 0;
-    const zipCountA = sets.A['zip_submitted']?.size ?? 0;
-    const zipCountB = sets.B['zip_submitted']?.size ?? 0;
+    // Intersect downstream events with entered so rates never exceed 100%
+    const intersect = (s: Set<string>, base: Set<string>) =>
+      new Set([...s].filter(id => base.has(id)));
+
+    const convertedCountA = intersect(sets.A['converted'] ?? new Set(), enteredA).size;
+    const convertedCountB = intersect(sets.B['converted'] ?? new Set(), enteredB).size;
+    const zipCountA = intersect(sets.A['zip_submitted'] ?? new Set(), enteredA).size;
+    const zipCountB = intersect(sets.B['zip_submitted'] ?? new Set(), enteredB).size;
 
     this.result = {
       testName: 'Intro Screen vs. ZIP First',
