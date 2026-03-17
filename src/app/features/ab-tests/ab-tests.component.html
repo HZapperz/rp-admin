@@ -19,19 +19,30 @@
     </div>
   } @else {
 
-    <!-- ═══ ACTIVE TEST ════════════════════════════════════════ -->
+    <!-- ═══ NO ACTIVE TESTS ════════════════════════════════════ -->
     <div class="test-card">
       <div class="test-header">
         <div>
-          <div class="test-meta"><span class="status-badge status-live">Live</span></div>
+          <div class="test-meta"><span class="status-badge status-concluded">No active tests</span></div>
+          <div class="test-desc">All experiments have concluded. See results below.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CONCLUDED TESTS ════════════════════════════════════ -->
+    <div class="concluded-header">
+      <span class="concluded-label">Concluded Tests</span>
+    </div>
+
+    <!-- Info Placement — concluded, B shipped -->
+    <div class="test-card test-card-concluded">
+      <div class="test-header">
+        <div>
+          <div class="test-meta"><span class="status-badge status-concluded">Concluded · Variant B shipped</span></div>
           <div class="test-title">Info Placement — Early vs. Late</div>
           <div class="test-desc">
-            <strong>A (control):</strong> pets → customize → schedule → <em>info</em> → checkout &nbsp;|&nbsp;
-            <strong>B (test):</strong> pets → <em>info</em> → customize → schedule → checkout
-          </div>
-          <div class="test-hypothesis">
-            Hypothesis: collecting contact info earlier (B) captures more recoverable leads even if it increases drop-off.
-            Counter-hypothesis: info late (A) maximises conversion by delaying commitment.
+            <strong>A:</strong> pets → customize → schedule → <em>info</em> → checkout &nbsp;|&nbsp;
+            <strong>B (winner):</strong> pets → <em>info</em> → customize → schedule → checkout
           </div>
         </div>
         @if (infoPlacement) {
@@ -40,182 +51,41 @@
       </div>
 
       @if (!infoPlacement || infoPlacement.totalEntered === 0) {
-        <div class="empty-section">No data yet — accumulating from live sessions.</div>
+        <div class="empty-section">No data in this period.</div>
       } @else {
-
-        <!-- Traffic split -->
         <div class="card-section">
-          <div class="section-label">Sessions Entered /book</div>
-          <div class="total-number">{{ infoPlacement.totalEntered }}</div>
-          <div class="split-bars">
-            <div class="split-bar-a">
-              <span class="bar-label">A: Info late (control)</span>
-              <span class="bar-count">{{ infoPlacement.entriesA }} sessions</span>
-              <span class="bar-pct">{{ splitPct(infoPlacement.entriesA, infoPlacement.totalEntered) }}</span>
+          <div class="concluded-metrics">
+            <div class="concluded-metric">
+              <div class="cm-label">Sessions</div>
+              <div class="cm-value">{{ infoPlacement.totalEntered }}</div>
+              <div class="cm-sub">{{ infoPlacement.entriesA }} A / {{ infoPlacement.entriesB }} B</div>
             </div>
-            <div class="split-bar-b">
-              <span class="bar-label">B: Info early (test)</span>
-              <span class="bar-count">{{ infoPlacement.entriesB }} sessions</span>
-              <span class="bar-pct">{{ splitPct(infoPlacement.entriesB, infoPlacement.totalEntered) }}</span>
+            <div class="concluded-metric">
+              <div class="cm-label">Lead capture A</div>
+              <div class="cm-value">{{ fmt(infoPlacement.leadCaptureRateA) }}</div>
+              <div class="cm-sub">{{ infoPlacement.leadCaptureCountA }} leads</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Lead capture B</div>
+              <div class="cm-value">{{ fmt(infoPlacement.leadCaptureRateB) }}</div>
+              <div class="cm-sub">{{ infoPlacement.leadCaptureCountB }} leads</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Conversion A</div>
+              <div class="cm-value">{{ fmt(infoPlacement.convertedRateA) }}</div>
+              <div class="cm-sub">{{ infoPlacement.convertedCountA }} bookings</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Conversion B</div>
+              <div class="cm-value">{{ fmt(infoPlacement.convertedRateB) }}</div>
+              <div class="cm-sub">{{ infoPlacement.convertedCountB }} bookings</div>
             </div>
           </div>
         </div>
-
-        <!-- Lead Capture Rate — the key question -->
-        <div class="card-section">
-          <div class="section-label">
-            Lead Capture Rate
-            <span class="north-star-badge">Key Question</span>
-          </div>
-          <div class="section-context">% of sessions that submitted contact info (/book/info). For A this is late-funnel; for B this is after pets.</div>
-          <div class="metric-grid">
-            <div class="metric-card metric-card-a" [class.metric-winner]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'A'">
-              <div class="metric-variant">
-                <span class="variant-pill pill-a">A</span>
-                <span class="variant-name">Info late</span>
-                @if (winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'A') {
-                  <span class="winner-crown">★ More leads</span>
-                }
-              </div>
-              <div class="metric-rate">{{ fmt(infoPlacement.leadCaptureRateA) }}</div>
-              <div class="metric-sub">{{ infoPlacement.leadCaptureCountA }} of {{ infoPlacement.entriesA }} gave contact info</div>
-            </div>
-            <div class="metric-card metric-card-b" [class.metric-winner]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'B'">
-              <div class="metric-variant">
-                <span class="variant-pill pill-b">B</span>
-                <span class="variant-name">Info early</span>
-                @if (winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'B') {
-                  <span class="winner-crown">★ More leads</span>
-                }
-              </div>
-              <div class="metric-rate">{{ fmt(infoPlacement.leadCaptureRateB) }}</div>
-              <div class="metric-sub">{{ infoPlacement.leadCaptureCountB }} of {{ infoPlacement.entriesB }} gave contact info</div>
-            </div>
-          </div>
-          <div class="lift-row">
-            <span class="lift-label">B lift vs A:</span>
-            <span class="lift-value"
-              [class.lift-pos]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'B'"
-              [class.lift-neg]="winner(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) === 'A'">
-              {{ lift(infoPlacement.leadCaptureRateA, infoPlacement.leadCaptureRateB) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Booking Conversion Rate — North Star -->
-        <div class="card-section">
-          <div class="section-label">
-            Booking Conversion Rate
-            <span class="north-star-badge">North Star</span>
-          </div>
-          <div class="metric-grid">
-            <div class="metric-card metric-card-a" [class.metric-winner]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A'">
-              <div class="metric-variant">
-                <span class="variant-pill pill-a">A</span>
-                <span class="variant-name">Info late</span>
-                @if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A') {
-                  <span class="winner-crown">★ Winner</span>
-                }
-              </div>
-              <div class="metric-rate">{{ fmt(infoPlacement.convertedRateA) }}</div>
-              <div class="metric-sub">{{ infoPlacement.convertedCountA }} of {{ infoPlacement.entriesA }} booked</div>
-            </div>
-            <div class="metric-card metric-card-b" [class.metric-winner]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B'">
-              <div class="metric-variant">
-                <span class="variant-pill pill-b">B</span>
-                <span class="variant-name">Info early</span>
-                @if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B') {
-                  <span class="winner-crown">★ Winner</span>
-                }
-              </div>
-              <div class="metric-rate">{{ fmt(infoPlacement.convertedRateB) }}</div>
-              <div class="metric-sub">{{ infoPlacement.convertedCountB }} of {{ infoPlacement.entriesB }} booked</div>
-            </div>
-          </div>
-          <div class="lift-row">
-            <span class="lift-label">B lift vs A:</span>
-            <span class="lift-value"
-              [class.lift-pos]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B'"
-              [class.lift-neg]="winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A'">
-              {{ lift(infoPlacement.convertedRateA, infoPlacement.convertedRateB) }}
-            </span>
-            <span class="lift-sep">•</span>
-            <span class="lift-label">Winner:</span>
-            @if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'A') {
-              <span class="winner-badge badge-a">A</span>
-            } @else if (winner(infoPlacement.convertedRateA, infoPlacement.convertedRateB) === 'B') {
-              <span class="winner-badge badge-b">B</span>
-            } @else {
-              <span class="winner-badge badge-tie">Tie</span>
-            }
-          </div>
-        </div>
-
-        <!-- Recoverable Abandoned Leads -->
-        <div class="card-section">
-          <div class="section-label">Recoverable Abandoned Leads <span class="secondary-label">gave info but didn't book</span></div>
-          <div class="section-context">These sessions gave their contact info but didn't complete a booking — they can be followed up via SMS/email.</div>
-          <div class="abandon-grid">
-            <div class="abandon-card abandon-card-a">
-              <div class="abandon-variant"><span class="variant-pill pill-a">A</span> Info late</div>
-              <div class="abandon-count">{{ infoPlacement.abandonedAfterInfoA }}</div>
-              <div class="abandon-sub">leads capturable</div>
-              <div class="abandon-note">out of {{ infoPlacement.leadCaptureCountA }} who gave info</div>
-            </div>
-            <div class="abandon-card abandon-card-b">
-              <div class="abandon-variant"><span class="variant-pill pill-b">B</span> Info early</div>
-              <div class="abandon-count">{{ infoPlacement.abandonedAfterInfoB }}</div>
-              <div class="abandon-sub">leads capturable</div>
-              <div class="abandon-note">out of {{ infoPlacement.leadCaptureCountB }} who gave info</div>
-            </div>
-          </div>
-          @if (infoPlacement.abandonedAfterInfoA > 0 || infoPlacement.abandonedAfterInfoB > 0) {
-            <p class="insight-note">
-              @if (infoPlacement.abandonedAfterInfoB > infoPlacement.abandonedAfterInfoA) {
-                B captures {{ infoPlacement.abandonedAfterInfoB - infoPlacement.abandonedAfterInfoA }} more recoverable leads than A.
-                Even if B converts at a lower rate, SMS follow-up on those leads could close the gap.
-              } @else if (infoPlacement.abandonedAfterInfoA > infoPlacement.abandonedAfterInfoB) {
-                A captures {{ infoPlacement.abandonedAfterInfoA - infoPlacement.abandonedAfterInfoB }} more recoverable leads than B.
-              } @else {
-                Both variants capture the same number of recoverable leads.
-              }
-            </p>
-          }
-        </div>
-
-        <!-- Funnel summary row -->
-        <div class="card-section">
-          <div class="section-label">Funnel Summary</div>
-          <div class="funnel-table">
-            <div class="funnel-row funnel-header">
-              <span>Step</span><span>A rate</span><span>B rate</span>
-            </div>
-            <div class="funnel-row">
-              <span>Info submitted</span>
-              <span>{{ fmt(infoPlacement.leadCaptureRateA) }}</span>
-              <span>{{ fmt(infoPlacement.leadCaptureRateB) }}</span>
-            </div>
-            <div class="funnel-row">
-              <span>Reached checkout</span>
-              <span>{{ fmt(infoPlacement.checkoutRateA) }}</span>
-              <span>{{ fmt(infoPlacement.checkoutRateB) }}</span>
-            </div>
-            <div class="funnel-row funnel-row-highlight">
-              <span>Booked (conversion)</span>
-              <span>{{ fmt(infoPlacement.convertedRateA) }}</span>
-              <span>{{ fmt(infoPlacement.convertedRateB) }}</span>
-            </div>
-          </div>
-        </div>
-
       }
     </div>
 
-    <!-- ═══ CONCLUDED TEST ════════════════════════════════════ -->
-    <div class="concluded-header">
-      <span class="concluded-label">Concluded Tests</span>
-    </div>
-
+    <!-- Intro vs ZIP — concluded, A shipped -->
     <div class="test-card test-card-concluded">
       <div class="test-header">
         <div>
