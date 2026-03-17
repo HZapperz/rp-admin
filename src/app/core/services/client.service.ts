@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Observable, from } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { UserCredits, CreditTransaction } from '../models/types';
 
 // Types for create/update operations
 export interface CreateClientData {
@@ -264,6 +265,8 @@ export interface ClientDetailData {
   bookings: any[];
   ratings: Rating[];
   adminNotes: AdminNote[];
+  userCredits: UserCredits | null;
+  creditTransactions: CreditTransaction[];
 }
 
 @Injectable({
@@ -739,16 +742,52 @@ export class ClientService {
     return data;
   }
 
+  async getClientCredits(clientId: string): Promise<UserCredits | null> {
+    const { data, error } = await this.supabase
+      .from('user_credits')
+      .select('*')
+      .eq('user_id', clientId)
+      .single();
+
+    if (error) {
+      // PGRST116 = not found, which is normal for clients with no credits
+      if (error.code !== 'PGRST116') {
+        console.error('Error fetching client credits:', error);
+      }
+      return null;
+    }
+
+    return data;
+  }
+
+  async getClientCreditTransactions(clientId: string, limit = 10): Promise<CreditTransaction[]> {
+    const { data, error } = await this.supabase
+      .from('credit_transactions')
+      .select('*')
+      .eq('user_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching credit transactions:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
   async getClientDetailData(clientId: string): Promise<ClientDetailData | null> {
     try {
-      const [client, pets, addresses, paymentMethods, bookings, ratings, adminNotes] = await Promise.all([
+      const [client, pets, addresses, paymentMethods, bookings, ratings, adminNotes, userCredits, creditTransactions] = await Promise.all([
         this.getClientById(clientId),
         this.getClientPets(clientId),
         this.getClientAddresses(clientId),
         this.getClientPaymentMethods(clientId),
         this.getClientBookings(clientId),
         this.getClientRatings(clientId),
-        this.getClientAdminNotes(clientId)
+        this.getClientAdminNotes(clientId),
+        this.getClientCredits(clientId),
+        this.getClientCreditTransactions(clientId)
       ]);
 
       if (!client) {
@@ -762,7 +801,9 @@ export class ClientService {
         paymentMethods,
         bookings,
         ratings,
-        adminNotes
+        adminNotes,
+        userCredits,
+        creditTransactions
       };
     } catch (error) {
       console.error('Error fetching client detail data:', error);

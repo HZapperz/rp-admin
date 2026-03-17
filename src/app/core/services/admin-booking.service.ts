@@ -24,6 +24,7 @@ export interface PricingOverride {
   subtotal: number;
   discount_amount: number;
   discount_reason: string;
+  credits_applied?: number;
   tax_amount: number;
   total: number;
 }
@@ -42,6 +43,7 @@ export interface AdminBookingRequest {
   address_id: string;
   notes?: string;
   pricing_override?: PricingOverride;
+  credits_applied?: number;
 }
 
 export interface PaymentMethod {

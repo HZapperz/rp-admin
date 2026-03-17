@@ -163,6 +163,16 @@
             }
           }
 
+          &.credits {
+            .label {
+              color: #2563eb;
+            }
+
+            .value {
+              color: #2563eb;
+            }
+          }
+
           &.total {
             border-top: 2px solid #e2e8f0;
             padding-top: 1rem;
@@ -234,6 +244,93 @@
           .discount-input {
             font-weight: 600;
           }
+        }
+      }
+    }
+  }
+
+  // Credits Controls
+  .credits-controls {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 2px solid #93c5fd;
+    border-radius: 12px;
+
+    .credits-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+
+      h4 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1e40af;
+        margin: 0;
+      }
+    }
+
+    .credit-balance-badge {
+      padding: 0.25rem 0.75rem;
+      background: #2563eb;
+      color: white;
+      border-radius: 9999px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .credits-toggle {
+      margin-bottom: 1rem;
+
+      .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+        color: #1e293b;
+        font-weight: 500;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          accent-color: #2563eb;
+          cursor: pointer;
+        }
+      }
+    }
+
+    .credits-amount-input {
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-width: 250px;
+
+        label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #475569;
+        }
+
+        input {
+          padding: 0.75rem 1rem;
+          border: 2px solid #93c5fd;
+          border-radius: 8px;
+          font-size: 0.95rem;
+          font-weight: 600;
+          transition: border-color 0.2s;
+
+          &:focus {
+            outline: none;
+            border-color: #2563eb;
+          }
+        }
+
+        .credits-hint {
+          font-size: 0.75rem;
+          color: #6b7280;
         }
       }
     }

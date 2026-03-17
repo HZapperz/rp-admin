@@ -218,6 +218,13 @@ export class ClientDetailComponent implements OnInit {
     return `$${amount.toFixed(2)}`;
   }
 
+  formatCreditAmount(amount: number, type: string): string {
+    if (type === 'redeemed' || type === 'expired') {
+      return `-$${Math.abs(amount).toFixed(2)}`;
+    }
+    return `+$${Math.abs(amount).toFixed(2)}`;
+  }
+
   getStatusClass(status: string): string {
     return `status-${status.replace('_', '-')}`;
   }

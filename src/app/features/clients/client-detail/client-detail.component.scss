@@ -402,6 +402,194 @@
 }
 
 // ========================================
+// Royal Rewards Card
+// ========================================
+
+.rewards-card {
+  border-left: 4px solid #3b82f6;
+}
+
+.rewards-header {
+  h3 {
+    color: #1d4ed8 !important;
+  }
+}
+
+.rewards-balance-badge {
+  padding: 0.25rem 0.625rem;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.rewards-overview {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+}
+
+.rewards-balance-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  .balance-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .balance-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+}
+
+.rewards-stats {
+  display: flex;
+  gap: 1rem;
+
+  .rewards-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.375rem 0.625rem;
+    background: #f9fafb;
+    border-radius: 0.375rem;
+
+    .stat-label {
+      font-size: 0.625rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    &.earned .stat-value {
+      color: #059669;
+    }
+
+    &.spent .stat-value {
+      color: #d97706;
+    }
+  }
+}
+
+.transactions-list {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.625rem;
+}
+
+.transactions-header {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.transaction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  gap: 0.5rem;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.txn-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.txn-badge {
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+
+  &.txn-earned {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  &.txn-redeemed {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  &.txn-adjustment {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
+  &.txn-expired {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+}
+
+.txn-description {
+  font-size: 0.75rem;
+  color: #4b5563;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.txn-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.txn-amount {
+  font-size: 0.8125rem;
+  font-weight: 600;
+
+  &.positive {
+    color: #059669;
+  }
+
+  &.negative {
+    color: #1d4ed8;
+  }
+}
+
+.txn-date {
+  font-size: 0.5625rem;
+  color: #9ca3af;
+}
+
+// ========================================
 // Pets Section
 // ========================================
 

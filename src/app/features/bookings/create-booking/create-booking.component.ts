@@ -132,15 +132,18 @@ export class CreateBookingComponent implements OnInit {
     this.bookingData.payment_method_id = config.payment_method_id;
 
     // Always send pricing override to avoid API defaulting to $100
-    const subtotalAfterDiscount = config.original_amount - config.discount_amount;
-    const taxAmount = Math.round(subtotalAfterDiscount * 0.0825 * 100) / 100;
+    const creditsApplied = config.credits_applied || 0;
+    const subtotalBeforeTax = config.original_amount - config.discount_amount - creditsApplied;
+    const taxAmount = Math.round(Math.max(0, subtotalBeforeTax) * 0.0825 * 100) / 100;
     this.bookingData.pricing_override = {
       subtotal: config.original_amount,
       discount_amount: config.discount_amount,
+      credits_applied: creditsApplied,
       discount_reason: config.discount_reason || '',
       tax_amount: taxAmount,
-      total: subtotalAfterDiscount + taxAmount
+      total: Math.max(0, subtotalBeforeTax) + taxAmount
     };
+    this.bookingData.credits_applied = creditsApplied;
 
     console.log('Payment configured:', config);
   }
@@ -225,7 +228,8 @@ export class CreateBookingComponent implements OnInit {
         shift_preference: this.bookingData.shift_preference!,
         pets,
         address_id: this.bookingData.address_id!,
-        pricing_override: this.bookingData.pricing_override
+        pricing_override: this.bookingData.pricing_override,
+        credits_applied: this.bookingData.credits_applied
       };
 
       console.log('Submitting booking:', bookingRequest);

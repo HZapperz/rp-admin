@@ -10,6 +10,7 @@ export interface PaymentConfig {
   payment_method_id?: string;
   original_amount: number;
   discount_amount: number;
+  credits_applied: number;
   final_amount: number;
   discount_reason?: string;
 }
@@ -47,6 +48,12 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
   discountAmount: number = 0;
   discountReason: string = '';
 
+  // Credits
+  creditBalance: number = 0;
+  creditsApplied: number = 0;
+  applyCredits: boolean = false;
+  isLoadingCredits: boolean = false;
+
   isLoadingPaymentMethods = false;
 
   constructor(
@@ -58,6 +65,7 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     this.calculateTotals();
     if (this.selectedClient) {
       this.loadPaymentMethods();
+      this.loadClientCredits();
     }
   }
 
@@ -65,9 +73,10 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     if (changes['petServices'] || changes['selectedClient']) {
       this.calculateTotals();
 
-      // Load payment methods if client changes
+      // Load payment methods and credits if client changes
       if (changes['selectedClient'] && this.selectedClient) {
         this.loadPaymentMethods();
+        this.loadClientCredits();
       }
     }
   }
@@ -109,6 +118,48 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     }
   }
 
+  async loadClientCredits(): Promise<void> {
+    if (!this.selectedClient?.id) return;
+
+    try {
+      this.isLoadingCredits = true;
+      const credits = await this.clientService.getClientCredits(this.selectedClient.id);
+      this.creditBalance = credits?.balance || 0;
+
+      // Reset credits applied when client changes
+      this.creditsApplied = 0;
+      this.applyCredits = false;
+      this.emitPaymentConfig();
+    } catch (err) {
+      console.error('Error loading client credits:', err);
+      this.creditBalance = 0;
+    } finally {
+      this.isLoadingCredits = false;
+    }
+  }
+
+  onToggleCredits(): void {
+    if (this.applyCredits) {
+      // Default to min(balance, subtotal - discount)
+      const maxCredits = Math.max(0, this.originalAmount - this.discountAmount);
+      this.creditsApplied = Math.min(this.creditBalance, maxCredits);
+    } else {
+      this.creditsApplied = 0;
+    }
+    this.emitPaymentConfig();
+  }
+
+  onCreditsChange(): void {
+    const maxCredits = Math.max(0, this.originalAmount - this.discountAmount);
+    if (this.creditsApplied > Math.min(this.creditBalance, maxCredits)) {
+      this.creditsApplied = Math.min(this.creditBalance, maxCredits);
+    }
+    if (this.creditsApplied < 0) {
+      this.creditsApplied = 0;
+    }
+    this.emitPaymentConfig();
+  }
+
   onPaymentTypeChange(type: 'use_saved_card' | 'cash_on_service'): void {
     this.paymentType = type;
 
@@ -132,11 +183,22 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     if (this.discountAmount < 0) {
       this.discountAmount = 0;
     }
+    // Re-clamp credits when discount changes
+    if (this.applyCredits) {
+      const maxCredits = Math.max(0, this.originalAmount - this.discountAmount);
+      if (this.creditsApplied > Math.min(this.creditBalance, maxCredits)) {
+        this.creditsApplied = Math.min(this.creditBalance, maxCredits);
+      }
+    }
     this.emitPaymentConfig();
   }
 
+  getMaxCredits(): number {
+    return Math.min(this.creditBalance, Math.max(0, this.originalAmount - this.discountAmount));
+  }
+
   getFinalAmount(): number {
-    return Math.max(0, this.originalAmount - this.discountAmount);
+    return Math.max(0, this.originalAmount - this.discountAmount - this.creditsApplied);
   }
 
   emitPaymentConfig(): void {
@@ -145,6 +207,7 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
       payment_method_id: this.selectedPaymentMethod?.id,
       original_amount: this.originalAmount,
       discount_amount: this.discountAmount,
+      credits_applied: this.creditsApplied,
       final_amount: this.getFinalAmount(),
       discount_reason: this.discountReason || undefined
     };

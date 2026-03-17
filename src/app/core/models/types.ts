@@ -1,3 +1,27 @@
+// Credit Types
+export interface UserCredits {
+  id: string;
+  user_id: string;
+  balance: number;
+  lifetime_earned: number;
+  lifetime_spent: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreditTransactionType = 'earned' | 'redeemed' | 'adjustment' | 'expired';
+
+export interface CreditTransaction {
+  id: string;
+  user_id: string;
+  booking_id: string | null;
+  amount: number;
+  type: CreditTransactionType;
+  description: string | null;
+  balance_after: number;
+  created_at: string;
+}
+
 // Core User Types
 export type UserRole = 'ADMIN' | 'GROOMER' | 'CLIENT';
 
