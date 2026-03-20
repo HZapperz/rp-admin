@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BookingService } from '../../../core/services/booking.service';
 import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes.service';
@@ -54,6 +54,7 @@ export class BookingDetailsComponent implements OnInit {
   private packageService = inject(PackageService);
   private clientService = inject(ClientService);
   private http = inject(HttpClient);
+  private location = inject(Location);
 
   booking: BookingWithDetails | null = null;
   loading = true;
@@ -758,7 +759,7 @@ export class BookingDetailsComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/bookings']);
+    this.location.back();
   }
 
   navigateToClient() {
