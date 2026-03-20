@@ -620,14 +620,14 @@ export class DashboardComponent implements OnInit {
 
   getBookingLeft(bookingId: string): number {
     const layout = this.bookingLayoutMap.get(bookingId);
-    if (!layout || layout.totalColumns <= 1) return 0;
-    return (layout.columnIndex / layout.totalColumns) * 100;
+    if (!layout || layout.totalColumns <= 1) return 4;
+    return 4 + layout.columnIndex * 16;
   }
 
-  getBookingWidth(bookingId: string): number {
+  getBookingZIndex(bookingId: string): number {
     const layout = this.bookingLayoutMap.get(bookingId);
-    if (!layout || layout.totalColumns <= 1) return 100;
-    return (1 / layout.totalColumns) * 100;
+    if (!layout) return 1;
+    return 1 + layout.columnIndex;
   }
 
   openBookingDetail(booking: BookingWithDetails): void {
