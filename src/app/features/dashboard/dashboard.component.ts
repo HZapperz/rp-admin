@@ -16,6 +16,11 @@ interface ShiftAvailability {
   evening: boolean;
 }
 
+interface BookingLayout {
+  columnIndex: number;
+  totalColumns: number;
+}
+
 interface DaySlot {
   date: Date;
   bookings: BookingWithDetails[];
@@ -58,6 +63,9 @@ export class DashboardComponent implements OnInit {
   // Business Settings Modal
   showBusinessSettingsModal = false;
   operatingDaysSummary = 'Loading...';
+
+  // Booking overlap layout
+  bookingLayoutMap = new Map<string, BookingLayout>();
 
   // Time grid settings
   dayStartHour = 8;  // 8 AM
@@ -355,6 +363,8 @@ export class DashboardComponent implements OnInit {
         this.scheduleSlots.push(this.createDaySlot(date, today, isCurrentMonth));
       }
     }
+
+    this.computeBookingLayouts();
   }
 
   private createDaySlot(date: Date, today: Date, isCurrentMonth: boolean = true): DaySlot {
@@ -537,6 +547,87 @@ export class DashboardComponent implements OnInit {
     if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
     if (hours > 0) return `${hours}h`;
     return `${mins}m`;
+  }
+
+  // Overlap layout algorithm — compute side-by-side columns for overlapping bookings
+  private computeBookingLayouts(): void {
+    this.bookingLayoutMap.clear();
+
+    for (const slot of this.scheduleSlots) {
+      const bookings = slot.bookings;
+      if (bookings.length === 0) continue;
+      if (bookings.length === 1) {
+        this.bookingLayoutMap.set(bookings[0].id, { columnIndex: 0, totalColumns: 1 });
+        continue;
+      }
+
+      // Build overlap clusters (bookings are already sorted by start time)
+      const clusters: BookingWithDetails[][] = [];
+      let currentCluster: BookingWithDetails[] = [bookings[0]];
+      let clusterEnd = this.timeToMinutes(bookings[0].scheduled_time_end);
+
+      for (let i = 1; i < bookings.length; i++) {
+        const startMin = this.timeToMinutes(bookings[i].scheduled_time_start);
+        if (startMin < clusterEnd) {
+          currentCluster.push(bookings[i]);
+          clusterEnd = Math.max(clusterEnd, this.timeToMinutes(bookings[i].scheduled_time_end));
+        } else {
+          clusters.push(currentCluster);
+          currentCluster = [bookings[i]];
+          clusterEnd = this.timeToMinutes(bookings[i].scheduled_time_end);
+        }
+      }
+      clusters.push(currentCluster);
+
+      // Assign columns within each cluster
+      for (const cluster of clusters) {
+        if (cluster.length === 1) {
+          this.bookingLayoutMap.set(cluster[0].id, { columnIndex: 0, totalColumns: 1 });
+          continue;
+        }
+        const columnEnds: number[] = []; // end time of latest booking in each column
+        for (const booking of cluster) {
+          const startMin = this.timeToMinutes(booking.scheduled_time_start);
+          const endMin = this.timeToMinutes(booking.scheduled_time_end);
+          let placed = false;
+          for (let col = 0; col < columnEnds.length; col++) {
+            if (columnEnds[col] <= startMin) {
+              columnEnds[col] = endMin;
+              this.bookingLayoutMap.set(booking.id, { columnIndex: col, totalColumns: 0 });
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            this.bookingLayoutMap.set(booking.id, { columnIndex: columnEnds.length, totalColumns: 0 });
+            columnEnds.push(endMin);
+          }
+        }
+        const totalCols = columnEnds.length;
+        for (const booking of cluster) {
+          const layout = this.bookingLayoutMap.get(booking.id);
+          if (layout) layout.totalColumns = totalCols;
+        }
+      }
+    }
+  }
+
+  private timeToMinutes(time: string): number {
+    if (!time) return 0;
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  getBookingLeft(bookingId: string): number {
+    const layout = this.bookingLayoutMap.get(bookingId);
+    if (!layout || layout.totalColumns <= 1) return 0;
+    return (layout.columnIndex / layout.totalColumns) * 100;
+  }
+
+  getBookingWidth(bookingId: string): number {
+    const layout = this.bookingLayoutMap.get(bookingId);
+    if (!layout || layout.totalColumns <= 1) return 100;
+    return (1 / layout.totalColumns) * 100;
   }
 
   openBookingDetail(booking: BookingWithDetails): void {

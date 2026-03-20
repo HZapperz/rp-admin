@@ -172,6 +172,8 @@
                     [ngClass]="getStatusClass(booking.status)"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
+                    [style.left.%]="getBookingLeft(booking.id)"
+                    [style.width.%]="getBookingWidth(booking.id)"
                     (click)="openBookingDetail(booking)">
                     <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
                     <div class="tgb-client">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</div>
@@ -256,6 +258,8 @@
                     [ngClass]="getStatusClass(booking.status)"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
+                    [style.left.%]="getBookingLeft(booking.id)"
+                    [style.width.%]="getBookingWidth(booking.id)"
                     [title]="booking.client?.first_name + ' ' + booking.client?.last_name + ' - ' + booking.service_name + ' (' + getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) + ')'"
                     (click)="openBookingDetail(booking)">
                     <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
