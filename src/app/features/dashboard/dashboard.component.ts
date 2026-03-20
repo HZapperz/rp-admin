@@ -377,7 +377,15 @@ export class DashboardComponent implements OnInit {
         const bookingDateStr = b.scheduled_date.split('T')[0];
         return bookingDateStr === dateStr;
       })
-      .sort((a, b) => (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || ''));
+      .sort((a, b) => {
+        const timeCompare = (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || '');
+        if (timeCompare !== 0) return timeCompare;
+        // Same time: completed first (base layer), then confirmed, then pending
+        const statusPriority: Record<string, number> = {
+          'completed': 0, 'in_progress': 1, 'confirmed': 2, 'pending': 3
+        };
+        return (statusPriority[a.status] ?? 4) - (statusPriority[b.status] ?? 4);
+      });
 
     const shiftData = this.shiftAvailabilityMap.get(dateStr) ?? { morning: true, afternoon: true, evening: true };
 
