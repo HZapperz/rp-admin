@@ -380,9 +380,9 @@ export class DashboardComponent implements OnInit {
       .sort((a, b) => {
         const timeCompare = (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || '');
         if (timeCompare !== 0) return timeCompare;
-        // Same time: completed first (base layer), then confirmed, then pending
+        // Same time: pending in back, completed on top (highest z-index = most visible)
         const statusPriority: Record<string, number> = {
-          'completed': 0, 'in_progress': 1, 'confirmed': 2, 'pending': 3
+          'pending': 0, 'confirmed': 1, 'in_progress': 2, 'completed': 3
         };
         return (statusPriority[a.status] ?? 4) - (statusPriority[b.status] ?? 4);
       });
