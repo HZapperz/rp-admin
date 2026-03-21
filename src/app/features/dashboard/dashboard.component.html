@@ -216,7 +216,10 @@
                 <div class="day-date">{{ slot.date | date:'d' }}</div>
               </div>
               <div class="day-stats-panel">
-                <div class="stat-row revenue">${{ slot.dailyRevenue | number:'1.0-0' }}</div>
+                <div class="stat-row revenue collected">${{ slot.collectedRevenue | number:'1.0-0' }}</div>
+                @if (slot.confirmedRevenue > 0) {
+                  <div class="stat-row revenue confirmed">${{ slot.confirmedRevenue | number:'1.0-0' }}</div>
+                }
                 <div class="stat-row grooms">{{ slot.dailyGroomCount }} 🐾</div>
                 <div class="stat-row shift-toggle">
                   <label class="toggle" [class.on]="slot.shiftAvailability.morning" [class.saving]="savingShifts.has(getDateStr(slot.date) + ':morning')">

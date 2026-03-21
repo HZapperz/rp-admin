@@ -27,6 +27,8 @@ interface DaySlot {
   isToday: boolean;
   isCurrentMonth: boolean;
   dailyRevenue: number;
+  collectedRevenue: number;
+  confirmedRevenue: number;
   dailyGroomCount: number;
   shiftAvailability: ShiftAvailability;
 }
@@ -398,6 +400,18 @@ export class DashboardComponent implements OnInit {
         const preTax = b.subtotal_before_tax ?? (b.total_amount - (b.tax_amount || 0) - (b.tip_amount || 0));
         return sum + Math.max(0, preTax);
       }, 0),
+      collectedRevenue: bookings
+        .filter(b => b.payment_status === 'captured' || b.payment_status === 'paid_cash')
+        .reduce((sum, b) => {
+          const preTax = b.subtotal_before_tax ?? (b.total_amount - (b.tax_amount || 0) - (b.tip_amount || 0));
+          return sum + Math.max(0, preTax);
+        }, 0),
+      confirmedRevenue: bookings
+        .filter(b => b.status === 'confirmed' || b.status === 'in_progress')
+        .reduce((sum, b) => {
+          const preTax = b.subtotal_before_tax ?? (b.total_amount - (b.tax_amount || 0) - (b.tip_amount || 0));
+          return sum + Math.max(0, preTax);
+        }, 0),
       dailyGroomCount: bookings.reduce((sum, b) => sum + (b.pets?.length || 0), 0),
       shiftAvailability: { ...shiftData }
     };
