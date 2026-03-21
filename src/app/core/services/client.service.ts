@@ -52,6 +52,7 @@ export interface ClientWithStats {
   pets?: { id: string; name: string }[];
   sms_enabled?: boolean;
   google_review_requested?: boolean;
+  has_booked_royal_spa?: boolean;
   // Warm lead fields
   is_warm_lead: boolean;
   completion_status: {
@@ -128,7 +129,7 @@ export const CLIENT_SEGMENT_CONFIGS: Record<ClientSegment, ClientSegmentConfig> 
     label: 'VIP',
     color: '#7c3aed',
     bgColor: '#ede9fe',
-    description: 'High-value clients with $500+ spent or more than 2 grooms',
+    description: 'High-value clients with $500+ spent, 3+ grooms, or Royal Spa booking',
     icon: 'star'
   },
   at_risk: {
@@ -332,7 +333,7 @@ export class ClientService {
     // Step 2: Batch fetch all related data for these clients
     const clientIds = clients.map(c => c.id);
 
-    const [completedBookingsResult, upcomingBookingsResult, allBookingsResult, petsResult, addressesResult, paymentMethodsResult] = await Promise.all([
+    const [completedBookingsResult, upcomingBookingsResult, allBookingsResult, petsResult, addressesResult, paymentMethodsResult, royalSpaBookingsResult] = await Promise.all([
       // Completed bookings for stats
       this.supabase
         .from('bookings')
@@ -366,7 +367,14 @@ export class ClientService {
       this.supabase
         .from('payment_methods')
         .select('user_id')
-        .in('user_id', clientIds)
+        .in('user_id', clientIds),
+      // Royal Spa (deluxe) bookings — clients who booked Royal Spa are VIP
+      this.supabase
+        .from('bookings')
+        .select('client_id, booking_pets!inner(package_type)')
+        .in('client_id', clientIds)
+        .eq('status', 'completed')
+        .eq('booking_pets.package_type', 'deluxe')
     ]);
 
     const completedBookings = completedBookingsResult.data || [];
@@ -375,6 +383,7 @@ export class ClientService {
     const pets = petsResult.data || [];
     const addresses = addressesResult.data || [];
     const paymentMethods = paymentMethodsResult.data || [];
+    const royalSpaClientIds = new Set((royalSpaBookingsResult.data || []).map((b: any) => b.client_id));
 
     // Step 3: Create lookups by client_id
     const completedBookingsByClient: Record<string, any[]> = completedBookings.reduce((acc, booking) => {
@@ -456,6 +465,7 @@ export class ClientService {
         last_tip_amount: lastTipAmount,
         next_booking_date: nextBookingDate,
         pets: clientPets,
+        has_booked_royal_spa: royalSpaClientIds.has(client.id),
         is_warm_lead: isWarmLead,
         completion_status: {
           profile_complete: !!(
@@ -491,14 +501,21 @@ export class ClientService {
 
     if (!client) return null;
 
-    // Get booking stats and auth info in parallel
-    const [bookingsResult, authInfoResult] = await Promise.all([
+    // Get booking stats, auth info, and Royal Spa check in parallel
+    const [bookingsResult, authInfoResult, royalSpaResult] = await Promise.all([
       this.supabase
         .from('bookings')
         .select('total_amount, scheduled_date')
         .eq('client_id', id)
         .eq('status', 'completed'),
-      this.supabase.client.rpc('get_user_auth_info', { user_id: id })
+      this.supabase.client.rpc('get_user_auth_info', { user_id: id }),
+      this.supabase
+        .from('bookings')
+        .select('id, booking_pets!inner(package_type)')
+        .eq('client_id', id)
+        .eq('status', 'completed')
+        .eq('booking_pets.package_type', 'deluxe')
+        .limit(1)
     ]);
 
     const bookings = bookingsResult.data as { total_amount: number; scheduled_date: string }[] | null;
@@ -515,6 +532,7 @@ export class ClientService {
       total_bookings: totalBookings,
       total_spent: totalSpent,
       last_booking_date: lastBookingDate,
+      has_booked_royal_spa: (royalSpaResult.data?.length || 0) > 0,
       last_sign_in_at: authInfo?.[0]?.last_sign_in_at || null
     };
   }
@@ -1279,8 +1297,8 @@ export class ClientService {
    * Determine client segment based on criteria
    */
   private determineClientSegment(client: ClientWithStats, daysSinceLastBooking: number): ClientSegment {
-    // Check VIP first (highest priority): $500+ spent OR more than 2 grooms
-    if (client.total_spent >= 500 || client.total_bookings > 2) {
+    // Check VIP first (highest priority): $500+ spent OR more than 2 grooms OR booked Royal Spa
+    if (client.total_spent >= 500 || client.total_bookings > 2 || client.has_booked_royal_spa) {
       return 'vip';
     }
 
@@ -1314,7 +1332,7 @@ export class ClientService {
     segment: ClientSegment,
     daysSinceLastBooking: number
   ): ClientSuggestedAction | null {
-    const isVIP = client.total_spent >= 500 || client.total_bookings > 2;
+    const isVIP = client.total_spent >= 500 || client.total_bookings > 2 || client.has_booked_royal_spa;
     const hasUpcoming = client.next_booking_date && new Date(client.next_booking_date) > new Date();
 
     // VIP + At Risk = highest priority
@@ -1415,8 +1433,8 @@ export class ClientService {
         ? Math.floor((Date.now() - new Date(client.last_booking_date).getTime()) / (1000 * 60 * 60 * 24))
         : 999;
 
-      // VIP: $500+ spent OR more than 2 grooms
-      if (client.total_spent >= 500 || client.total_bookings > 2) {
+      // VIP: $500+ spent OR more than 2 grooms OR booked Royal Spa
+      if (client.total_spent >= 500 || client.total_bookings > 2 || client.has_booked_royal_spa) {
         vipCount++;
       }
 
@@ -1491,7 +1509,7 @@ export class ClientService {
 
     // VIPs without upcoming bookings
     const vipNoUpcoming = clients.filter(c => {
-      const isVIP = c.total_spent >= 500;
+      const isVIP = c.total_spent >= 500 || c.total_bookings > 2 || c.has_booked_royal_spa;
       const hasUpcoming = c.next_booking_date && new Date(c.next_booking_date) > new Date();
       return isVIP && !hasUpcoming;
     });
