@@ -823,13 +823,19 @@
       font-weight: 700;
       font-size: 0.68rem;
       letter-spacing: -0.01em;
+      gap: 2px;
 
-      &.collected {
+      .collected {
         color: #16a34a;
       }
 
-      &.confirmed {
-        color: #f59e0b;
+      .separator {
+        color: #94a3b8;
+        font-weight: 400;
+      }
+
+      .confirmed {
+        color: #3b82f6;
         font-weight: 600;
         font-size: 0.62rem;
       }
