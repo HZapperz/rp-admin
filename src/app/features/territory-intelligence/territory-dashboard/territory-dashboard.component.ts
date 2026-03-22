@@ -534,6 +534,22 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
     this.clearDayBookingMarkers();
 
+    // Group bookings by coordinate to compute stagger offsets for same-address pins
+    const coordGroups = new Map<string, string[]>();
+    this.dayBookings.forEach(b => {
+      if (!b.latitude || !b.longitude) return;
+      const key = `${b.latitude.toFixed(4)},${b.longitude.toFixed(4)}`;
+      if (!coordGroups.has(key)) coordGroups.set(key, []);
+      coordGroups.get(key)!.push(b.id);
+    });
+    const bookingOffset = new Map<string, [number, number]>();
+    coordGroups.forEach(ids => {
+      ids.forEach((id, idx) => {
+        const xOffset = (idx - (ids.length - 1) / 2) * 32;
+        bookingOffset.set(id, [xOffset, 0]);
+      });
+    });
+
     const bounds = new mapboxgl.LngLatBounds();
     let hasMarkers = false;
     let sequence = 0;
@@ -578,7 +594,8 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.openBookingDetail(booking.id);
       });
 
-      const marker = new mapboxgl.Marker({ element: el })
+      const offset = bookingOffset.get(booking.id) ?? [0, 0];
+      const marker = new mapboxgl.Marker({ element: el, offset })
         .setLngLat([booking.longitude, booking.latitude])
         .addTo(this.map!);
 
