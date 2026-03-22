@@ -29,7 +29,7 @@
       </button>
     </div>
 
-    @if (dashboardView === 'schedule') {
+    <div [hidden]="dashboardView !== 'schedule'">
     <!-- KPI Period Toggle -->
     <div class="kpi-header">
       <h2>Overview</h2>
@@ -340,11 +340,9 @@
         </div>
       }
     </div>
-    } <!-- end schedule view -->
+    </div> <!-- end schedule view -->
 
-    @if (dashboardView === 'map') {
-      <app-territory-dashboard />
-    }
+    <app-territory-dashboard [hidden]="dashboardView !== 'map'" />
   }
 </div>
 

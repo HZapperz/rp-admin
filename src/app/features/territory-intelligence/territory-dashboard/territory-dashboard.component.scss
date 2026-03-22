@@ -812,6 +812,44 @@
   }
 }
 
+.btn-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid $gray-200;
+  border-radius: $radius-base;
+  color: $gray-500;
+  cursor: pointer;
+  transition: all $transition-fast;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) {
+    background-color: $gray-100;
+    color: $gray-700;
+    border-color: $gray-300;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .material-icons {
+    font-size: 18px;
+  }
+
+  .material-icons.spinning {
+    animation: spin-refresh 0.8s linear infinite;
+  }
+}
+
+@keyframes spin-refresh {
+  to { transform: rotate(360deg); }
+}
+
 // Date Picker & Groomer Filter
 .day-date-picker,
 .day-groomer-filter {

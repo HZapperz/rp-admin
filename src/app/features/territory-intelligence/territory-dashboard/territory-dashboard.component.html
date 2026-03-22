@@ -299,6 +299,9 @@
       <button class="btn-nav" (click)="nextDay()" title="Next day">
         <span class="material-icons">chevron_right</span>
       </button>
+      <button class="btn-refresh" (click)="refreshBookings()" title="Refresh map data" [disabled]="dayBookingsLoading">
+        <span class="material-icons" [class.spinning]="dayBookingsLoading">refresh</span>
+      </button>
     </div>
 
     <!-- Date Picker -->

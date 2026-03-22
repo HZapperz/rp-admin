@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
@@ -42,10 +42,16 @@ interface DaySlot {
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  @ViewChild(TerritoryDashboardComponent) territoryMap?: TerritoryDashboardComponent;
+
   dashboardView: 'schedule' | 'map' = 'schedule';
 
   setDashboardView(v: 'schedule' | 'map'): void {
     this.dashboardView = v;
+    if (v === 'map') {
+      // Wait one tick for [hidden] to clear, then resize the Mapbox canvas
+      setTimeout(() => this.territoryMap?.onShow(), 50);
+    }
   }
   // New KPI data structure
   kpiCards = {

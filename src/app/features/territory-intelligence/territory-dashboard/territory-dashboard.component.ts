@@ -59,6 +59,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   selectedDate: string = this.getTodayString();
   dayBookings: BookingWithDetails[] = [];
   dayBookingsLoading = false;
+  dayDataLoaded = false;
   unmappedBookingCount = 0;
   groomers: GroomerWithStats[] = [];
   groomersLoaded = false;
@@ -118,9 +119,13 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
           error: (err) => console.error('Error loading groomers:', err)
         });
       }
-      // Clear customer markers, load day bookings
+      // Clear customer markers; use cached data if available
       this.clearMarkers();
-      this.loadDayBookings();
+      if (this.dayDataLoaded) {
+        this.renderDayBookingMarkers();
+      } else {
+        this.loadDayBookings();
+      }
     } else {
       // Clear day markers, restore customer markers
       this.clearDayBookingMarkers();
@@ -225,6 +230,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         // Enrich bookings with address coordinates
         await this.enrichBookingsWithCoordinates(this.dayBookings);
 
+        this.dayDataLoaded = true;
         this.dayBookingsLoading = false;
         this.renderDayBookingMarkers();
 
@@ -242,11 +248,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   /**
    * Enrich bookings with lat/lng coordinates via two-step fallback:
    * 1. Look up from the addresses table
-   * 2. Geocode via Mapbox API for any still-missing bookings
+   * 2. Geocode via Mapbox API in parallel (full address, then zip-only fallback)
    */
   private async enrichBookingsWithCoordinates(bookings: BookingWithDetails[]): Promise<void> {
+    const needsCoords = (b: BookingWithDetails) =>
+      !b.latitude || !b.longitude || b.latitude === 0 || b.longitude === 0;
+
     // Step 1: addresses table lookup
-    const clientIds = [...new Set(bookings.filter(b => !b.latitude || !b.longitude).map(b => b.client_id))];
+    const clientIds = [...new Set(bookings.filter(needsCoords).map(b => b.client_id))];
     if (clientIds.length > 0) {
       const { data: addresses, error } = await this.supabase
         .from('addresses')
@@ -256,7 +265,6 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         .not('longitude', 'is', null);
 
       if (!error && addresses) {
-        // Build lookup: client_id -> { lat, lng } (use first address with coords)
         const coordsLookup: Record<string, { lat: number; lng: number }> = {};
         for (const addr of addresses) {
           if (!coordsLookup[addr.user_id]) {
@@ -266,10 +274,8 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
             };
           }
         }
-
-        // Enrich bookings
         for (const booking of bookings) {
-          if (!booking.latitude || !booking.longitude) {
+          if (needsCoords(booking)) {
             const coords = coordsLookup[booking.client_id];
             if (coords) {
               booking.latitude = coords.lat;
@@ -280,36 +286,48 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       }
     }
 
-    // Step 2: Mapbox geocoding fallback for bookings still missing coordinates
-    const stillMissing = bookings.filter(b => !b.latitude || !b.longitude);
-    let failed = 0;
-    for (const booking of stillMissing) {
-      if (!booking.address) { failed++; continue; }
-      const query = [booking.address, booking.city, booking.state || 'TX', booking.zip_code]
-        .filter(Boolean).join(', ');
-      try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
-                    `?access_token=${environment.mapboxAccessToken}&limit=1&country=us`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.features?.length) {
-          const [lng, lat] = data.features[0].center;
-          booking.latitude = lat;
-          booking.longitude = lng;
-        } else {
-          failed++;
-        }
-      } catch {
-        failed++;
+    // Step 2: parallel Mapbox geocoding for bookings still missing coordinates
+    const stillMissing = bookings.filter(needsCoords);
+    const results = await Promise.all(stillMissing.map(async (booking) => {
+      // Build the best query we can from available fields
+      const parts = [booking.address?.trim(), booking.city?.trim(), booking.state || 'TX', booking.zip_code?.trim()]
+        .filter(Boolean);
+      if (parts.length === 0) return false;
+
+      const tryGeocode = async (q: string): Promise<boolean> => {
+        try {
+          const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
+                      `?access_token=${environment.mapboxAccessToken}&limit=1&country=us`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.features?.length) {
+            const [lng, lat] = data.features[0].center;
+            booking.latitude = lat;
+            booking.longitude = lng;
+            return true;
+          }
+        } catch { /* fall through */ }
+        return false;
+      };
+
+      // Try full address first, then zip-code-only as last resort
+      const fullQuery = parts.join(', ');
+      if (await tryGeocode(fullQuery)) return true;
+
+      if (booking.zip_code?.trim()) {
+        return tryGeocode(`${booking.zip_code.trim()}, TX, US`);
       }
-    }
-    this.unmappedBookingCount = failed;
+      return false;
+    }));
+
+    this.unmappedBookingCount = results.filter(r => !r).length;
   }
 
   prevDay(): void {
     const d = new Date(this.selectedDate + 'T12:00:00');
     d.setDate(d.getDate() - 1);
     this.selectedDate = this.dateToString(d);
+    this.dayDataLoaded = false;
     this.loadDayBookings();
   }
 
@@ -317,25 +335,44 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     const d = new Date(this.selectedDate + 'T12:00:00');
     d.setDate(d.getDate() + 1);
     this.selectedDate = this.dateToString(d);
+    this.dayDataLoaded = false;
     this.loadDayBookings();
   }
 
   goToToday(): void {
     this.selectedDate = this.getTodayString();
+    this.dayDataLoaded = false;
     this.loadDayBookings();
   }
 
   onDateChange(): void {
+    this.dayDataLoaded = false;
     this.loadDayBookings();
   }
 
   onGroomerFilterChange(): void {
+    this.dayDataLoaded = false;
+    this.loadDayBookings();
+  }
+
+  refreshBookings(): void {
+    this.dayDataLoaded = false;
     this.loadDayBookings();
   }
 
   // =========================================================================
   // MAP - INIT & CLEANUP
   // =========================================================================
+
+  /** Called by the dashboard when this panel becomes visible after being hidden. */
+  onShow(): void {
+    this.map?.resize();
+    if (this.activeTab === 'bookings' && this.dayBookings.length > 0) {
+      this.renderDayBookingMarkers();
+    } else if (this.activeTab === 'territory' && this.customers.length > 0) {
+      this.renderCustomerMarkers();
+    }
+  }
 
   private initMap(): void {
     if (!this.mapCanvas?.nativeElement) return;
