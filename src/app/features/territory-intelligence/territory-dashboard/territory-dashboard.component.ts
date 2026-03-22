@@ -17,6 +17,7 @@ import { TerritoryService } from '../../../core/services/territory.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService, GroomerWithStats } from '../../../core/services/groomer.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { FillScheduleService, ClientRecommendation, Pet } from '../../../core/services/fill-schedule.service';
 import {
   TerritoryCustomer,
   ZipCodeMetrics,
@@ -25,6 +26,16 @@ import {
   BookingWithDetails,
   BookingFilters
 } from '../../../core/models/types';
+
+interface ClientActionState {
+  smsSending?: boolean;
+  smsSent?: boolean;
+  pipelineAdding?: boolean;
+  pipelineAdded?: boolean;
+  pipelineExisting?: boolean;
+  smsMessage?: string;
+  showSmsInput?: boolean;
+}
 
 @Component({
   selector: 'app-territory-dashboard',
@@ -38,6 +49,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   private bookingService = inject(BookingService);
   private groomerService = inject(GroomerService);
   private supabase = inject(SupabaseService);
+  private fillScheduleService = inject(FillScheduleService);
   private router = inject(Router);
   @ViewChild('mapCanvas') mapCanvas!: ElementRef<HTMLDivElement>;
   map: mapboxgl.Map | null = null;
@@ -46,7 +58,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   private flyToSuppressed = false;
 
   // Tab state
-  activeTab: 'territory' | 'bookings' = 'territory';
+  activeTab: 'territory' | 'bookings' | 'fill' = 'territory';
 
   // Territory state
   customers: TerritoryCustomer[] = [];
@@ -74,6 +86,17 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     min_ltv: undefined,
     max_ltv: undefined
   };
+
+  // Fill Schedule state
+  fillClients: ClientRecommendation[] = [];
+  fillLoading = false;
+  fillDataLoaded = false;
+  fillRadiusMiles = 5;
+  fillDaysThreshold = 21;
+  selectedFillClient: ClientRecommendation | null = null;
+  private fillClientMarkers: mapboxgl.Marker[] = [];
+  private fillActionStates = new Map<string, ClientActionState>();
+  readonly FILL_THRESHOLD_PRESETS = [7, 14, 21, 30, 60];
 
   // UI state
   viewMode: 'markers' | 'heatmap' = 'markers';
@@ -103,7 +126,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   // TAB MANAGEMENT
   // =========================================================================
 
-  setTab(tab: 'territory' | 'bookings'): void {
+  setTab(tab: 'territory' | 'bookings' | 'fill'): void {
     if (this.activeTab === tab) return;
     this.activeTab = tab;
     this.selectedCustomer = null;
@@ -112,23 +135,40 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       // Lazy-load groomers on first visit
       if (!this.groomersLoaded) {
         this.groomerService.getAllGroomers().subscribe({
-          next: (groomers) => {
-            this.groomers = groomers;
-            this.groomersLoaded = true;
-          },
+          next: (groomers) => { this.groomers = groomers; this.groomersLoaded = true; },
           error: (err) => console.error('Error loading groomers:', err)
         });
       }
-      // Clear customer markers; use cached data if available
       this.clearMarkers();
+      this.clearFillClientMarkers();
       if (this.dayDataLoaded) {
         this.renderDayBookingMarkers();
       } else {
         this.loadDayBookings();
       }
+    } else if (tab === 'fill') {
+      if (!this.groomersLoaded) {
+        this.groomerService.getAllGroomers().subscribe({
+          next: (groomers) => { this.groomers = groomers; this.groomersLoaded = true; },
+          error: (err) => console.error('Error loading groomers:', err)
+        });
+      }
+      this.clearMarkers();
+      if (this.dayDataLoaded) {
+        this.renderDayBookingMarkers();
+        if (this.fillDataLoaded) {
+          this.renderFillClientMarkers();
+        } else {
+          this.loadFillSchedule();
+        }
+      } else {
+        // loadDayBookings will call loadFillSchedule when done (since activeTab === 'fill')
+        this.loadDayBookings();
+      }
     } else {
-      // Clear day markers, restore customer markers
+      // territory: clear day and fill markers, restore customer markers
       this.clearDayBookingMarkers();
+      this.clearFillClientMarkers();
       this.renderCustomerMarkers();
     }
 
@@ -234,6 +274,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.dayBookingsLoading = false;
         this.renderDayBookingMarkers();
 
+        // If fill tab is active, auto-load fill schedule now that booking coords are ready
+        if (this.activeTab === 'fill' && !this.fillDataLoaded) {
+          this.loadFillSchedule();
+        }
+
         // Allow flyTo again after fitBounds animation completes
         setTimeout(() => { this.flyToSuppressed = false; }, 1000);
       },
@@ -328,6 +373,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     d.setDate(d.getDate() - 1);
     this.selectedDate = this.dateToString(d);
     this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
     this.loadDayBookings();
   }
 
@@ -336,27 +382,32 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     d.setDate(d.getDate() + 1);
     this.selectedDate = this.dateToString(d);
     this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
     this.loadDayBookings();
   }
 
   goToToday(): void {
     this.selectedDate = this.getTodayString();
     this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
     this.loadDayBookings();
   }
 
   onDateChange(): void {
     this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
     this.loadDayBookings();
   }
 
   onGroomerFilterChange(): void {
     this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
     this.loadDayBookings();
   }
 
   refreshBookings(): void {
     this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
     this.loadDayBookings();
   }
 
@@ -369,6 +420,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.map?.resize();
     if (this.activeTab === 'bookings' && this.dayBookings.length > 0) {
       this.renderDayBookingMarkers();
+    } else if (this.activeTab === 'fill' && this.dayBookings.length > 0) {
+      this.renderDayBookingMarkers();
+      if (this.fillClients.length > 0) {
+        this.renderFillClientMarkers();
+      }
     } else if (this.activeTab === 'territory' && this.customers.length > 0) {
       this.renderCustomerMarkers();
     }
@@ -399,6 +455,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   private cleanupMap(): void {
     this.clearMarkers();
     this.clearDayBookingMarkers();
+    this.clearFillClientMarkers();
     if (this.map) {
       this.map.remove();
       this.map = null;
@@ -618,6 +675,193 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     } else {
       this.clearMarkers();
     }
+  }
+
+  // =========================================================================
+  // FILL SCHEDULE
+  // =========================================================================
+
+  async loadFillSchedule(): Promise<void> {
+    this.fillLoading = true;
+    this.fillClients = [];
+    this.selectedFillClient = null;
+    this.clearFillClientMarkers();
+
+    const bookingCoords = this.dayBookings
+      .filter(b => b.status !== 'pending' && b.latitude && b.longitude && b.latitude !== 0 && b.longitude !== 0)
+      .map(b => ({ latitude: b.latitude!, longitude: b.longitude! }));
+
+    try {
+      this.fillClients = await this.fillScheduleService.getMapRecommendations(
+        this.selectedDate,
+        bookingCoords,
+        this.fillRadiusMiles,
+        this.fillDaysThreshold
+      );
+      this.fillDataLoaded = true;
+      this.renderFillClientMarkers();
+    } catch (err) {
+      console.error('Error loading fill schedule:', err);
+    } finally {
+      this.fillLoading = false;
+    }
+  }
+
+  private renderFillClientMarkers(): void {
+    if (!this.map) return;
+    this.clearFillClientMarkers();
+
+    this.fillClients.forEach(client => {
+      if (!client.latitude || !client.longitude) return;
+
+      const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase();
+      const isSelected = this.selectedFillClient?.id === client.id;
+
+      const el = document.createElement('div');
+      el.className = 'fill-client-marker';
+      el.style.cssText = [
+        'width:28px', 'height:28px', 'background-color:#9c27b0', 'border-radius:50%',
+        'border:2px solid white', 'cursor:pointer', 'display:flex', 'align-items:center',
+        'justify-content:center', 'color:white', 'font-size:10px', 'font-weight:700',
+        'line-height:1', 'transition:opacity 0.2s ease,box-shadow 0.2s ease',
+        `box-shadow:${isSelected ? '0 0 0 3px #9c27b0,0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.3)'}`,
+        isSelected ? 'transform:scale(1.15)' : ''
+      ].join(';');
+      el.textContent = initials;
+
+      el.addEventListener('mouseenter', () => {
+        el.style.opacity = '0.85';
+        el.style.boxShadow = '0 4px 14px rgba(156,39,176,0.6)';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.opacity = '1';
+        el.style.boxShadow = isSelected ? '0 0 0 3px #9c27b0,0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.3)';
+      });
+      el.addEventListener('click', () => this.selectFillClient(client));
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([client.longitude, client.latitude])
+        .addTo(this.map!);
+
+      this.fillClientMarkers.push(marker);
+    });
+  }
+
+  private clearFillClientMarkers(): void {
+    this.fillClientMarkers.forEach(m => m.remove());
+    this.fillClientMarkers = [];
+  }
+
+  selectFillClient(client: ClientRecommendation): void {
+    this.selectedFillClient = client;
+    if (this.map && client.latitude && client.longitude) {
+      this.map.flyTo({ center: [client.longitude, client.latitude], zoom: 14, duration: 800 });
+    }
+    this.renderFillClientMarkers();
+  }
+
+  onFillRadiusChange(): void {
+    this.fillDataLoaded = false;
+    if (this.activeTab === 'fill' && this.dayDataLoaded) {
+      this.loadFillSchedule();
+    }
+  }
+
+  onFillThresholdChange(days: number): void {
+    this.fillDaysThreshold = days;
+    this.fillDataLoaded = false;
+    if (this.activeTab === 'fill' && this.dayDataLoaded) {
+      this.loadFillSchedule();
+    }
+  }
+
+  refreshFill(): void {
+    this.fillDataLoaded = false;
+    this.dayDataLoaded = false;
+    this.loadDayBookings();
+  }
+
+  async sendFillSMS(client: ClientRecommendation, event: Event): Promise<void> {
+    event.stopPropagation();
+    const state = this.getFillActionState(client.id);
+    if (!client.phone || state.smsSending || state.smsSent) return;
+
+    if (!state.showSmsInput) {
+      this.fillActionStates.set(client.id, {
+        ...state,
+        showSmsInput: true,
+        smsMessage: state.smsMessage || this.fillScheduleService.generateMessage(client, this.selectedDate)
+      });
+      return;
+    }
+
+    const currentState = this.getFillActionState(client.id);
+    const message = currentState.smsMessage || '';
+    this.fillActionStates.set(client.id, { ...currentState, smsSending: true });
+
+    const success = await this.fillScheduleService.sendFillScheduleSMS(
+      client.id,
+      client.phone,
+      message,
+      client.pipeline_lead_id || undefined
+    );
+
+    const afterState = this.getFillActionState(client.id);
+    this.fillActionStates.set(client.id, { ...afterState, smsSending: false, smsSent: success, showSmsInput: false });
+  }
+
+  cancelFillSMS(client: ClientRecommendation, event: Event): void {
+    event.stopPropagation();
+    const state = this.getFillActionState(client.id);
+    this.fillActionStates.set(client.id, { ...state, showSmsInput: false });
+  }
+
+  async addFillToPipeline(client: ClientRecommendation, event: Event): Promise<void> {
+    event.stopPropagation();
+    const state = this.getFillActionState(client.id);
+    if (state.pipelineAdding || state.pipelineAdded) return;
+
+    this.fillActionStates.set(client.id, { ...state, pipelineAdding: true });
+
+    const result = await this.fillScheduleService.addToPipeline(client.id);
+
+    const afterState = this.getFillActionState(client.id);
+    this.fillActionStates.set(client.id, {
+      ...afterState,
+      pipelineAdding: false,
+      pipelineAdded: result.success,
+      pipelineExisting: result.existing
+    });
+
+    if (result.success && result.leadId) {
+      client.pipeline_lead_id = result.leadId;
+      client.pipeline_stage = client.pipeline_stage || 'NEW';
+    }
+  }
+
+  getFillActionState(clientId: string): ClientActionState {
+    if (!this.fillActionStates.has(clientId)) {
+      this.fillActionStates.set(clientId, {});
+    }
+    return this.fillActionStates.get(clientId)!;
+  }
+
+  getFillLeadBadge(client: ClientRecommendation): { label: string; class: string } {
+    return this.fillScheduleService.getLeadBadge(client.completed_bookings);
+  }
+
+  getDistanceLabel(miles: number | undefined): string {
+    if (miles === undefined || miles === null) return '';
+    if (miles < 0.1) return '< 0.1 mi';
+    return `${miles.toFixed(1)} mi`;
+  }
+
+  getConfirmedStopsCount(): number {
+    return this.dayBookings.filter(b => b.status !== 'pending').length;
+  }
+
+  getPetNames(pets: Pet[]): string {
+    return pets.map(p => p.name).join(', ');
   }
 
   // =========================================================================

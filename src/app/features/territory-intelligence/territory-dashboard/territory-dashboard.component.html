@@ -16,10 +16,22 @@
     <span class="material-icons">calendar_today</span>
     Bookings by Day
   </button>
+  <button
+    class="tab-btn"
+    [class.active]="activeTab === 'fill'"
+    (click)="setTab('fill')"
+  >
+    <span class="material-icons">route</span>
+    Fill Schedule
+  </button>
 </div>
 
 <!-- Tab Content -->
-<div class="territory-tab-content" [class.mode-territory]="activeTab === 'territory'" [class.mode-bookings]="activeTab === 'bookings'">
+<div class="territory-tab-content"
+  [class.mode-territory]="activeTab === 'territory'"
+  [class.mode-bookings]="activeTab === 'bookings'"
+  [class.mode-fill]="activeTab === 'fill'"
+>
 
   <!-- Left Sidebar - Filters (Territory mode only) -->
   <aside class="territory-sidebar" *ngIf="activeTab === 'territory'" [class.hidden]="!showFilters">
@@ -414,6 +426,185 @@
       <div class="legend-item">
         <span class="legend-color-circle" style="background-color: #ff9800;">!</span>
         <span class="legend-label">Pending</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Panel - Fill Schedule (Fill mode only) -->
+  <aside class="fill-schedule-panel" *ngIf="activeTab === 'fill'">
+    <!-- Day Navigator (shared with bookings tab) -->
+    <div class="day-navigator">
+      <button class="btn-nav" (click)="prevDay()" title="Previous day">
+        <span class="material-icons">chevron_left</span>
+      </button>
+      <div class="day-display">
+        <span class="day-label">{{ getSelectedDateDisplay() }}</span>
+        <button class="btn-today" *ngIf="!isToday()" (click)="goToToday()">Today</button>
+      </div>
+      <button class="btn-nav" (click)="nextDay()" title="Next day">
+        <span class="material-icons">chevron_right</span>
+      </button>
+      <button class="btn-refresh" (click)="refreshFill()" title="Refresh" [disabled]="fillLoading || dayBookingsLoading">
+        <span class="material-icons" [class.spinning]="fillLoading || dayBookingsLoading">refresh</span>
+      </button>
+    </div>
+
+    <!-- Date Picker -->
+    <div class="day-date-picker">
+      <input
+        type="date"
+        class="input-field"
+        [(ngModel)]="selectedDate"
+        (change)="onDateChange()"
+      />
+    </div>
+
+    <!-- Fill Controls -->
+    <div class="fill-controls">
+      <div class="fill-radius-row">
+        <label class="fill-control-label">
+          Radius: <strong>{{ fillRadiusMiles }} mi</strong>
+        </label>
+        <input
+          type="range"
+          class="fill-radius-slider"
+          min="1"
+          max="10"
+          step="1"
+          [(ngModel)]="fillRadiusMiles"
+          (change)="onFillRadiusChange()"
+        />
+      </div>
+      <div class="fill-threshold-row">
+        <label class="fill-control-label">Inactive ≥</label>
+        <div class="threshold-presets">
+          <button
+            *ngFor="let days of FILL_THRESHOLD_PRESETS"
+            class="threshold-btn"
+            [class.active]="fillDaysThreshold === days"
+            (click)="onFillThresholdChange(days)"
+          >{{ days }}d</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary chip -->
+    <div class="fill-summary">
+      <span class="material-icons">group</span>
+      <span *ngIf="!fillLoading && !dayBookingsLoading">
+        {{ fillClients.length }} client{{ fillClients.length !== 1 ? 's' : '' }} within {{ fillRadiusMiles }} mi
+      </span>
+      <span *ngIf="fillLoading || dayBookingsLoading">Loading...</span>
+    </div>
+
+    <!-- Client List -->
+    <div class="fill-client-list">
+      <!-- Loading -->
+      <div *ngIf="fillLoading || dayBookingsLoading" class="booking-list-loading">
+        <div class="spinner-sm"></div>
+      </div>
+
+      <!-- No confirmed stops today -->
+      <div *ngIf="!fillLoading && !dayBookingsLoading && getConfirmedStopsCount() === 0" class="booking-list-empty">
+        No confirmed bookings on this day
+      </div>
+
+      <!-- No nearby inactive clients -->
+      <div *ngIf="!fillLoading && !dayBookingsLoading && getConfirmedStopsCount() > 0 && fillClients.length === 0" class="booking-list-empty">
+        No inactive clients within {{ fillRadiusMiles }} mi
+      </div>
+
+      <!-- Client Cards -->
+      <div
+        *ngFor="let client of fillClients"
+        class="fill-client-card"
+        [class.active]="selectedFillClient?.id === client.id"
+        (click)="selectFillClient(client)"
+      >
+        <div class="fill-card-header">
+          <span class="fill-client-name">{{ client.first_name }} {{ client.last_name }}</span>
+          <span [class]="'fill-badge ' + getFillLeadBadge(client).class">{{ getFillLeadBadge(client).label }}</span>
+        </div>
+
+        <div class="fill-card-meta">
+          <span class="distance-chip">
+            <span class="material-icons">near_me</span>
+            {{ getDistanceLabel(client.distanceToNearestStop) }}
+          </span>
+          <span class="days-label" *ngIf="client.days_since_booking !== null">
+            {{ client.days_since_booking }}d ago
+          </span>
+          <span class="days-label new-client" *ngIf="client.days_since_booking === null">
+            No prior bookings
+          </span>
+        </div>
+
+        <div class="fill-card-pets" *ngIf="client.pets.length > 0">
+          <span class="material-icons">pets</span>
+          {{ getPetNames(client.pets) }}
+        </div>
+
+        <!-- SMS Compose Area -->
+        <div *ngIf="getFillActionState(client.id).showSmsInput" class="fill-sms-area" (click)="$event.stopPropagation()">
+          <textarea
+            class="fill-sms-textarea"
+            [(ngModel)]="getFillActionState(client.id).smsMessage"
+            rows="3"
+            placeholder="Edit message..."
+          ></textarea>
+        </div>
+
+        <div class="fill-card-actions" (click)="$event.stopPropagation()">
+          <!-- SMS actions -->
+          <ng-container *ngIf="!getFillActionState(client.id).smsSent">
+            <button
+              class="fill-action-btn fill-sms-btn"
+              *ngIf="client.phone"
+              [disabled]="getFillActionState(client.id).smsSending"
+              (click)="sendFillSMS(client, $event)"
+            >
+              <span class="material-icons">{{ getFillActionState(client.id).showSmsInput ? 'send' : 'sms' }}</span>
+              {{ getFillActionState(client.id).smsSending ? 'Sending...' : getFillActionState(client.id).showSmsInput ? 'Send' : 'SMS' }}
+            </button>
+            <button
+              class="fill-action-btn fill-cancel-btn"
+              *ngIf="getFillActionState(client.id).showSmsInput"
+              (click)="cancelFillSMS(client, $event)"
+            >
+              <span class="material-icons">close</span>
+            </button>
+          </ng-container>
+          <span class="fill-sent-chip" *ngIf="getFillActionState(client.id).smsSent">
+            <span class="material-icons">check_circle</span> Sent
+          </span>
+
+          <!-- Pipeline actions -->
+          <button
+            class="fill-action-btn fill-pipeline-btn"
+            *ngIf="!getFillActionState(client.id).pipelineAdded && !client.pipeline_lead_id"
+            [disabled]="getFillActionState(client.id).pipelineAdding"
+            (click)="addFillToPipeline(client, $event)"
+          >
+            <span class="material-icons">add_circle_outline</span>
+            {{ getFillActionState(client.id).pipelineAdding ? 'Adding...' : 'Pipeline' }}
+          </button>
+          <span class="fill-pipeline-chip" *ngIf="client.pipeline_lead_id || getFillActionState(client.id).pipelineAdded">
+            <span class="material-icons">verified</span>
+            {{ getFillActionState(client.id).pipelineExisting ? 'Boosted' : 'In Pipeline' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="day-legend fill-legend">
+      <div class="legend-item">
+        <span class="legend-color-circle" style="background-color: #2196f3;">1</span>
+        <span class="legend-label">Route stop</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color-circle" style="background-color: #9c27b0;">A</span>
+        <span class="legend-label">Fill client</span>
       </div>
     </div>
   </aside>

@@ -26,6 +26,10 @@ export interface ClientRecommendation {
   days_since_booking: number | null;
   pipeline_stage?: string | null;
   pipeline_lead_id?: string | null;
+  // Coordinate fields used by the map view
+  latitude?: number;
+  longitude?: number;
+  distanceToNearestStop?: number; // miles
 }
 
 export interface LocationGroup {
@@ -295,6 +299,142 @@ export class FillScheduleService {
       return daysA - daysB;
     });
 
+    return recommendations;
+  }
+
+  // ==================== MAP-BASED RECOMMENDATIONS ====================
+
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 3958.8; // Earth radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /**
+   * Returns nearby inactive clients with lat/lng, sorted by distance to nearest booking stop.
+   * Used by the territory map's Fill Schedule tab.
+   */
+  async getMapRecommendations(
+    date: string,
+    bookingCoords: Array<{ latitude: number; longitude: number }>,
+    radiusMiles: number,
+    daysThreshold: number
+  ): Promise<ClientRecommendation[]> {
+    if (bookingCoords.length === 0) return [];
+
+    // Fetch all geocoded client addresses
+    const { data: addresses, error } = await this.supabase
+      .from('addresses')
+      .select('user_id, street, city, zip_code, latitude, longitude')
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
+
+    if (error || !addresses || addresses.length === 0) return [];
+
+    // Haversine-filter: keep addresses within radiusMiles of any booking stop
+    const clientDistanceMap = new Map<string, { dist: number; lat: number; lng: number; street: string; city: string; zip_code: string }>();
+    for (const addr of addresses) {
+      const lat = parseFloat(addr.latitude);
+      const lng = parseFloat(addr.longitude);
+      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
+
+      let minDist = Infinity;
+      for (const bc of bookingCoords) {
+        const d = this.haversineDistance(lat, lng, bc.latitude, bc.longitude);
+        if (d < minDist) minDist = d;
+      }
+
+      if (minDist <= radiusMiles) {
+        // Keep the closest address per client
+        const existing = clientDistanceMap.get(addr.user_id);
+        if (!existing || minDist < existing.dist) {
+          clientDistanceMap.set(addr.user_id, { dist: minDist, lat, lng, street: addr.street || '', city: addr.city || '', zip_code: addr.zip_code || '' });
+        }
+      }
+    }
+
+    if (clientDistanceMap.size === 0) return [];
+
+    const clientIds = [...clientDistanceMap.keys()];
+
+    // Fetch client users (role=CLIENT only), filter test accounts
+    const { data: clients, error: clientError } = await this.supabase
+      .from('users')
+      .select('id, first_name, last_name, email, phone')
+      .eq('role', 'CLIENT')
+      .in('id', clientIds);
+
+    if (clientError || !clients || clients.length === 0) return [];
+
+    const filteredClients = clients.filter((c) => {
+      const email = c.email?.toLowerCase() || '';
+      return !email.includes('test') && !email.includes('dev') && !email.includes('demo') && !email.includes('@example.com');
+    });
+    if (filteredClients.length === 0) return [];
+
+    const filteredClientIds = filteredClients.map((c) => c.id);
+
+    // Parallel enrichment: pets, booking history, pipeline
+    const [petsResult, bookingStatsResult, pipelineResult] = await Promise.all([
+      this.supabase.from('pets').select('id, user_id, name, breed').in('user_id', filteredClientIds),
+      this.supabase.from('bookings').select('client_id, scheduled_date, status').in('client_id', filteredClientIds),
+      this.supabase.from('sales_pipeline_leads').select('id, user_id, pipeline_stage').in('user_id', filteredClientIds)
+    ]);
+
+    const pets = petsResult.data || [];
+    const bookingStats = bookingStatsResult.data || [];
+    const pipelineLeads = pipelineResult.data || [];
+
+    const clientsWithPets = new Set(pets.map((p) => p.user_id));
+    const clientsFiltered = filteredClients.filter((c) => clientsWithPets.has(c.id));
+    if (clientsFiltered.length === 0) return [];
+
+    const pipelineMap = new Map(pipelineLeads.map((p) => [p.user_id, p]));
+    const targetDateObj = new Date(date);
+    const recommendations: ClientRecommendation[] = [];
+
+    for (const client of clientsFiltered) {
+      const clientBookings = bookingStats.filter((b) => b.client_id === client.id);
+      const completedCount = clientBookings.filter((b) => b.status === 'completed').length;
+      const sorted = clientBookings
+        .filter((b) => b.scheduled_date)
+        .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+      const lastBookingDate = sorted[0]?.scheduled_date || null;
+
+      let daysSinceBooking: number | null = null;
+      if (lastBookingDate) {
+        daysSinceBooking = Math.floor((targetDateObj.getTime() - new Date(lastBookingDate).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceBooking < daysThreshold) continue;
+      }
+
+      const addrData = clientDistanceMap.get(client.id);
+      const pipelineLead = pipelineMap.get(client.id);
+      const clientPets = pets.filter((p) => p.user_id === client.id).map((p) => ({ id: p.id, name: p.name, breed: p.breed }));
+
+      recommendations.push({
+        id: client.id,
+        first_name: client.first_name || '',
+        last_name: client.last_name || '',
+        email: client.email || '',
+        phone: client.phone,
+        pets: clientPets,
+        address: addrData ? { street: addrData.street, city: addrData.city, zip_code: addrData.zip_code } : { street: '', city: '', zip_code: '' },
+        last_booking_date: lastBookingDate,
+        completed_bookings: completedCount,
+        days_since_booking: daysSinceBooking,
+        pipeline_stage: pipelineLead?.pipeline_stage || null,
+        pipeline_lead_id: pipelineLead?.id || null,
+        latitude: addrData?.lat,
+        longitude: addrData?.lng,
+        distanceToNearestStop: addrData?.dist
+      });
+    }
+
+    recommendations.sort((a, b) => (a.distanceToNearestStop ?? 99) - (b.distanceToNearestStop ?? 99));
     return recommendations;
   }
 
