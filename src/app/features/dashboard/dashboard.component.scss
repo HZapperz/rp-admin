@@ -44,6 +44,42 @@
 }
 
 // =============================================================================
+// DASHBOARD VIEW TABS (Schedule / Map)
+// =============================================================================
+.dashboard-view-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0;
+}
+
+.dashboard-tab-btn {
+  padding: 0.6rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  border-radius: 4px 4px 0 0;
+
+  &:hover {
+    color: #334155;
+    background-color: #f8fafc;
+  }
+
+  &.active {
+    color: #6366f1;
+    border-bottom-color: #6366f1;
+    font-weight: 600;
+  }
+}
+
+// =============================================================================
 // KPI HEADER WITH PERIOD TOGGLE
 // =============================================================================
 .kpi-header {
@@ -1457,4 +1493,14 @@
   .quick-actions {
     padding: 1rem;
   }
+}
+
+
+// =============================================================================
+// MAP VIEW HOST
+// =============================================================================
+app-territory-dashboard {
+  display: block;
+  height: calc(100vh - 180px);
+  min-height: 500px;
 }

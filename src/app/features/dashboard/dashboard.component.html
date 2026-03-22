@@ -13,6 +13,23 @@
   }
 
   @if (!isLoading && !error) {
+    <!-- Dashboard View Tabs -->
+    <div class="dashboard-view-tabs">
+      <button
+        class="dashboard-tab-btn"
+        [class.active]="dashboardView === 'schedule'"
+        (click)="setDashboardView('schedule')">
+        Schedule
+      </button>
+      <button
+        class="dashboard-tab-btn"
+        [class.active]="dashboardView === 'map'"
+        (click)="setDashboardView('map')">
+        Map
+      </button>
+    </div>
+
+    @if (dashboardView === 'schedule') {
     <!-- KPI Period Toggle -->
     <div class="kpi-header">
       <h2>Overview</h2>
@@ -323,6 +340,11 @@
         </div>
       }
     </div>
+    } <!-- end schedule view -->
+
+    @if (dashboardView === 'map') {
+      <app-territory-dashboard />
+    }
   }
 </div>
 

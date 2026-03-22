@@ -6,6 +6,7 @@ import { BookingService } from '../../core/services/booking.service';
 import { KPIData, BookingWithDetails } from '../../core/models/types';
 import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
 import { BusinessSettingsService, OperatingDay, OperatingHours, ShiftDateAvailability } from '../../core/services/business-settings.service';
+import { TerritoryDashboardComponent } from '../territory-intelligence/territory-dashboard/territory-dashboard.component';
 
 
 type ScheduleView = 'day' | 'week' | 'month';
@@ -36,11 +37,16 @@ interface DaySlot {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, BusinessSettingsModalComponent],
+  imports: [CommonModule, RouterModule, BusinessSettingsModalComponent, TerritoryDashboardComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  dashboardView: 'schedule' | 'map' = 'schedule';
+
+  setDashboardView(v: 'schedule' | 'map'): void {
+    this.dashboardView = v;
+  }
   // New KPI data structure
   kpiCards = {
     bookings: { completed: 0, pending: 0 },

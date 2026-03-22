@@ -332,6 +332,14 @@
       <span *ngIf="dayBookingsLoading">Loading...</span>
     </div>
 
+    <!-- Unmapped bookings warning -->
+    @if (unmappedBookingCount > 0) {
+      <div class="unmapped-warning">
+        <span class="material-icons">warning_amber</span>
+        {{ unmappedBookingCount }} booking{{ unmappedBookingCount > 1 ? 's' : '' }} not shown — no location data
+      </div>
+    }
+
     <!-- Booking List -->
     <div class="day-booking-list">
       <!-- Loading -->

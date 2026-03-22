@@ -1034,6 +1034,30 @@
 }
 
 // ============================================================================
+// UNMAPPED WARNING BADGE
+// ============================================================================
+
+.unmapped-warning {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  margin: $spacing-2 $spacing-3;
+  padding: $spacing-2 $spacing-3;
+  background-color: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-radius: $radius-md;
+  color: #e65100;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+
+  .material-icons {
+    font-size: 16px;
+    color: #ff9800;
+    flex-shrink: 0;
+  }
+}
+
+// ============================================================================
 // RESPONSIVE
 // ============================================================================
 

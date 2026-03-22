@@ -10,6 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import mapboxgl from 'mapbox-gl';
 import { environment } from '../../../../environments/environment';
 import { TerritoryService } from '../../../core/services/territory.service';
@@ -58,6 +59,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   selectedDate: string = this.getTodayString();
   dayBookings: BookingWithDetails[] = [];
   dayBookingsLoading = false;
+  unmappedBookingCount = 0;
   groomers: GroomerWithStats[] = [];
   groomersLoaded = false;
   selectedGroomerId = '';
@@ -174,25 +176,44 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
   loadDayBookings(): void {
     this.dayBookingsLoading = true;
+    this.unmappedBookingCount = 0;
     // Suppress flyTo during load so mouseenter on newly rendered cards doesn't hijack the map
     this.flyToSuppressed = true;
 
-    const filters: BookingFilters = {
-      status: ['pending', 'confirmed', 'in_progress'],
+    // Confirmed/in-progress bookings for the selected day only
+    const dayFilters: BookingFilters = {
+      status: ['confirmed', 'in_progress'],
       dateRange: {
         start: this.selectedDate,
         end: this.selectedDate
       }
     };
-
     if (this.selectedGroomerId) {
-      filters.groomerId = this.selectedGroomerId;
+      dayFilters.groomerId = this.selectedGroomerId;
     }
 
-    this.bookingService.getAllBookings(filters).subscribe({
-      next: async (bookings) => {
+    // All pending bookings regardless of date (admin needs to see full backlog to reschedule)
+    const pendingFilters: BookingFilters = {
+      status: ['pending']
+    };
+
+    forkJoin([
+      this.bookingService.getAllBookings(dayFilters),
+      this.bookingService.getAllBookings(pendingFilters)
+    ]).subscribe({
+      next: async ([dayBookings, allPending]) => {
+        // Merge and deduplicate by id
+        const seenIds = new Set<string>();
+        const merged: BookingWithDetails[] = [];
+        for (const b of [...dayBookings, ...allPending]) {
+          if (!seenIds.has(b.id)) {
+            seenIds.add(b.id);
+            merged.push(b);
+          }
+        }
+
         // Sort: confirmed/in_progress first (by time), then pending at end
-        this.dayBookings = bookings.sort((a, b) => {
+        this.dayBookings = merged.sort((a, b) => {
           const aPending = a.status === 'pending' ? 1 : 0;
           const bPending = b.status === 'pending' ? 1 : 0;
           if (aPending !== bPending) return aPending - bPending;
@@ -219,42 +240,70 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   }
 
   /**
-   * Look up lat/lng from the addresses table for bookings missing coordinates
+   * Enrich bookings with lat/lng coordinates via two-step fallback:
+   * 1. Look up from the addresses table
+   * 2. Geocode via Mapbox API for any still-missing bookings
    */
   private async enrichBookingsWithCoordinates(bookings: BookingWithDetails[]): Promise<void> {
+    // Step 1: addresses table lookup
     const clientIds = [...new Set(bookings.filter(b => !b.latitude || !b.longitude).map(b => b.client_id))];
-    if (clientIds.length === 0) return;
+    if (clientIds.length > 0) {
+      const { data: addresses, error } = await this.supabase
+        .from('addresses')
+        .select('user_id, street, latitude, longitude')
+        .in('user_id', clientIds)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
 
-    const { data: addresses, error } = await this.supabase
-      .from('addresses')
-      .select('user_id, street, latitude, longitude')
-      .in('user_id', clientIds)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null);
+      if (!error && addresses) {
+        // Build lookup: client_id -> { lat, lng } (use first address with coords)
+        const coordsLookup: Record<string, { lat: number; lng: number }> = {};
+        for (const addr of addresses) {
+          if (!coordsLookup[addr.user_id]) {
+            coordsLookup[addr.user_id] = {
+              lat: parseFloat(addr.latitude),
+              lng: parseFloat(addr.longitude)
+            };
+          }
+        }
 
-    if (error || !addresses) return;
-
-    // Build lookup: client_id -> { lat, lng } (use first address with coords)
-    const coordsLookup: Record<string, { lat: number; lng: number }> = {};
-    for (const addr of addresses) {
-      if (!coordsLookup[addr.user_id]) {
-        coordsLookup[addr.user_id] = {
-          lat: parseFloat(addr.latitude),
-          lng: parseFloat(addr.longitude)
-        };
-      }
-    }
-
-    // Enrich bookings
-    for (const booking of bookings) {
-      if (!booking.latitude || !booking.longitude) {
-        const coords = coordsLookup[booking.client_id];
-        if (coords) {
-          booking.latitude = coords.lat;
-          booking.longitude = coords.lng;
+        // Enrich bookings
+        for (const booking of bookings) {
+          if (!booking.latitude || !booking.longitude) {
+            const coords = coordsLookup[booking.client_id];
+            if (coords) {
+              booking.latitude = coords.lat;
+              booking.longitude = coords.lng;
+            }
+          }
         }
       }
     }
+
+    // Step 2: Mapbox geocoding fallback for bookings still missing coordinates
+    const stillMissing = bookings.filter(b => !b.latitude || !b.longitude);
+    let failed = 0;
+    for (const booking of stillMissing) {
+      if (!booking.address) { failed++; continue; }
+      const query = [booking.address, booking.city, booking.state || 'TX', booking.zip_code]
+        .filter(Boolean).join(', ');
+      try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
+                    `?access_token=${environment.mapboxAccessToken}&limit=1&country=us`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.features?.length) {
+          const [lng, lat] = data.features[0].center;
+          booking.latitude = lat;
+          booking.longitude = lng;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+    this.unmappedBookingCount = failed;
   }
 
   prevDay(): void {
