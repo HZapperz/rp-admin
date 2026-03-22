@@ -893,6 +893,11 @@
     border-left-color: $success;
   }
 
+  &.completed {
+    border-left-color: $success-dark;
+    opacity: 0.75;
+  }
+
   &:hover {
     background-color: #ffffff;
     box-shadow: $shadow-sm;

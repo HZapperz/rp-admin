@@ -180,9 +180,9 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     // Suppress flyTo during load so mouseenter on newly rendered cards doesn't hijack the map
     this.flyToSuppressed = true;
 
-    // Confirmed/in-progress bookings for the selected day only
+    // Confirmed/in-progress/completed bookings for the selected day only
     const dayFilters: BookingFilters = {
-      status: ['confirmed', 'in_progress'],
+      status: ['confirmed', 'in_progress', 'completed'],
       dateRange: {
         start: this.selectedDate,
         end: this.selectedDate
@@ -448,9 +448,10 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       if (!booking.latitude || !booking.longitude) return;
 
       const isPending = booking.status === 'pending';
+      const isCompleted = booking.status === 'completed';
       if (!isPending) sequence++;
       const markerLabel = isPending ? '!' : String(sequence);
-      const markerColor = isPending ? '#ff9800' : '#2196f3';
+      const markerColor = isPending ? '#ff9800' : isCompleted ? '#4caf50' : '#2196f3';
 
       const el = document.createElement('div');
       el.className = 'booking-marker-numbered';
@@ -676,7 +677,8 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     const labels: Record<string, string> = {
       'pending': 'Pending',
       'confirmed': 'Confirmed',
-      'in_progress': 'In Progress'
+      'in_progress': 'In Progress',
+      'completed': 'Completed'
     };
     return labels[status] || status;
   }

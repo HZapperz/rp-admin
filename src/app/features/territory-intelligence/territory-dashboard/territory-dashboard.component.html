@@ -359,6 +359,7 @@
         [class.confirmed]="booking.status === 'confirmed'"
         [class.pending]="booking.status === 'pending'"
         [class.in-progress]="booking.status === 'in_progress'"
+        [class.completed]="booking.status === 'completed'"
         (click)="openBookingDetail(booking.id)"
       >
         <div class="mini-card-top">
@@ -402,6 +403,10 @@
       <div class="legend-item">
         <span class="legend-color-circle" style="background-color: #2196f3;">1</span>
         <span class="legend-label">Confirmed</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color-circle" style="background-color: #4caf50;">1</span>
+        <span class="legend-label">Completed</span>
       </div>
       <div class="legend-item">
         <span class="legend-color-circle" style="background-color: #ff9800;">!</span>
