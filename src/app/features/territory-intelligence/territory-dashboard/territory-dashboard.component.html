@@ -555,43 +555,21 @@
         </div>
 
         <div class="fill-card-actions" (click)="$event.stopPropagation()">
-          <!-- SMS actions -->
-          <ng-container *ngIf="!getFillActionState(client.id).smsSent">
-            <button
-              class="fill-action-btn fill-sms-btn"
-              *ngIf="client.phone"
-              [disabled]="getFillActionState(client.id).smsSending"
-              (click)="sendFillSMS(client, $event)"
-            >
-              <span class="material-icons">{{ getFillActionState(client.id).showSmsInput ? 'send' : 'sms' }}</span>
-              {{ getFillActionState(client.id).smsSending ? 'Sending...' : getFillActionState(client.id).showSmsInput ? 'Send' : 'SMS' }}
-            </button>
-            <button
-              class="fill-action-btn fill-cancel-btn"
-              *ngIf="getFillActionState(client.id).showSmsInput"
-              (click)="cancelFillSMS(client, $event)"
-            >
-              <span class="material-icons">close</span>
-            </button>
-          </ng-container>
-          <span class="fill-sent-chip" *ngIf="getFillActionState(client.id).smsSent">
-            <span class="material-icons">check_circle</span> Sent
-          </span>
-
-          <!-- Pipeline actions -->
           <button
-            class="fill-action-btn fill-pipeline-btn"
-            *ngIf="!getFillActionState(client.id).pipelineAdded && !client.pipeline_lead_id"
-            [disabled]="getFillActionState(client.id).pipelineAdding"
-            (click)="addFillToPipeline(client, $event)"
+            class="fill-action-btn fill-sms-btn"
+            *ngIf="client.phone"
+            (click)="openFillSMS(client, $event)"
           >
-            <span class="material-icons">add_circle_outline</span>
-            {{ getFillActionState(client.id).pipelineAdding ? 'Adding...' : 'Pipeline' }}
+            <span class="material-icons">{{ getFillActionState(client.id).showSmsInput ? 'open_in_new' : 'sms' }}</span>
+            {{ getFillActionState(client.id).showSmsInput ? 'Open iMessage' : 'SMS' }}
           </button>
-          <span class="fill-pipeline-chip" *ngIf="client.pipeline_lead_id || getFillActionState(client.id).pipelineAdded">
-            <span class="material-icons">verified</span>
-            {{ getFillActionState(client.id).pipelineExisting ? 'Boosted' : 'In Pipeline' }}
-          </span>
+          <button
+            class="fill-action-btn fill-cancel-btn"
+            *ngIf="getFillActionState(client.id).showSmsInput"
+            (click)="cancelFillSMS(client, $event)"
+          >
+            <span class="material-icons">close</span>
+          </button>
         </div>
       </div>
     </div>

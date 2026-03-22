@@ -781,12 +781,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.loadDayBookings();
   }
 
-  async sendFillSMS(client: ClientRecommendation, event: Event): Promise<void> {
+  openFillSMS(client: ClientRecommendation, event: Event): void {
     event.stopPropagation();
+    if (!client.phone) return;
+
     const state = this.getFillActionState(client.id);
-    if (!client.phone || state.smsSending || state.smsSent) return;
 
     if (!state.showSmsInput) {
+      // First click: show compose area with pre-filled message
       this.fillActionStates.set(client.id, {
         ...state,
         showSmsInput: true,
@@ -795,48 +797,22 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       return;
     }
 
+    // Second click: open iMessage with the composed message
     const currentState = this.getFillActionState(client.id);
-    const message = currentState.smsMessage || '';
-    this.fillActionStates.set(client.id, { ...currentState, smsSending: true });
+    const digits = client.phone.replace(/\D/g, '');
+    const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits[0] === '1' ? `+${digits}` : client.phone;
+    const url = `sms:${e164}?body=${encodeURIComponent(currentState.smsMessage || '')}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.click();
 
-    const success = await this.fillScheduleService.sendFillScheduleSMS(
-      client.id,
-      client.phone,
-      message,
-      client.pipeline_lead_id || undefined
-    );
-
-    const afterState = this.getFillActionState(client.id);
-    this.fillActionStates.set(client.id, { ...afterState, smsSending: false, smsSent: success, showSmsInput: false });
+    this.fillActionStates.set(client.id, { ...currentState, showSmsInput: false });
   }
 
   cancelFillSMS(client: ClientRecommendation, event: Event): void {
     event.stopPropagation();
     const state = this.getFillActionState(client.id);
     this.fillActionStates.set(client.id, { ...state, showSmsInput: false });
-  }
-
-  async addFillToPipeline(client: ClientRecommendation, event: Event): Promise<void> {
-    event.stopPropagation();
-    const state = this.getFillActionState(client.id);
-    if (state.pipelineAdding || state.pipelineAdded) return;
-
-    this.fillActionStates.set(client.id, { ...state, pipelineAdding: true });
-
-    const result = await this.fillScheduleService.addToPipeline(client.id);
-
-    const afterState = this.getFillActionState(client.id);
-    this.fillActionStates.set(client.id, {
-      ...afterState,
-      pipelineAdding: false,
-      pipelineAdded: result.success,
-      pipelineExisting: result.existing
-    });
-
-    if (result.success && result.leadId) {
-      client.pipeline_lead_id = result.leadId;
-      client.pipeline_stage = client.pipeline_stage || 'NEW';
-    }
   }
 
   getFillActionState(clientId: string): ClientActionState {
