@@ -160,54 +160,6 @@
       </div>
     </div>
 
-    <!-- Royal Rewards Card -->
-    <div class="compact-card rewards-card" *ngIf="clientData.userCredits || clientData.creditTransactions.length > 0">
-      <div class="compact-header rewards-header">
-        <h3>Royal Rewards</h3>
-        <span class="rewards-balance-badge" *ngIf="clientData.userCredits">
-          {{ formatCurrency(clientData.userCredits.balance) }}
-        </span>
-      </div>
-      <div class="compact-body">
-        <div class="rewards-overview" *ngIf="clientData.userCredits">
-          <div class="rewards-balance-display">
-            <span class="balance-label">Available Balance</span>
-            <span class="balance-amount">{{ formatCurrency(clientData.userCredits.balance) }}</span>
-          </div>
-          <div class="rewards-stats">
-            <div class="rewards-stat earned">
-              <span class="stat-label">Lifetime Earned</span>
-              <span class="stat-value">{{ formatCurrency(clientData.userCredits.lifetime_earned) }}</span>
-            </div>
-            <div class="rewards-stat spent">
-              <span class="stat-label">Lifetime Spent</span>
-              <span class="stat-value">{{ formatCurrency(clientData.userCredits.lifetime_spent) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="transactions-list" *ngIf="clientData.creditTransactions.length > 0">
-          <div class="transactions-header">Recent Activity</div>
-          <div class="transaction-item" *ngFor="let txn of clientData.creditTransactions">
-            <div class="txn-left">
-              <span [class]="'txn-badge txn-' + txn.type">{{ txn.type }}</span>
-              <span class="txn-description">{{ txn.description || 'Credit transaction' }}</span>
-            </div>
-            <div class="txn-right">
-              <span [class]="'txn-amount ' + (txn.type === 'earned' || txn.type === 'adjustment' && txn.amount > 0 ? 'positive' : 'negative')">
-                {{ formatCreditAmount(txn.amount, txn.type) }}
-              </span>
-              <span class="txn-date">{{ formatDate(txn.created_at) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="!clientData.userCredits && clientData.creditTransactions.length === 0" class="empty-state">
-          No rewards activity yet
-        </div>
-      </div>
-    </div>
-
     <!-- Middle Row: Pets & Addresses (2-column) -->
     <div class="middle-row">
       <!-- Pets Section -->
@@ -336,6 +288,29 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Royal Rewards Card (compact) -->
+    <div class="compact-card rewards-card-inline" *ngIf="clientData.userCredits || clientData.creditTransactions.length > 0">
+      <div class="rewards-inline-header">
+        <span class="rewards-inline-title">Royal Rewards</span>
+        <div class="rewards-inline-stats" *ngIf="clientData.userCredits">
+          <span class="rewards-inline-balance">{{ formatCurrency(clientData.userCredits.balance) }} available</span>
+          <span class="rewards-inline-divider">·</span>
+          <span class="rewards-inline-stat">Earned <strong>{{ formatCurrency(clientData.userCredits.lifetime_earned) }}</strong></span>
+          <span class="rewards-inline-divider">·</span>
+          <span class="rewards-inline-stat">Spent <strong>{{ formatCurrency(clientData.userCredits.lifetime_spent) }}</strong></span>
+        </div>
+      </div>
+      <div class="rewards-txns-compact" *ngIf="clientData.creditTransactions.length > 0">
+        <div class="rewards-txn-row" *ngFor="let txn of clientData.creditTransactions">
+          <span [class]="'txn-badge txn-' + txn.type">{{ txn.type }}</span>
+          <span class="rewards-txn-desc">{{ txn.description || 'Credit transaction' }}</span>
+          <span class="rewards-txn-spacer"></span>
+          <span [class]="'rewards-txn-amount ' + (txn.type === 'earned' || (txn.type === 'adjustment' && txn.amount > 0) ? 'positive' : 'negative')">{{ formatCreditAmount(txn.amount, txn.type) }}</span>
+          <span class="rewards-txn-date">{{ formatDate(txn.created_at) }}</span>
         </div>
       </div>
     </div>

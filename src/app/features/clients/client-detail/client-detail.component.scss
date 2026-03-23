@@ -589,6 +589,100 @@
   color: #9ca3af;
 }
 
+// Compact inline rewards card
+.rewards-card-inline {
+  border-left: 3px solid #3b82f6;
+  padding: 0.5rem 0.875rem;
+
+  .rewards-inline-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .rewards-inline-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+
+  .rewards-inline-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .rewards-inline-balance {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+
+  .rewards-inline-divider {
+    color: #d1d5db;
+    font-size: 0.75rem;
+  }
+
+  .rewards-inline-stat {
+    font-size: 0.75rem;
+    color: #6b7280;
+
+    strong {
+      color: #374151;
+      font-weight: 600;
+    }
+  }
+
+  .rewards-txns-compact {
+    margin-top: 0.375rem;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 0.375rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .rewards-txn-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .rewards-txn-desc {
+    color: #4b5563;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .rewards-txn-spacer {
+    flex: 1;
+  }
+
+  .rewards-txn-amount {
+    font-weight: 600;
+    flex-shrink: 0;
+
+    &.positive { color: #059669; }
+    &.negative { color: #1d4ed8; }
+  }
+
+  .rewards-txn-date {
+    font-size: 0.6875rem;
+    color: #9ca3af;
+    flex-shrink: 0;
+    min-width: 5rem;
+    text-align: right;
+  }
+}
+
 // ========================================
 // Pets Section
 // ========================================

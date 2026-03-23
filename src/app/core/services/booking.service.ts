@@ -607,6 +607,7 @@ export class BookingService {
         .update({
           service_name: serviceName,
           discount_amount: discountAmount,
+          original_subtotal: subtotal,
           subtotal_before_tax: subtotalBeforeTax,
           tax_amount: taxAmount,
           total_amount: newTotalAmount,
