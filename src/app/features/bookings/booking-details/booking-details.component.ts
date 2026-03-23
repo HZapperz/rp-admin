@@ -256,6 +256,69 @@ export class BookingDetailsComponent implements OnInit {
 
       if (error) throw error;
 
+      // Award credits when booking is marked as completed
+      if (newStatus === 'completed' && this.booking.status !== 'completed') {
+        const creditsEarned = (this.booking as any).credits_earned;
+        if (creditsEarned && creditsEarned > 0) {
+          try {
+            // Check if credits were already awarded for this booking
+            const { data: existing } = await this.supabase
+              .from('credit_transactions')
+              .select('id')
+              .eq('booking_id', this.booking.id)
+              .eq('type', 'earned')
+              .maybeSingle();
+
+            if (!existing) {
+              // Get or create user_credits record
+              const { data: userCredits } = await this.supabase
+                .from('user_credits')
+                .select('balance, lifetime_earned')
+                .eq('user_id', this.booking.client_id)
+                .maybeSingle();
+
+              const currentBalance = userCredits?.balance ?? 0;
+              const currentLifetimeEarned = userCredits?.lifetime_earned ?? 0;
+              const newBalance = currentBalance + creditsEarned;
+
+              if (userCredits) {
+                await this.supabase
+                  .from('user_credits')
+                  .update({
+                    balance: newBalance,
+                    lifetime_earned: currentLifetimeEarned + creditsEarned,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('user_id', this.booking.client_id);
+              } else {
+                await this.supabase
+                  .from('user_credits')
+                  .insert({
+                    user_id: this.booking.client_id,
+                    balance: creditsEarned,
+                    lifetime_earned: creditsEarned,
+                    lifetime_spent: 0
+                  });
+              }
+
+              await this.supabase
+                .from('credit_transactions')
+                .insert({
+                  user_id: this.booking.client_id,
+                  booking_id: this.booking.id,
+                  amount: creditsEarned,
+                  type: 'earned',
+                  description: `Earned from booking on ${this.booking.scheduled_date}`,
+                  balance_after: newBalance
+                });
+            }
+          } catch (creditsErr) {
+            console.error('Error awarding credits on booking completion:', creditsErr);
+            // Don't fail the status update
+          }
+        }
+      }
+
       // Send cancellation emails if status is cancelled
       if (newStatus === 'cancelled') {
         console.log('Sending cancellation emails...');
