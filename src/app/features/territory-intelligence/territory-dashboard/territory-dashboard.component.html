@@ -59,6 +59,28 @@
         </div>
       </div>
 
+      <!-- Customer Type Filter -->
+      <div class="filter-group">
+        <label class="filter-label">Customer Type</label>
+        <div class="type-toggle-group">
+          <button
+            class="type-toggle-btn"
+            [class.active]="customerTypeFilter === 'all'"
+            (click)="onCustomerTypeFilterChange('all')"
+          >All</button>
+          <button
+            class="type-toggle-btn"
+            [class.active]="customerTypeFilter === 'new'"
+            (click)="onCustomerTypeFilterChange('new')"
+          ><span class="type-dot" style="background-color:#4dd0e1;"></span>New</button>
+          <button
+            class="type-toggle-btn"
+            [class.active]="customerTypeFilter === 'returning'"
+            (click)="onCustomerTypeFilterChange('returning')"
+          ><span class="type-dot" style="background-color:#9c27b0;"></span>Returning</button>
+        </div>
+      </div>
+
       <!-- LTV Range Filter -->
       <div class="filter-group">
         <label class="filter-label">Lifetime Value Range</label>
@@ -293,6 +315,27 @@
             </div>
           </div>
         </div>
+
+        <!-- Clients in View -->
+        <div class="panel-section">
+          <div class="clients-in-view-header">
+            <h3 class="section-title">Clients in View</h3>
+            <span class="in-view-count">{{ visibleCustomers.length }} of {{ getTypeFilteredCustomers().length }}</span>
+          </div>
+          <div class="clients-in-view-list">
+            <div *ngIf="visibleCustomers.length === 0" class="in-view-empty">Pan or zoom to see clients</div>
+            <div
+              *ngFor="let c of visibleCustomers"
+              class="in-view-row"
+              [class.pinned]="c.id === pinnedCustomerId"
+              (click)="onCustomerClick(c)"
+            >
+              <span class="in-view-name">{{ c.name }}</span>
+              <span [class]="getStatusBadgeClass(c.status)" class="in-view-badge">{{ getStatusLabel(c.status) }}</span>
+              <span class="in-view-bookings">{{ c.total_bookings }} bk</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </aside>
@@ -492,9 +535,28 @@
     <div class="fill-summary">
       <span class="material-icons">group</span>
       <span *ngIf="!fillLoading && !dayBookingsLoading">
-        {{ fillClients.length }} client{{ fillClients.length !== 1 ? 's' : '' }} within {{ fillRadiusMiles }} mi
+        {{ visibleFillClients.length }} of {{ getTypeFilteredFillClients().length }} client{{ getTypeFilteredFillClients().length !== 1 ? 's' : '' }} in view
       </span>
       <span *ngIf="fillLoading || dayBookingsLoading">Loading...</span>
+    </div>
+
+    <!-- Customer Type Toggle -->
+    <div class="fill-type-toggle-row">
+      <button
+        class="type-toggle-btn"
+        [class.active]="fillCustomerTypeFilter === 'all'"
+        (click)="onFillCustomerTypeFilterChange('all')"
+      >All</button>
+      <button
+        class="type-toggle-btn"
+        [class.active]="fillCustomerTypeFilter === 'new'"
+        (click)="onFillCustomerTypeFilterChange('new')"
+      ><span class="type-dot" style="background-color:#4dd0e1;"></span>New</button>
+      <button
+        class="type-toggle-btn"
+        [class.active]="fillCustomerTypeFilter === 'returning'"
+        (click)="onFillCustomerTypeFilterChange('returning')"
+      ><span class="type-dot" style="background-color:#9c27b0;"></span>Returning</button>
     </div>
 
     <!-- Client List -->
@@ -510,13 +572,13 @@
       </div>
 
       <!-- No nearby inactive clients -->
-      <div *ngIf="!fillLoading && !dayBookingsLoading && getConfirmedStopsCount() > 0 && fillClients.length === 0" class="booking-list-empty">
-        No inactive clients within {{ fillRadiusMiles }} mi
+      <div *ngIf="!fillLoading && !dayBookingsLoading && getConfirmedStopsCount() > 0 && visibleFillClients.length === 0" class="booking-list-empty">
+        No matching clients in view
       </div>
 
       <!-- Client Cards -->
       <div
-        *ngFor="let client of fillClients"
+        *ngFor="let client of visibleFillClients"
         class="fill-client-card"
         [class.active]="selectedFillClient?.id === client.id"
         (click)="selectFillClient(client)"

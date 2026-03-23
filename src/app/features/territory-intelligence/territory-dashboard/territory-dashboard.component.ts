@@ -99,6 +99,16 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   private fillActionStates = new Map<string, ClientActionState>();
   readonly FILL_THRESHOLD_PRESETS = [14, 21, 30, 60, 90];
 
+  // Customer type filter
+  customerTypeFilter: 'all' | 'new' | 'returning' = 'all';
+  fillCustomerTypeFilter: 'all' | 'new' | 'returning' = 'all';
+
+  // Viewport-filtered lists
+  visibleCustomers: TerritoryCustomer[] = [];
+  pinnedCustomerId: string | null = null;
+  visibleFillClients: ClientRecommendation[] = [];
+  pinnedFillClientId: string | null = null;
+
   // UI state
   viewMode: 'markers' | 'heatmap' = 'markers';
   showFilters = true;
@@ -175,6 +185,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.renderDayBookingMarkers();
         if (this.fillDataLoaded) {
           this.renderFillClientMarkers();
+          this.updateVisibleFillClients();
         } else {
           this.loadFillSchedule();
         }
@@ -187,6 +198,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       this.clearDayBookingMarkers();
       this.clearFillClientMarkers();
       this.renderCustomerMarkers();
+      this.updateVisibleCustomers();
     }
 
     // Encode state in URL so browser back restores this view
@@ -208,6 +220,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.customers = customers;
         if (this.activeTab === 'territory') {
           this.renderCustomerMarkers();
+          this.updateVisibleCustomers();
         }
       },
       error: (err) => {
@@ -233,6 +246,26 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.loading = false;
       }
     });
+  }
+
+  getTypeFilteredCustomers(): TerritoryCustomer[] {
+    if (this.customerTypeFilter === 'new') return this.customers.filter(c => c.total_bookings === 0);
+    if (this.customerTypeFilter === 'returning') return this.customers.filter(c => c.total_bookings >= 1);
+    return this.customers;
+  }
+
+  updateVisibleCustomers(): void {
+    if (!this.map) { this.visibleCustomers = []; return; }
+    const bounds = this.map.getBounds();
+    if (!bounds) { this.visibleCustomers = []; return; }
+    const inView = this.getTypeFilteredCustomers().filter(c =>
+      c.latitude && c.longitude && bounds.contains([c.longitude, c.latitude])
+    );
+    if (this.pinnedCustomerId) {
+      const idx = inView.findIndex(c => c.id === this.pinnedCustomerId);
+      if (idx > 0) { const [p] = inView.splice(idx, 1); inView.unshift(p); }
+    }
+    this.visibleCustomers = inView;
   }
 
   // =========================================================================
@@ -474,6 +507,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         this.renderCustomerMarkers();
       }
     });
+
+    this.map.on('moveend', () => {
+      if (this.activeTab === 'territory') this.updateVisibleCustomers();
+      else if (this.activeTab === 'fill') this.updateVisibleFillClients();
+    });
   }
 
   private cleanupMap(): void {
@@ -495,8 +533,15 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
     this.clearMarkers();
 
-    this.customers.forEach(customer => {
-      const markerColor = this.getStatusColor(customer.status);
+    this.getTypeFilteredCustomers().forEach(customer => {
+      let markerColor: string;
+      if (this.customerTypeFilter === 'new') {
+        markerColor = '#4dd0e1';
+      } else if (this.customerTypeFilter === 'returning') {
+        markerColor = '#9c27b0';
+      } else {
+        markerColor = this.getStatusColor(customer.status);
+      }
       const markerSize = this.getMarkerSize(customer.lifetime_value);
 
       const el = document.createElement('div');
@@ -644,6 +689,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
   onCustomerClick(customer: TerritoryCustomer): void {
     this.selectedCustomer = customer;
+    this.pinnedCustomerId = customer.id;
 
     if (this.map) {
       this.map.flyTo({
@@ -652,10 +698,13 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
         duration: 1000
       });
     }
+
+    this.updateVisibleCustomers();
   }
 
   closeCustomerDetail(): void {
     this.selectedCustomer = null;
+    this.pinnedCustomerId = null;
   }
 
   // =========================================================================
@@ -691,7 +740,15 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       min_ltv: undefined,
       max_ltv: undefined
     };
+    this.customerTypeFilter = 'all';
     this.loadTerritoryData();
+  }
+
+  onCustomerTypeFilterChange(type: 'all' | 'new' | 'returning'): void {
+    this.customerTypeFilter = type;
+    this.pinnedCustomerId = null;
+    this.renderCustomerMarkers();
+    this.updateVisibleCustomers();
   }
 
   // =========================================================================
@@ -722,6 +779,33 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   // FILL SCHEDULE
   // =========================================================================
 
+  getTypeFilteredFillClients(): ClientRecommendation[] {
+    if (this.fillCustomerTypeFilter === 'new') return this.fillClients.filter(c => c.completed_bookings === 0);
+    if (this.fillCustomerTypeFilter === 'returning') return this.fillClients.filter(c => c.completed_bookings >= 1);
+    return this.fillClients;
+  }
+
+  updateVisibleFillClients(): void {
+    if (!this.map) { this.visibleFillClients = []; return; }
+    const bounds = this.map.getBounds();
+    if (!bounds) { this.visibleFillClients = []; return; }
+    const inView = this.getTypeFilteredFillClients().filter(c =>
+      c.latitude && c.longitude && bounds.contains([c.longitude, c.latitude])
+    );
+    if (this.pinnedFillClientId) {
+      const idx = inView.findIndex(c => c.id === this.pinnedFillClientId);
+      if (idx > 0) { const [p] = inView.splice(idx, 1); inView.unshift(p); }
+    }
+    this.visibleFillClients = inView;
+  }
+
+  onFillCustomerTypeFilterChange(type: 'all' | 'new' | 'returning'): void {
+    this.fillCustomerTypeFilter = type;
+    this.pinnedFillClientId = null;
+    this.renderFillClientMarkers();
+    this.updateVisibleFillClients();
+  }
+
   async loadFillSchedule(): Promise<void> {
     this.fillLoading = true;
     this.fillClients = [];
@@ -741,6 +825,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       );
       this.fillDataLoaded = true;
       this.renderFillClientMarkers();
+      this.updateVisibleFillClients();
     } catch (err) {
       console.error('Error loading fill schedule:', err);
     } finally {
@@ -752,31 +837,40 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     if (!this.map) return;
     this.clearFillClientMarkers();
 
-    this.fillClients.forEach(client => {
+    this.getTypeFilteredFillClients().forEach(client => {
       if (!client.latitude || !client.longitude) return;
 
       const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase();
       const isSelected = this.selectedFillClient?.id === client.id;
 
+      let markerBg: string;
+      if (this.fillCustomerTypeFilter === 'new') {
+        markerBg = '#4dd0e1';
+      } else if (this.fillCustomerTypeFilter === 'returning') {
+        markerBg = '#9c27b0';
+      } else {
+        markerBg = client.completed_bookings === 0 ? '#4dd0e1' : '#9c27b0';
+      }
+
       const el = document.createElement('div');
       el.className = 'fill-client-marker';
       el.style.cssText = [
-        'width:28px', 'height:28px', 'background-color:#9c27b0', 'border-radius:50%',
+        'width:28px', 'height:28px', `background-color:${markerBg}`, 'border-radius:50%',
         'border:2px solid white', 'cursor:pointer', 'display:flex', 'align-items:center',
         'justify-content:center', 'color:white', 'font-size:10px', 'font-weight:700',
         'line-height:1', 'transition:opacity 0.2s ease,box-shadow 0.2s ease',
-        `box-shadow:${isSelected ? '0 0 0 3px #9c27b0,0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.3)'}`,
+        `box-shadow:${isSelected ? `0 0 0 3px ${markerBg},0 2px 8px rgba(0,0,0,0.4)` : '0 2px 8px rgba(0,0,0,0.3)'}`,
         isSelected ? 'transform:scale(1.15)' : ''
       ].join(';');
       el.textContent = initials;
 
       el.addEventListener('mouseenter', () => {
         el.style.opacity = '0.85';
-        el.style.boxShadow = '0 4px 14px rgba(156,39,176,0.6)';
+        el.style.boxShadow = `0 4px 14px rgba(0,0,0,0.4)`;
       });
       el.addEventListener('mouseleave', () => {
         el.style.opacity = '1';
-        el.style.boxShadow = isSelected ? '0 0 0 3px #9c27b0,0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.3)';
+        el.style.boxShadow = isSelected ? `0 0 0 3px ${markerBg},0 2px 8px rgba(0,0,0,0.4)` : '0 2px 8px rgba(0,0,0,0.3)';
       });
       el.addEventListener('click', () => this.selectFillClient(client));
 
@@ -795,10 +889,12 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
 
   selectFillClient(client: ClientRecommendation): void {
     this.selectedFillClient = client;
+    this.pinnedFillClientId = client.id;
     if (this.map && client.latitude && client.longitude) {
       this.map.flyTo({ center: [client.longitude, client.latitude], zoom: 14, duration: 800 });
     }
     this.renderFillClientMarkers();
+    this.updateVisibleFillClients();
   }
 
   onFillRadiusChange(): void {
