@@ -278,6 +278,35 @@
       border-radius: 9999px;
       font-size: 0.8125rem;
       font-weight: 600;
+
+      &.loading {
+        background: #94a3b8;
+      }
+    }
+
+    .credits-loading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #64748b;
+      font-size: 0.875rem;
+      padding: 0.25rem 0;
+
+      .spinner-sm {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e2e8f0;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        flex-shrink: 0;
+      }
+    }
+
+    .no-credits-message {
+      color: #64748b;
+      font-size: 0.875rem;
+      font-style: italic;
     }
 
     .credits-toggle {

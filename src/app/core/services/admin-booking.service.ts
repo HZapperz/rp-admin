@@ -104,6 +104,16 @@ export class AdminBookingService {
   }
 
   /**
+   * Get Royal Rewards credit balance for a client (bypasses RLS via service client)
+   */
+  getClientCredits(clientId: string): Observable<{ balance: number; lifetime_earned: number; lifetime_spent: number }> {
+    return this.http.get<{ balance: number; lifetime_earned: number; lifetime_spent: number }>(
+      `${this.apiUrl}/api/admin/clients/${clientId}/credits`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /**
    * Create a booking on behalf of a client
    */
   createBooking(bookingData: AdminBookingRequest): Observable<any> {

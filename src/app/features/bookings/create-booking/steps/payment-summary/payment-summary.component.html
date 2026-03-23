@@ -157,37 +157,49 @@
       </div>
 
       <!-- Royal Rewards Credits -->
-      <div class="credits-controls" *ngIf="creditBalance > 0">
+      <div class="credits-controls" *ngIf="selectedClient">
         <div class="credits-header">
           <h4>Royal Rewards Credits</h4>
-          <span class="credit-balance-badge">{{ formatCurrency(creditBalance) }} available</span>
+          <span class="credit-balance-badge loading" *ngIf="isLoadingCredits">Loading...</span>
+          <span class="credit-balance-badge" *ngIf="!isLoadingCredits">{{ formatCurrency(creditBalance) }} available</span>
         </div>
-        <div class="credits-toggle">
-          <label class="toggle-label">
-            <input
-              type="checkbox"
-              [(ngModel)]="applyCredits"
-              (change)="onToggleCredits()"
-            />
-            <span>Apply credits to this booking</span>
-          </label>
+        <div *ngIf="isLoadingCredits" class="credits-loading">
+          <div class="spinner-sm"></div>
+          <span>Checking credit balance...</span>
         </div>
-        <div class="credits-amount-input" *ngIf="applyCredits">
-          <div class="input-group">
-            <label>Credit Amount</label>
-            <input
-              type="number"
-              [(ngModel)]="creditsApplied"
-              (input)="onCreditsChange()"
-              min="0"
-              [max]="creditBalance"
-              step="0.01"
-              class="discount-input"
-              placeholder="0.00"
-            />
-            <span class="credits-hint">Max: {{ formatCurrency(getMaxCredits()) }}</span>
+        <ng-container *ngIf="!isLoadingCredits">
+          <div *ngIf="creditBalance === 0" class="no-credits-message">
+            This client has no Royal Rewards credits available.
           </div>
-        </div>
+          <ng-container *ngIf="creditBalance > 0">
+            <div class="credits-toggle">
+              <label class="toggle-label">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="applyCredits"
+                  (change)="onToggleCredits()"
+                />
+                <span>Apply credits to this booking</span>
+              </label>
+            </div>
+            <div class="credits-amount-input" *ngIf="applyCredits">
+              <div class="input-group">
+                <label>Credit Amount</label>
+                <input
+                  type="number"
+                  [(ngModel)]="creditsApplied"
+                  (input)="onCreditsChange()"
+                  min="0"
+                  [max]="creditBalance"
+                  step="0.01"
+                  class="discount-input"
+                  placeholder="0.00"
+                />
+                <span class="credits-hint">Max: {{ formatCurrency(getMaxCredits()) }}</span>
+              </div>
+            </div>
+          </ng-container>
+        </ng-container>
       </div>
     </div>
 

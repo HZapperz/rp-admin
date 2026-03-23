@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ClientService } from '../../../../../core/services/client.service';
 import { PackageService } from '../../../../../core/services/package.service';
+import { AdminBookingService } from '../../../../../core/services/admin-booking.service';
 
 export interface PaymentConfig {
   payment_type: 'use_saved_card' | 'cash_on_service';
@@ -58,7 +59,8 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
 
   constructor(
     private clientService: ClientService,
-    private packageService: PackageService
+    private packageService: PackageService,
+    private adminBookingService: AdminBookingService
   ) {}
 
   ngOnInit(): void {
@@ -118,24 +120,26 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     }
   }
 
-  async loadClientCredits(): Promise<void> {
+  loadClientCredits(): void {
     if (!this.selectedClient?.id) return;
 
-    try {
-      this.isLoadingCredits = true;
-      const credits = await this.clientService.getClientCredits(this.selectedClient.id);
-      this.creditBalance = credits?.balance || 0;
+    this.isLoadingCredits = true;
+    this.creditsApplied = 0;
+    this.applyCredits = false;
 
-      // Reset credits applied when client changes
-      this.creditsApplied = 0;
-      this.applyCredits = false;
-      this.emitPaymentConfig();
-    } catch (err) {
-      console.error('Error loading client credits:', err);
-      this.creditBalance = 0;
-    } finally {
-      this.isLoadingCredits = false;
-    }
+    this.adminBookingService.getClientCredits(this.selectedClient.id).subscribe({
+      next: (credits) => {
+        this.creditBalance = credits?.balance || 0;
+        this.isLoadingCredits = false;
+        this.emitPaymentConfig();
+      },
+      error: (err) => {
+        console.error('Error loading client credits:', err);
+        this.creditBalance = 0;
+        this.isLoadingCredits = false;
+        this.emitPaymentConfig();
+      }
+    });
   }
 
   onToggleCredits(): void {
