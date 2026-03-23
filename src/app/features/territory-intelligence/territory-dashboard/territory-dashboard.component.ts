@@ -91,12 +91,12 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   fillClients: ClientRecommendation[] = [];
   fillLoading = false;
   fillDataLoaded = false;
-  fillRadiusMiles = 5;
-  fillDaysThreshold = 21;
+  fillRadiusMiles = 10;
+  fillDaysThreshold = 30;
   selectedFillClient: ClientRecommendation | null = null;
   private fillClientMarkers: mapboxgl.Marker[] = [];
   private fillActionStates = new Map<string, ClientActionState>();
-  readonly FILL_THRESHOLD_PRESETS = [7, 14, 21, 30, 60];
+  readonly FILL_THRESHOLD_PRESETS = [14, 21, 30, 60, 90];
 
   // UI state
   viewMode: 'markers' | 'heatmap' = 'markers';
