@@ -1422,6 +1422,16 @@
       background-color: #e1bee7;
     }
   }
+
+  &.fill-profile-btn {
+    background-color: $gray-100;
+    border-color: $gray-300;
+    color: $gray-700;
+
+    &:hover {
+      background-color: $gray-200;
+    }
+  }
 }
 
 .fill-sent-chip {

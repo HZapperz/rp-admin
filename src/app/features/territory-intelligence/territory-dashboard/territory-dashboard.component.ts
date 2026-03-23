@@ -826,6 +826,11 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.fillActionStates.set(client.id, { ...currentState, showSmsInput: false });
   }
 
+  openClientProfile(clientId: string, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/clients', clientId]);
+  }
+
   cancelFillSMS(client: ClientRecommendation, event: Event): void {
     event.stopPropagation();
     const state = this.getFillActionState(client.id);
