@@ -7,7 +7,7 @@ import {
   ViewChild,
   AfterViewInit
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -51,6 +51,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   private supabase = inject(SupabaseService);
   private fillScheduleService = inject(FillScheduleService);
   private router = inject(Router);
+  private location = inject(Location);
   @ViewChild('mapCanvas') mapCanvas!: ElementRef<HTMLDivElement>;
   map: mapboxgl.Map | null = null;
   private mapMarkers: mapboxgl.Marker[] = [];
@@ -126,6 +127,22 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   // TAB MANAGEMENT
   // =========================================================================
 
+  /** Encode current view state into the URL so browser back restores correctly. */
+  private updateUrlState(): void {
+    const params = new URLSearchParams({ view: 'map', tab: this.activeTab, date: this.selectedDate });
+    this.location.replaceState('/dashboard', params.toString());
+  }
+
+  /** Called by DashboardComponent after reading URL params on init. */
+  restoreState(tab: 'territory' | 'bookings' | 'fill', date: string): void {
+    if (date) this.selectedDate = date;
+    if (tab !== 'territory') {
+      this.setTab(tab);
+    } else {
+      this.updateUrlState();
+    }
+  }
+
   setTab(tab: 'territory' | 'bookings' | 'fill'): void {
     if (this.activeTab === tab) return;
     this.activeTab = tab;
@@ -171,6 +188,9 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       this.clearFillClientMarkers();
       this.renderCustomerMarkers();
     }
+
+    // Encode state in URL so browser back restores this view
+    this.updateUrlState();
 
     // Resize map after grid reflow
     setTimeout(() => this.map?.resize(), 50);
@@ -374,6 +394,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.selectedDate = this.dateToString(d);
     this.dayDataLoaded = false;
     this.fillDataLoaded = false;
+    this.updateUrlState();
     this.loadDayBookings();
   }
 
@@ -383,6 +404,7 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.selectedDate = this.dateToString(d);
     this.dayDataLoaded = false;
     this.fillDataLoaded = false;
+    this.updateUrlState();
     this.loadDayBookings();
   }
 
@@ -390,12 +412,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
     this.selectedDate = this.getTodayString();
     this.dayDataLoaded = false;
     this.fillDataLoaded = false;
+    this.updateUrlState();
     this.loadDayBookings();
   }
 
   onDateChange(): void {
     this.dayDataLoaded = false;
     this.fillDataLoaded = false;
+    this.updateUrlState();
     this.loadDayBookings();
   }
 

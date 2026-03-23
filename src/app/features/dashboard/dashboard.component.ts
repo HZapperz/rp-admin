@@ -1,6 +1,6 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
 import { KPIData, BookingWithDetails } from '../../core/models/types';
@@ -41,7 +41,7 @@ interface DaySlot {
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, AfterViewInit {
   @ViewChild(TerritoryDashboardComponent) territoryMap?: TerritoryDashboardComponent;
 
   dashboardView: 'schedule' | 'map' = 'schedule';
@@ -49,8 +49,9 @@ export class DashboardComponent implements OnInit {
   setDashboardView(v: 'schedule' | 'map'): void {
     this.dashboardView = v;
     if (v === 'map') {
-      // Wait one tick for [hidden] to clear, then resize the Mapbox canvas
       setTimeout(() => this.territoryMap?.onShow(), 50);
+    } else {
+      this.location.replaceState('/dashboard');
     }
   }
   // New KPI data structure
@@ -90,16 +91,33 @@ export class DashboardComponent implements OnInit {
     private analyticsService: AnalyticsService,
     private bookingService: BookingService,
     private businessSettingsService: BusinessSettingsService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute,
+    private location: Location
   ) {}
 
   async ngOnInit(): Promise<void> {
+    // Restore map view state from URL params (e.g. when navigating back from client profile)
+    const params = this.route.snapshot.queryParams;
+    if (params['view'] === 'map') {
+      this.dashboardView = 'map';
+    }
+
     this.generateTimeSlots();
     await Promise.all([
       this.loadKPIs(),
       this.loadSchedule()
     ]);
     this.loadBusinessSettingsSummary();
+  }
+
+  ngAfterViewInit(): void {
+    const params = this.route.snapshot.queryParams;
+    if (params['view'] === 'map' && this.territoryMap) {
+      const tab = (params['tab'] as 'territory' | 'bookings' | 'fill') || 'territory';
+      const date = params['date'] || '';
+      setTimeout(() => this.territoryMap?.restoreState(tab, date), 100);
+    }
   }
 
   private generateTimeSlots(): void {
