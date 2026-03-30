@@ -68,6 +68,8 @@ export interface Pet {
   additional_notes?: string;
   rabies_vaccination_date?: string;
   rabies_expiration_date?: string;
+  rabies_pending?: boolean;
+  rabies_pending_acknowledged_at?: string;
 }
 
 // Service Types

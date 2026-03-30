@@ -187,6 +187,8 @@ export interface Pet {
   has_behavioral_issues?: boolean;
   behavioral_issue_details?: string;
   additional_notes?: string;
+  rabies_pending?: boolean;
+  rabies_pending_acknowledged_at?: string;
   created_at: string;
   updated_at: string;
 }

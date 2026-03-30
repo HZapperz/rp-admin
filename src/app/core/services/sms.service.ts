@@ -59,6 +59,14 @@ export interface SendReplyRequest {
   media_urls?: string[];
 }
 
+const CACHE_KEY = 'rp_sms_conversations_v1';
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+interface ConversationsCache {
+  conversations: SMSConversation[];
+  timestamp: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -70,9 +78,51 @@ export class SMSService {
   private unreadCountSubject = new BehaviorSubject<number>(0);
   public unreadCount$ = this.unreadCountSubject.asObservable();
 
-  /**
-   * Get conversation statistics
-   */
+  // In-memory cache — survives navigation within the same session
+  private conversationsSubject = new BehaviorSubject<SMSConversation[]>([]);
+  public conversations$ = this.conversationsSubject.asObservable();
+
+  getCachedConversations(): SMSConversation[] {
+    return this.conversationsSubject.getValue();
+  }
+
+  constructor() {
+    // Seed in-memory BehaviorSubject from localStorage on service init
+    const cached = this.readCache();
+    if (cached) {
+      this.conversationsSubject.next(cached.conversations);
+    }
+  }
+
+  // ─── Cache helpers ────────────────────────────────────────────────────────
+
+  private readCache(): ConversationsCache | null {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const parsed: ConversationsCache = JSON.parse(raw);
+      if (Date.now() - parsed.timestamp > CACHE_TTL_MS) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeCache(conversations: SMSConversation[]): void {
+    try {
+      const payload: ConversationsCache = { conversations, timestamp: Date.now() };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    } catch {
+      // localStorage full or unavailable — silently skip
+    }
+  }
+
+  invalidateCache(): void {
+    localStorage.removeItem(CACHE_KEY);
+  }
+
+  // ─── Stats ────────────────────────────────────────────────────────────────
+
   getStats(): Observable<ConversationStats> {
     return from(this.fetchStats()).pipe(
       tap(stats => this.unreadCountSubject.next(stats.unread_conversations))
@@ -83,46 +133,38 @@ export class SMSService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get conversation counts by status
-    const { data: conversations, error: convError } = await this.supabase
-      .from('sms_conversations')
-      .select('status, unread_count');
+    // Run both queries in parallel
+    const [convResult, msgResult] = await Promise.all([
+      this.supabase.from('sms_conversations').select('status, unread_count'),
+      this.supabase
+        .from('sms_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('direction', 'outbound')
+        .gte('created_at', today.toISOString())
+    ]);
 
-    if (convError) throw convError;
-
-    // Get messages sent today
-    const { count: messagesSentToday, error: msgError } = await this.supabase
-      .from('sms_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('direction', 'outbound')
-      .gte('created_at', today.toISOString());
-
-    if (msgError) throw msgError;
+    if (convResult.error) throw convResult.error;
 
     const stats: ConversationStats = {
       active_conversations: 0,
       escalated_conversations: 0,
       resolved_conversations: 0,
       unread_conversations: 0,
-      messages_sent_today: messagesSentToday || 0
+      messages_sent_today: msgResult.count || 0
     };
 
-    if (conversations) {
-      for (const conv of conversations) {
-        if (conv.status === 'active') stats.active_conversations++;
-        else if (conv.status === 'escalated') stats.escalated_conversations++;
-        else if (conv.status === 'resolved') stats.resolved_conversations++;
-
-        if (conv.unread_count > 0) stats.unread_conversations++;
-      }
+    for (const conv of (convResult.data || [])) {
+      if (conv.status === 'active') stats.active_conversations++;
+      else if (conv.status === 'escalated') stats.escalated_conversations++;
+      else if (conv.status === 'resolved') stats.resolved_conversations++;
+      if (conv.unread_count > 0) stats.unread_conversations++;
     }
 
     return stats;
   }
 
-  /**
-   * List conversations with optional filters
-   */
+  // ─── Conversations list ───────────────────────────────────────────────────
+
   getConversations(options?: {
     status?: string;
     userType?: string;
@@ -164,52 +206,61 @@ export class SMSService {
     const { data, count, error } = await query;
     if (error) throw error;
 
-    // Fetch user names and last messages
-    const conversations = await this.enrichConversations(data || []);
+    // Batch-enrich (2 queries total instead of 2N)
+    const conversations = await this.enrichConversationsBatch(data || []);
 
-    return {
-      conversations,
-      count: count || 0
-    };
-  }
+    this.conversationsSubject.next(conversations);
+    this.writeCache(conversations);
 
-  private async enrichConversations(conversations: any[]): Promise<SMSConversation[]> {
-    const enriched: SMSConversation[] = [];
-
-    for (const conv of conversations) {
-      // Get user name if user_id exists
-      let userName: string | undefined;
-      if (conv.user_id) {
-        const { data: user } = await this.supabase
-          .from('users')
-          .select('first_name, last_name')
-          .eq('id', conv.user_id)
-          .single();
-        userName = user ? `${user.first_name} ${user.last_name}`.trim() : undefined;
-      }
-
-      // Get last message
-      const { data: lastMessage } = await this.supabase
-        .from('sms_messages')
-        .select('content')
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      enriched.push({
-        ...conv,
-        user_name: userName,
-        last_message: lastMessage?.content
-      });
-    }
-
-    return enriched;
+    return { conversations, count: count || 0 };
   }
 
   /**
-   * Get a single conversation with messages
+   * Replaces the old N+1 loop with 2 parallel batch queries:
+   *  1. Fetch all relevant user names in one .in() call
+   *  2. Fetch the most recent messages for all conversation IDs in one query,
+   *     then pick the first per conversation in JS
    */
+  private async enrichConversationsBatch(conversations: any[]): Promise<SMSConversation[]> {
+    if (conversations.length === 0) return [];
+
+    const userIds = [...new Set(conversations.filter(c => c.user_id).map(c => c.user_id as string))];
+    const convIds = conversations.map(c => c.id as string);
+
+    const [usersResult, msgsResult] = await Promise.all([
+      userIds.length > 0
+        ? this.supabase.from('users').select('id, first_name, last_name').in('id', userIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+      this.supabase
+        .from('sms_messages')
+        .select('conversation_id, content, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false })
+        .limit(convIds.length * 4) // generous cap — picks latest per convo in JS below
+    ]);
+
+    const userMap: Record<string, string> = {};
+    for (const u of (usersResult.data || [])) {
+      userMap[u.id] = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
+    }
+
+    // First occurrence per conversation_id = most recent message (already sorted DESC)
+    const lastMsgMap: Record<string, string> = {};
+    for (const msg of (msgsResult.data || [])) {
+      if (msg.conversation_id && !lastMsgMap[msg.conversation_id]) {
+        lastMsgMap[msg.conversation_id] = msg.content;
+      }
+    }
+
+    return conversations.map(conv => ({
+      ...conv,
+      user_name: conv.user_id ? userMap[conv.user_id] : undefined,
+      last_message: lastMsgMap[conv.id]
+    }));
+  }
+
+  // ─── Single conversation ──────────────────────────────────────────────────
+
   getConversation(conversationId: string): Observable<{
     conversation: SMSConversation;
     messages: SMSMessage[];
@@ -221,16 +272,21 @@ export class SMSService {
     conversation: SMSConversation;
     messages: SMSMessage[];
   }> {
-    // Get conversation
-    const { data: conv, error: convError } = await this.supabase
-      .from('sms_conversations')
-      .select('*')
-      .eq('id', conversationId)
-      .single();
+    // Fetch conversation, user name, and messages in parallel
+    const [convResult, msgsResult] = await Promise.all([
+      this.supabase.from('sms_conversations').select('*').eq('id', conversationId).single(),
+      this.supabase
+        .from('sms_messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+    ]);
 
-    if (convError) throw convError;
+    if (convResult.error) throw convResult.error;
+    if (msgsResult.error) throw msgsResult.error;
 
-    // Get user name
+    const conv = convResult.data;
+
     let userName: string | undefined;
     if (conv.user_id) {
       const { data: user } = await this.supabase
@@ -238,36 +294,24 @@ export class SMSService {
         .select('first_name, last_name')
         .eq('id', conv.user_id)
         .single();
-      userName = user ? `${user.first_name} ${user.last_name}`.trim() : undefined;
+      userName = user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() : undefined;
     }
 
-    // Get messages
-    const { data: messages, error: msgError } = await this.supabase
-      .from('sms_messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-
-    if (msgError) throw msgError;
-
-    // Mark as read (reset unread count)
-    await this.supabase
+    // Mark as read — fire and forget
+    this.supabase
       .from('sms_conversations')
       .update({ unread_count: 0 })
-      .eq('id', conversationId);
+      .eq('id', conversationId)
+      .then(() => {});
 
     return {
-      conversation: {
-        ...conv,
-        user_name: userName
-      },
-      messages: messages || []
+      conversation: { ...conv, user_name: userName },
+      messages: msgsResult.data || []
     };
   }
 
-  /**
-   * Send a reply in a conversation — inserts DB record then calls Python SMS service
-   */
+  // ─── Send reply ───────────────────────────────────────────────────────────
+
   sendReply(conversationId: string, request: SendReplyRequest, adminId?: string): Observable<{
     status: string;
     message: SMSMessage;
@@ -281,7 +325,6 @@ export class SMSService {
     message: SMSMessage;
     twilio_sid: string;
   }> {
-    // Create message record
     const messageData = {
       conversation_id: conversationId,
       direction: 'outbound',
@@ -300,16 +343,14 @@ export class SMSService {
 
     if (error) throw error;
 
-    // Update conversation last_message_at
+    // Update conversation + invalidate cache so list refreshes next visit
     await this.supabase
       .from('sms_conversations')
-      .update({
-        last_message_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .update({ last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', conversationId);
 
-    // Send via Vercel Edge Function (keeps API key server-side)
+    this.invalidateCache();
+
     const res = await fetch('/api/send-sms-reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -324,23 +365,14 @@ export class SMSService {
         .eq('id', message.id);
       message.twilio_sid = sent.twilio_sid;
       message.status = 'sent';
-      return {
-        status: 'sent',
-        message: message as SMSMessage,
-        twilio_sid: sent.twilio_sid
-      };
+      return { status: 'sent', message: message as SMSMessage, twilio_sid: sent.twilio_sid };
     }
 
-    return {
-      status: 'queued',
-      message: message as SMSMessage,
-      twilio_sid: ''
-    };
+    return { status: 'queued', message: message as SMSMessage, twilio_sid: '' };
   }
 
-  /**
-   * Update conversation status or assignment
-   */
+  // ─── Update / resolve ─────────────────────────────────────────────────────
+
   updateConversation(conversationId: string, updates: {
     status?: string;
     assigned_admin_id?: string;
@@ -352,9 +384,7 @@ export class SMSService {
     status?: string;
     assigned_admin_id?: string;
   }): Promise<{ status: string; conversation: SMSConversation }> {
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
+    const updateData: any = { updated_at: new Date().toISOString() };
 
     if (updates.status) {
       updateData.status = updates.status;
@@ -375,22 +405,15 @@ export class SMSService {
 
     if (error) throw error;
 
-    return {
-      status: 'success',
-      conversation: data as SMSConversation
-    };
+    this.invalidateCache();
+
+    return { status: 'success', conversation: data as SMSConversation };
   }
 
-  /**
-   * Resolve a conversation
-   */
   resolveConversation(conversationId: string): Observable<{ status: string; conversation: SMSConversation }> {
     return this.updateConversation(conversationId, { status: 'resolved' });
   }
 
-  /**
-   * Refresh unread count
-   */
   refreshUnreadCount(): void {
     this.getStats().subscribe();
   }

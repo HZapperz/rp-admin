@@ -129,6 +129,11 @@
             >
               {{ getStatusLabel(booking.status) }}
             </span>
+            @if (hasMissingRabies(booking)) {
+            <span class="rabies-missing-badge" title="One or more pets are missing a rabies certificate">
+              ⚠ Rabies
+            </span>
+            }
           </td>
           <td class="photos-cell">
             @if (hasPhotos(booking)) {
@@ -204,6 +209,11 @@
           <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
             {{ getStatusLabel(booking.status) }}
           </span>
+          @if (hasMissingRabies(booking)) {
+          <span class="rabies-missing-badge" title="One or more pets are missing a rabies certificate">
+            ⚠ Rabies
+          </span>
+          }
         </div>
         <button
           class="expand-toggle-btn"

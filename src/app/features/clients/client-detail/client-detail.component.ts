@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import {
   ClientService,
   ClientDetailData,
@@ -67,7 +68,8 @@ export class ClientDetailComponent implements OnInit {
     private location: Location,
     private clientService: ClientService,
     private authService: AuthService,
-    private supabaseService: SupabaseService
+    private supabaseService: SupabaseService,
+    private sanitizer: DomSanitizer
   ) {}
 
   async ngOnInit() {
@@ -274,6 +276,40 @@ export class ClientDetailComponent implements OnInit {
     
     // Fallback: assume pet-photos bucket and use the whole string as path
     return this.supabaseService.getPublicUrl('pet-photos', photoUrl);
+  }
+
+  hasPetsMissingRabies(): boolean {
+    return this.clientData?.pets.some(p => !p.rabies_certificate_url) ?? false;
+  }
+
+  getRabiesRequestSmsUrl(): SafeUrl {
+    const phone = this.clientData?.client?.phone;
+    if (!phone) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const firstName = this.clientData?.client?.first_name || '';
+    const missing = (this.clientData?.pets ?? []).filter(p => !p.rabies_certificate_url);
+    if (missing.length === 0) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const petNames = missing.length === 1
+      ? missing[0].name
+      : missing.map(p => p.name).join(' & ');
+
+    const msg = `Hi ${firstName}! This is Royal Pawz 🐾 We need a current rabies certificate for ${petNames} before we can confirm your grooming appointment. You can upload it quickly at royalpawzusa.com — log in, go to My Pets, and tap Rabies Certificate. Thank you!`;
+
+    return this.sanitizer.bypassSecurityTrustUrl(
+      `sms:${phone}&body=${encodeURIComponent(msg)}`
+    );
+  }
+
+  openRabiesCert(certUrl: string): void {
+    if (!certUrl) return;
+    if (certUrl.startsWith('http://') || certUrl.startsWith('https://')) {
+      window.open(certUrl, '_blank');
+      return;
+    }
+    const parts = certUrl.replace('pet-certificates/', '');
+    const publicUrl = this.supabaseService.getPublicUrl('pet-certificates', parts);
+    window.open(publicUrl, '_blank');
   }
 
   // ============================================

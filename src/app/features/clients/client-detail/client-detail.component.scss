@@ -768,6 +768,20 @@
   color: #5b21b6;
 }
 
+.badge-rabies-ok {
+  background: #dcfce7;
+  color: #15803d;
+  cursor: pointer;
+  &:hover {
+    background: #bbf7d0;
+  }
+}
+
+.badge-rabies-missing {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
 .expand-btn {
   width: 100%;
   padding: 0.375rem;
@@ -1138,6 +1152,19 @@
 .form-textarea-compact {
   resize: vertical;
   min-height: 60px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-sms-rabies {
+  text-decoration: none;
+  background: #d97706 !important;
+  &:hover { background: #b45309 !important; }
 }
 
 .btn-add-compact {

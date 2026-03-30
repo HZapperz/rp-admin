@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { BookingService } from '../../../core/services/booking.service';
 import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
@@ -53,6 +54,7 @@ export class BookingDetailsComponent implements OnInit {
   private changeRequestService = inject(ChangeRequestService);
   private packageService = inject(PackageService);
   private clientService = inject(ClientService);
+  private sanitizer = inject(DomSanitizer);
   private http = inject(HttpClient);
   private location = inject(Location);
 
@@ -1264,6 +1266,15 @@ export class BookingDetailsComponent implements OnInit {
 
     if (this.assigningGroomer) return; // Prevent double submission
 
+    // Block confirmation if any pet is missing a rabies certificate
+    const missingCertPets = this.booking.pets
+      ?.filter(bp => !bp.pet?.rabies_certificate_url)
+      .map(bp => bp.pet?.name || 'Unknown pet') || [];
+    if (missingCertPets.length) {
+      alert(`Cannot confirm: ${missingCertPets.join(', ')} ${missingCertPets.length === 1 ? 'is' : 'are'} missing a rabies certificate. The client must upload it before this booking can be confirmed.`);
+      return;
+    }
+
     // Get time values based on mode
     let timeSlotStart: string;
     let timeSlotEnd: string;
@@ -1350,7 +1361,10 @@ export class BookingDetailsComponent implements OnInit {
 
       // Step 4: Send SMS confirmation and schedule reminders via Edge Function (fire-and-forget)
       const clientPhone = updatedBooking.client?.phone;
-      const petName = updatedBooking.pets?.[0]?.pet?.name || 'your pet';
+      const petNames = updatedBooking.pets?.map(bp => bp.pet?.name).filter(Boolean) || [];
+      const petName = petNames.length > 1
+        ? petNames.slice(0, -1).join(', ') + ' & ' + petNames[petNames.length - 1]
+        : petNames[0] || 'your pet';
 
       if (clientPhone) {
         fetch('/api/send-booking-sms', {
@@ -1407,6 +1421,29 @@ export class BookingDetailsComponent implements OnInit {
     } else {
       alert('Failed to reject booking. Please try again.');
     }
+  }
+
+  getRabiesRequestSmsUrl(): SafeUrl {
+    const phone = this.booking?.client?.phone;
+    if (!phone) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const firstName = this.booking?.client?.first_name || '';
+    const missing = (this.booking?.pets ?? [])
+      .filter(bp => !bp.pet?.rabies_certificate_url)
+      .map(bp => bp.pet?.name || 'your pet');
+
+    if (missing.length === 0) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const petNames = missing.length === 1 ? missing[0] : missing.join(' & ');
+    const msg = `Hi ${firstName}! This is Royal Pawz 🐾 We need a current rabies certificate for ${petNames} before we can confirm your grooming appointment. You can upload it quickly at royalpawzusa.com — log in, go to My Pets, and tap Rabies Certificate. Thank you!`;
+
+    return this.sanitizer.bypassSecurityTrustUrl(
+      `sms:${phone}&body=${encodeURIComponent(msg)}`
+    );
+  }
+
+  hasPetsMissingRabies(): boolean {
+    return this.booking?.pets?.some(bp => !bp.pet?.rabies_certificate_url) ?? false;
   }
 
   viewRabiesCertificate(url: string) {

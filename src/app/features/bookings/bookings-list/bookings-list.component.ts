@@ -154,6 +154,10 @@ export class BookingsListComponent implements OnInit {
     window.open(url, '_blank');
   }
 
+  hasMissingRabies(booking: BookingWithDetails): boolean {
+    return booking.pets?.some(bp => !bp.pet?.rabies_certificate_url) ?? false;
+  }
+
   // Helper methods to check for pet photos
   hasPhotos(booking: BookingWithDetails): boolean {
     return booking.pets?.some(pet => pet.before_photo_url || pet.after_photo_url) || false;

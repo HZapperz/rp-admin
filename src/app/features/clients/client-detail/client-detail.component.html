@@ -166,12 +166,25 @@
       <div class="compact-card">
         <div class="compact-header">
           <h3>Pets ({{ clientData.pets.length }})</h3>
-          <button class="btn-add-compact" (click)="openAddPetModal()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Add Pet
-          </button>
+          <div class="header-actions">
+            <a
+              *ngIf="hasPetsMissingRabies() && clientData.client.phone"
+              [href]="getRabiesRequestSmsUrl()"
+              class="btn-add-compact btn-sms-rabies"
+              title="Text client to upload rabies certificate"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Request Rabies Cert
+            </a>
+            <button class="btn-add-compact" (click)="openAddPetModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Add Pet
+            </button>
+          </div>
         </div>
         <div *ngIf="clientData.pets.length === 0" class="empty-state">
           No pets registered
@@ -194,6 +207,17 @@
                 <span class="pet-breed">{{ pet.breed || 'Unknown breed' }}</span>
                 <div class="pet-badges-compact">
                   <span class="badge-small" *ngIf="pet.size_category">{{ pet.size_category }}</span>
+                  <span
+                    *ngIf="pet.rabies_certificate_url"
+                    class="badge-small badge-rabies-ok"
+                    (click)="openRabiesCert(pet.rabies_certificate_url!); $event.stopPropagation()"
+                    title="View rabies certificate"
+                  >✓ Rabies</span>
+                  <span
+                    *ngIf="!pet.rabies_certificate_url"
+                    class="badge-small badge-rabies-missing"
+                    title="No rabies certificate on file"
+                  >✗ Rabies</span>
                 </div>
               </div>
             </div>

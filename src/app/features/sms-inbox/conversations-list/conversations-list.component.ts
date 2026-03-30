@@ -17,9 +17,9 @@ export class ConversationsListComponent implements OnInit, OnDestroy {
   conversations: SMSConversation[] = [];
   stats: ConversationStats | null = null;
   isLoading = true;
+  isRefreshing = false;
   error: string | null = null;
 
-  // Filters
   selectedStatus: string = 'all';
   searchTerm: string = '';
 
@@ -31,16 +31,20 @@ export class ConversationsListComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.loadStats();
-    this.loadConversations();
+    // Show cached data instantly — no spinner if we have something
+    const cached = this.smsService.getCachedConversations();
+    if (cached.length > 0) {
+      this.conversations = cached;
+      this.isLoading = false;
+    }
+
+    // Always kick off a background refresh
+    this.refresh();
 
     // Auto-refresh every 30 seconds
     interval(30000)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.loadConversations();
-        this.loadStats();
-      });
+      .subscribe(() => this.refresh());
   }
 
   ngOnDestroy() {
@@ -48,52 +52,53 @@ export class ConversationsListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadStats() {
+  private refresh() {
+    const showSpinner = this.conversations.length === 0;
+    if (!showSpinner) this.isRefreshing = true;
+
+    const options: { status?: string } = {};
+    if (this.selectedStatus !== 'all') options.status = this.selectedStatus;
+
+    // Stats and conversations in parallel
     this.smsService.getStats().subscribe({
-      next: (stats) => {
-        this.stats = stats;
+      next: stats => { this.stats = stats; },
+      error: () => {}
+    });
+
+    this.smsService.getConversations(options).subscribe({
+      next: response => {
+        this.conversations = response.conversations;
+        this.isLoading = false;
+        this.isRefreshing = false;
+        this.error = null;
       },
-      error: (err) => {
-        console.error('Error loading stats:', err);
+      error: err => {
+        console.error('Error loading conversations:', err);
+        if (this.conversations.length === 0) {
+          this.error = 'Failed to load conversations';
+        }
+        this.isLoading = false;
+        this.isRefreshing = false;
       }
     });
   }
 
   loadConversations() {
-    const options: { status?: string } = {};
-
-    if (this.selectedStatus !== 'all') {
-      options.status = this.selectedStatus;
-    }
-
-    this.smsService.getConversations(options).subscribe({
-      next: (response) => {
-        this.conversations = response.conversations;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading conversations:', err);
-        this.error = 'Failed to load conversations';
-        this.isLoading = false;
-      }
-    });
+    this.refresh();
   }
 
   onStatusFilterChange(event: Event) {
     this.selectedStatus = (event.target as HTMLSelectElement).value;
-    this.loadConversations();
+    this.isLoading = this.conversations.length === 0;
+    this.refresh();
   }
 
   onSearchChange(event: Event) {
     this.searchTerm = (event.target as HTMLInputElement).value;
-    // Filter locally for responsiveness
   }
 
   getFilteredConversations(): SMSConversation[] {
-    if (!this.searchTerm) {
-      return this.conversations;
-    }
-
+    if (!this.searchTerm) return this.conversations;
     const term = this.searchTerm.toLowerCase();
     return this.conversations.filter(c =>
       c.user_name?.toLowerCase().includes(term) ||
@@ -145,7 +150,6 @@ export class ConversationsListComponent implements OnInit, OnDestroy {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 }
