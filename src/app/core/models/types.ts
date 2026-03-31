@@ -209,6 +209,7 @@ export interface BookingWithDetails extends Booking {
     avatar_url?: string;
     phone?: string;
     email?: string;
+    sms_consent?: boolean | null;
   };
   pets?: Array<
     BookingPet & {

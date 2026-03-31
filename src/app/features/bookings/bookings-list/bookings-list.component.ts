@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
 import { BookingWithDetails, BookingStatus } from '../../../core/models/types';
@@ -26,7 +27,8 @@ export class BookingsListComponent implements OnInit {
   constructor(
     private bookingService: BookingService,
     private groomerService: GroomerService,
-    private router: Router
+    private router: Router,
+    private sanitizer: DomSanitizer
   ) {}
 
   async ngOnInit() {
@@ -60,8 +62,9 @@ export class BookingsListComponent implements OnInit {
 
     // Filter by status
     if (this.selectedStatus === 'unassigned') {
-      // Show bookings without an assigned groomer
       filtered = filtered.filter(b => !b.groomer_id && b.status === 'pending');
+    } else if (this.selectedStatus === 'needs_reminder') {
+      filtered = filtered.filter(b => this.isNeedingManualReminder(b));
     } else if (this.selectedStatus !== 'all') {
       filtered = filtered.filter(b => b.status === this.selectedStatus);
     }
@@ -156,6 +159,53 @@ export class BookingsListComponent implements OnInit {
 
   hasMissingRabies(booking: BookingWithDetails): boolean {
     return booking.pets?.some(bp => !bp.pet?.rabies_certificate_url) ?? false;
+  }
+
+  /** True when booking is confirmed, within 24h, and client explicitly declined SMS */
+  isNeedingManualReminder(booking: BookingWithDetails): boolean {
+    if (booking.status !== 'confirmed') return false;
+    if (booking.client?.sms_consent !== false) return false;
+
+    const scheduledDate = booking.scheduled_date;
+    const scheduledTime = booking.scheduled_time_start;
+    if (!scheduledDate || !scheduledTime) return false;
+
+    const timeParts = scheduledTime.split(':');
+    const apptDt = new Date(scheduledDate + 'T00:00:00Z');
+    apptDt.setUTCHours(parseInt(timeParts[0], 10), parseInt(timeParts[1], 10), 0, 0);
+
+    const now = Date.now();
+    const diffMs = apptDt.getTime() - now;
+    return diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000;
+  }
+
+  get needsReminderCount(): number {
+    return this.bookings.filter(b => this.isNeedingManualReminder(b)).length;
+  }
+
+  getAppointmentReminderSmsUrl(booking: BookingWithDetails): SafeUrl {
+    const phone = booking.client?.phone;
+    if (!phone) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const firstName = booking.client?.first_name || '';
+    const petNames = (booking.pets ?? [])
+      .map(bp => bp.pet?.name)
+      .filter(Boolean)
+      .join(' & ') || 'your pet';
+
+    const timeParts = (booking.scheduled_time_start || '').split(':');
+    const timeDisplay = timeParts.length >= 2
+      ? new Date(0, 0, 0, parseInt(timeParts[0], 10), parseInt(timeParts[1], 10))
+          .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : booking.scheduled_time_start;
+
+    const hasMissingRabies = this.hasMissingRabies(booking);
+    const rabiesPart = hasMissingRabies
+      ? ` Please also have the rabies vaccination certificate ready — text us at (832) 504-0760 or reply to your confirmation email to submit it.`
+      : '';
+
+    const msg = `Hi ${firstName}! Reminder: ${petNames}'s grooming is tomorrow at ${timeDisplay}.${rabiesPart} See you soon! 🐾`;
+    return this.sanitizer.bypassSecurityTrustUrl(`sms:${phone}&body=${encodeURIComponent(msg)}`);
   }
 
   // Helper methods to check for pet photos

@@ -22,6 +22,7 @@
         [value]="selectedStatus"
       >
         <option value="all">All Statuses</option>
+        <option value="needs_reminder">📲 iMessage Reminder Needed ({{ needsReminderCount }})</option>
         <option value="unassigned">🔴 Unassigned (Needs Groomer)</option>
         <option value="pending">Pending</option>
         <option value="confirmed">Confirmed</option>
@@ -162,6 +163,19 @@
             }
           </td>
           <td class="actions">
+            @if (isNeedingManualReminder(booking)) {
+            <a
+              [href]="getAppointmentReminderSmsUrl(booking)"
+              class="btn btn-sms-reminder"
+              title="Open iMessage to send 24h reminder"
+              (click)="$event.stopPropagation()"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              iMessage
+            </a>
+            }
             <button
               class="btn btn-view"
               (click)="$event.stopPropagation(); openBookingDetail(booking)"
@@ -331,6 +345,19 @@
 
       <!-- Always visible footer with View Details button -->
       <div class="booking-card-footer">
+        @if (isNeedingManualReminder(booking)) {
+        <a
+          [href]="getAppointmentReminderSmsUrl(booking)"
+          class="btn btn-sms-reminder"
+          title="Send 24h reminder via iMessage"
+          (click)="$event.stopPropagation()"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          SMS Reminder
+        </a>
+        }
         <button
           class="btn btn-view"
           (click)="$event.stopPropagation(); openBookingDetail(booking)"

@@ -90,7 +90,7 @@ export class BookingService {
         : Promise.resolve({ data: [], error: null }),
       this.supabase
         .from('users')
-        .select('id, first_name, last_name, avatar_url, phone, email')
+        .select('id, first_name, last_name, avatar_url, phone, email, sms_consent')
         .in('id', clientIds),
       this.supabase
         .from('booking_pets')
@@ -200,7 +200,7 @@ export class BookingService {
         : Promise.resolve({ data: null, error: null }),
       this.supabase
         .from('users')
-        .select('id, first_name, last_name, avatar_url, phone, email')
+        .select('id, first_name, last_name, avatar_url, phone, email, sms_consent')
         .eq('id', booking.client_id)
         .single(),
       this.supabase
