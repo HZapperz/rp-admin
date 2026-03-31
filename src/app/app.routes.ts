@@ -109,6 +109,11 @@ export const routes: Routes = [
           import('./features/sms-inbox/sms-inbox.routes').then(m => m.routes)
       },
       {
+        path: 'reminders',
+        loadChildren: () =>
+          import('./features/reminders/reminders.routes').then(m => m.routes)
+      },
+      {
         path: 'ab-tests',
         loadChildren: () =>
           import('./features/ab-tests/ab-tests.routes').then(m => m.routes)

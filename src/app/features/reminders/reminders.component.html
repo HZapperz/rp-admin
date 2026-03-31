@@ -1,0 +1,237 @@
+<div class="reminders-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>💬 SMS Reminders</h1>
+        <p class="subtitle">Automated & manual appointment reminders</p>
+      </div>
+      <button class="refresh-btn" (click)="ngOnInit()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'auto'"
+      (click)="setTab('auto')"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="12 6 12 12 16 14" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Automated Reminders
+      @if (!isLoadingAuto) {
+      <span class="tab-count">{{ autoReminders.length }}</span>
+      }
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'manual'"
+      (click)="setTab('manual')"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Manual iMessage Needed
+      @if (!isLoadingManual) {
+      <span class="tab-count" [class.has-items]="manualReminders.length > 0">{{ manualReminders.length }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- Automated Reminders Tab -->
+  @if (activeTab === 'auto') {
+  <div class="tab-content">
+    <div class="section-description">
+      <p>Automated SMS reminders queued via the scheduler (next 7 days). These send at 9:30 AM CT the day before each appointment.</p>
+    </div>
+
+    @if (isLoadingAuto) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading reminders...</p>
+    </div>
+    } @else if (errorAuto) {
+    <div class="error-message">{{ errorAuto }}</div>
+    } @else if (autoReminders.length === 0) {
+    <div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <p>No automated reminders scheduled for the next 7 days.</p>
+    </div>
+    } @else {
+    <div class="table-container">
+      <table class="reminders-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Pet(s)</th>
+            <th>Appointment</th>
+            <th>Sends At</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (reminder of autoReminders; track reminder.id) {
+          <tr>
+            <td>
+              <div class="client-info">
+                <span class="client-name">{{ reminder.client_name || '—' }}</span>
+                @if (reminder.client_phone) {
+                <span class="client-phone">{{ reminder.client_phone }}</span>
+                }
+              </div>
+            </td>
+            <td>{{ reminder.pet_names || '—' }}</td>
+            <td>
+              @if (reminder.scheduled_date) {
+              <div>{{ formatDate(reminder.scheduled_date) }}</div>
+              }
+              @if (reminder.scheduled_time) {
+              <div class="appt-time">{{ formatApptTime(reminder.scheduled_time) }}</div>
+              }
+            </td>
+            <td class="send-time">{{ formatSendTime(reminder.scheduled_for) }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="getStatusClass(reminder.status)">
+                {{ reminder.status === 'sent' ? 'Sent' : 'Pending' }}
+              </span>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Manual iMessage Tab -->
+  @if (activeTab === 'manual') {
+  <div class="tab-content">
+    <div class="section-description">
+      <p>Confirmed bookings in the next 7 days where the client declined automated SMS. Tap the iMessage button to open a pre-filled message.</p>
+    </div>
+
+    @if (isLoadingManual) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading bookings...</p>
+    </div>
+    } @else if (errorManual) {
+    <div class="error-message">{{ errorManual }}</div>
+    } @else if (manualReminders.length === 0) {
+    <div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <p>No bookings need a manual reminder right now.</p>
+    </div>
+    } @else {
+
+    <!-- Desktop Table -->
+    <div class="table-container desktop-view">
+      <table class="reminders-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Pet(s)</th>
+            <th>Appointment</th>
+            <th>Notes</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (booking of manualReminders; track booking.id) {
+          <tr>
+            <td>
+              <div class="client-info">
+                <span class="client-name">{{ booking.client_first_name }} {{ booking.client_last_name }}</span>
+                @if (booking.client_phone) {
+                <span class="client-phone">{{ booking.client_phone }}</span>
+                }
+              </div>
+            </td>
+            <td>{{ booking.pet_names }}</td>
+            <td>
+              <div>{{ formatDate(booking.scheduled_date) }}</div>
+              @if (booking.scheduled_time_start) {
+              <div class="appt-time">{{ formatApptTime(booking.scheduled_time_start) }}</div>
+              }
+            </td>
+            <td>
+              @if (booking.has_missing_rabies) {
+              <span class="rabies-badge">⚠ Rabies needed</span>
+              } @else {
+              <span class="all-clear">✓ All docs on file</span>
+              }
+            </td>
+            <td>
+              <a
+                [href]="getManualSmsUrl(booking)"
+                class="btn btn-imessage"
+                title="Open iMessage with pre-filled reminder"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                iMessage
+              </a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="cards-container mobile-view">
+      @for (booking of manualReminders; track booking.id) {
+      <div class="reminder-card">
+        <div class="card-top">
+          <div class="card-client">
+            <span class="client-name">{{ booking.client_first_name }} {{ booking.client_last_name }}</span>
+            @if (booking.client_phone) {
+            <span class="client-phone">{{ booking.client_phone }}</span>
+            }
+          </div>
+          @if (booking.has_missing_rabies) {
+          <span class="rabies-badge">⚠ Rabies</span>
+          }
+        </div>
+        <div class="card-row">
+          <span class="card-label">Pet(s):</span>
+          <span>{{ booking.pet_names }}</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Appointment:</span>
+          <span>{{ formatDate(booking.scheduled_date) }}{{ booking.scheduled_time_start ? ' at ' + formatApptTime(booking.scheduled_time_start) : '' }}</span>
+        </div>
+        <div class="card-footer">
+          <a
+            [href]="getManualSmsUrl(booking)"
+            class="btn btn-imessage btn-full"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Send iMessage Reminder
+          </a>
+        </div>
+      </div>
+      }
+    </div>
+
+    }
+  </div>
+  }
+</div>

@@ -55,6 +55,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Service Areas', route: '/service-areas', icon: 'location_on' },
     { label: 'Email Campaign', route: '/email-campaign', icon: 'campaign' },
     { label: 'SMS Inbox', route: '/sms-inbox', icon: 'sms' },
+    { label: 'SMS Reminders', route: '/reminders', icon: 'notifications_active' },
     { label: 'Settings', route: '/profile', icon: 'settings' },
   ];
 
