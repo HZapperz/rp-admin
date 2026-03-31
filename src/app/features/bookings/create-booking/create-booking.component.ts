@@ -234,9 +234,48 @@ export class CreateBookingComponent implements OnInit {
 
       console.log('Submitting booking:', bookingRequest);
 
-      const result = await this.adminBookingService.createBooking(bookingRequest).toPromise();
+      // Check if recurring
+      const recurring = this.paymentConfig?.recurring;
+      if (recurring?.enabled && recurring.count > 1) {
+        const daysPerOccurrence = recurring.frequency === 'weekly' ? 7
+          : recurring.frequency === 'biweekly' ? 14 : 28;
 
-      console.log('Booking created successfully:', result);
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < recurring.count; i++) {
+          const offsetDate = new Date(this.bookingData.scheduled_date! + 'T00:00:00Z');
+          offsetDate.setUTCDate(offsetDate.getUTCDate() + (daysPerOccurrence * i));
+          const dateStr = offsetDate.toISOString().split('T')[0];
+
+          const recurringRequest = {
+            ...bookingRequest,
+            scheduled_date: dateStr,
+            // Only apply credits to the first booking
+            credits_applied: i === 0 ? bookingRequest.credits_applied : 0,
+            pricing_override: i === 0 ? bookingRequest.pricing_override : {
+              ...bookingRequest.pricing_override!,
+              credits_applied: 0
+            }
+          };
+
+          try {
+            await this.adminBookingService.createBooking(recurringRequest).toPromise();
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to create booking ${i + 1}/${recurring.count}:`, err);
+            failCount++;
+          }
+        }
+
+        console.log(`Recurring bookings created: ${successCount} success, ${failCount} failed`);
+        if (failCount > 0) {
+          this.submitError = `Created ${successCount} of ${recurring.count} bookings. ${failCount} failed.`;
+        }
+      } else {
+        const result = await this.adminBookingService.createBooking(bookingRequest).toPromise();
+        console.log('Booking created successfully:', result);
+      }
 
       // Navigate to booking list
       this.router.navigate(['/bookings']);
@@ -263,6 +302,7 @@ export class CreateBookingComponent implements OnInit {
   private calculateAddonPrice(addonId: string, size: string): number {
     // Addon prices - flat rate regardless of size
     const addons: Record<string, number> = {
+      'premium-products': 20,
       'flea-treatment': 20,
       'de-shedding': 30,
       'skunk-works': 100
@@ -273,12 +313,21 @@ export class CreateBookingComponent implements OnInit {
 
   private getAddonName(addonId: string): string {
     const names: Record<string, string> = {
+      'premium-products': 'Premium Products',
       'flea-treatment': 'Flea Treatment',
       'de-shedding': 'De-Shedding',
       'skunk-works': 'Skunk Works'
     };
 
     return names[addonId] || addonId;
+  }
+
+  getSubmitButtonLabel(): string {
+    const r = this.paymentConfig?.recurring;
+    if (r?.enabled && r.count > 1) {
+      return `Create ${r.count} Bookings`;
+    }
+    return 'Create Booking';
   }
 
   // Cancel and go back

@@ -952,6 +952,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
 
   &:hover {
     background: #e5e7eb;
@@ -961,6 +962,11 @@
   &.danger:hover {
     background: #fee2e2;
     color: #dc2626;
+  }
+
+  &.maps-btn:hover {
+    background: #667eea;
+    color: white;
   }
 
   svg {

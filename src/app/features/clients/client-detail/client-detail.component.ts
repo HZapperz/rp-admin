@@ -338,6 +338,16 @@ export class ClientDetailComponent implements OnInit {
     this.showAddAddressModal = true;
   }
 
+  getGoogleMapsUrl(address: Address): string {
+    const parts = [
+      address.street || address.building,
+      address.city,
+      address.state,
+      address.zip_code
+    ].filter(Boolean).join(', ');
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts)}`;
+  }
+
   openEditAddressModal(address: Address): void {
     this.selectedAddress = address;
     this.showEditAddressModal = true;

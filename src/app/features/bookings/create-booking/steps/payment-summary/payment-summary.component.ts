@@ -6,6 +6,12 @@ import { ClientService } from '../../../../../core/services/client.service';
 import { PackageService } from '../../../../../core/services/package.service';
 import { AdminBookingService } from '../../../../../core/services/admin-booking.service';
 
+export interface RecurringConfig {
+  enabled: boolean;
+  frequency: 'weekly' | 'biweekly' | 'monthly';
+  count: number;
+}
+
 export interface PaymentConfig {
   payment_type: 'use_saved_card' | 'cash_on_service';
   payment_method_id?: string;
@@ -14,6 +20,7 @@ export interface PaymentConfig {
   credits_applied: number;
   final_amount: number;
   discount_reason?: string;
+  recurring?: RecurringConfig;
 }
 
 export interface PaymentMethod {
@@ -54,6 +61,11 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
   creditsApplied: number = 0;
   applyCredits: boolean = false;
   isLoadingCredits: boolean = false;
+
+  // Recurring
+  isRecurring: boolean = false;
+  recurringFrequency: 'weekly' | 'biweekly' | 'monthly' = 'weekly';
+  recurringCount: number = 4;
 
   isLoadingPaymentMethods = false;
 
@@ -205,6 +217,22 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     return Math.max(0, this.originalAmount - this.discountAmount - this.creditsApplied);
   }
 
+  onRecurringChange(): void {
+    if (this.recurringCount < 2) this.recurringCount = 2;
+    if (this.recurringCount > 52) this.recurringCount = 52;
+    this.emitPaymentConfig();
+  }
+
+  getLastRecurringDate(): string {
+    if (!this.selectedDateTime?.date || this.recurringCount < 2) return '';
+    const start = new Date(this.selectedDateTime.date + 'T00:00:00Z');
+    const daysPerOccurrence = this.recurringFrequency === 'weekly' ? 7
+      : this.recurringFrequency === 'biweekly' ? 14 : 28;
+    const lastDate = new Date(start);
+    lastDate.setUTCDate(lastDate.getUTCDate() + daysPerOccurrence * (this.recurringCount - 1));
+    return lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  }
+
   emitPaymentConfig(): void {
     const config: PaymentConfig = {
       payment_type: this.paymentType,
@@ -213,7 +241,12 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
       discount_amount: this.discountAmount,
       credits_applied: this.creditsApplied,
       final_amount: this.getFinalAmount(),
-      discount_reason: this.discountReason || undefined
+      discount_reason: this.discountReason || undefined,
+      recurring: this.isRecurring ? {
+        enabled: true,
+        frequency: this.recurringFrequency,
+        count: this.recurringCount
+      } : undefined
     };
 
     this.paymentConfigured.emit(config);

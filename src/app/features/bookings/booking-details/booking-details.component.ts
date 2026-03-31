@@ -1442,6 +1442,10 @@ export class BookingDetailsComponent implements OnInit {
     );
   }
 
+  encodeURIComponent(str: string): string {
+    return encodeURIComponent(str);
+  }
+
   hasPetsMissingRabies(): boolean {
     return this.booking?.pets?.some(bp => !bp.pet?.rabies_certificate_url) ?? false;
   }

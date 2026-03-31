@@ -203,6 +203,53 @@
       </div>
     </div>
 
+    <!-- Recurring Booking -->
+    <div class="recurring-section">
+      <h3 class="section-title">
+        <mat-icon class="title-icon" inline>repeat</mat-icon>
+        Recurring Booking (Optional)
+      </h3>
+
+      <div class="recurring-toggle">
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            [(ngModel)]="isRecurring"
+            (change)="onRecurringChange()"
+          />
+          <span>Make this a recurring booking</span>
+        </label>
+      </div>
+
+      <div class="recurring-options" *ngIf="isRecurring">
+        <div class="recurring-grid">
+          <div class="input-group">
+            <label>Frequency</label>
+            <select [(ngModel)]="recurringFrequency" (change)="onRecurringChange()" class="recurring-select">
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 Weeks</option>
+              <option value="monthly">Monthly (every 4 weeks)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Number of Occurrences</label>
+            <input
+              type="number"
+              [(ngModel)]="recurringCount"
+              (input)="onRecurringChange()"
+              min="2"
+              max="52"
+              class="recurring-input"
+              placeholder="e.g., 4"
+            />
+            <span class="recurring-hint" *ngIf="recurringCount > 1 && selectedDateTime?.date">
+              Creates {{ recurringCount }} bookings through {{ getLastRecurringDate() }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Payment Method -->
     <div class="payment-method-section">
       <h3 class="section-title">

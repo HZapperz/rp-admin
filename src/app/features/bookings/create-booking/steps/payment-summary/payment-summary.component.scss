@@ -365,6 +365,76 @@
     }
   }
 
+  // Recurring Booking Section
+  .recurring-section {
+    .recurring-toggle {
+      margin-bottom: 1rem;
+
+      .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+        color: #1e293b;
+        font-weight: 500;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          accent-color: #667eea;
+          cursor: pointer;
+        }
+      }
+    }
+
+    .recurring-options {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid #86efac;
+      border-radius: 12px;
+
+      .recurring-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+
+          label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #475569;
+          }
+
+          .recurring-select,
+          .recurring-input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #86efac;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            transition: border-color 0.2s;
+
+            &:focus {
+              outline: none;
+              border-color: #22c55e;
+            }
+          }
+
+          .recurring-hint {
+            font-size: 0.75rem;
+            color: #16a34a;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+
   // Payment Method Section
   .payment-method-section {
     .payment-types {

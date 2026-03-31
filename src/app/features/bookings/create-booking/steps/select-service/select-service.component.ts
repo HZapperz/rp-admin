@@ -57,6 +57,12 @@ export class SelectServiceComponent implements OnInit, OnChanges {
 
   addOns: AddOnOption[] = [
     {
+      id: 'premium-products',
+      name: 'Premium Products',
+      description: 'Upgraded shampoo, conditioner, and grooming products',
+      priceBySize: { SMALL: 20, MEDIUM: 20, LARGE: 20, XL: 20 }
+    },
+    {
       id: 'flea-treatment',
       name: 'Flea Treatment',
       description: 'Professional flea treatment and prevention',
