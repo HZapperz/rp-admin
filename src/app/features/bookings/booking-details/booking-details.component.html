@@ -269,7 +269,7 @@
                   Set to Pending
                 </button>
                 <button
-                  *ngIf="booking.status === 'confirmed'"
+                  *ngIf="booking.status === 'confirmed' || booking.status === 'pending'"
                   (click)="openTimeChangeModal()"
                   class="btn-action btn-change-time-small">
                   Change Time
@@ -945,8 +945,8 @@
         </div>
       </div>
       <div class="time-change-dialog-footer">
-        <button (click)="confirmTimeChange()" [disabled]="!newScheduledDate || (!newTimeSlot && !isCustomTimeForChangeValid()) || !timeChangeReason.trim() || savingTimeChange" class="btn-confirm-change">
-          {{ savingTimeChange ? 'Saving...' : 'Save & Notify' }}
+        <button (click)="confirmTimeChange()" [disabled]="!newScheduledDate || (!newTimeSlot && !isCustomTimeForChangeValid()) || (booking?.status !== 'pending' && !timeChangeReason.trim()) || savingTimeChange" class="btn-confirm-change">
+          {{ savingTimeChange ? 'Saving...' : (booking?.status === 'pending' ? 'Save Date' : 'Save & Notify') }}
         </button>
         <button (click)="closeTimeChangeModal()" class="btn-cancel-dialog">Cancel</button>
       </div>

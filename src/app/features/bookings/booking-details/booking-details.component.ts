@@ -1575,7 +1575,7 @@ export class BookingDetailsComponent implements OnInit {
       return;
     }
 
-    if (!this.timeChangeReason.trim()) {
+    if (!this.timeChangeReason.trim() && this.booking.status !== 'pending') {
       alert('Please provide a reason for the time change');
       return;
     }
@@ -1628,31 +1628,36 @@ export class BookingDetailsComponent implements OnInit {
 
       console.log('Booking time updated successfully, fetching updated booking...');
 
-      // Fetch updated booking for email
-      const updatedBooking = await this.bookingService.getBookingById(this.booking.id);
-
-      if (updatedBooking && result.oldValues) {
-        console.log('Sending time change notification emails...');
-
-        // Send time change notification emails
-        const emailResult = await this.emailService.sendTimeChangeEmails(
-          updatedBooking,
-          result.oldValues.scheduled_date,
-          result.oldValues.scheduled_time_start,
-          result.oldValues.scheduled_time_end,
-          this.timeChangeReason
-        );
-
-        if (emailResult.success) {
-          console.log('Email notifications sent successfully');
-          alert('Booking time updated and notifications sent to customer and groomer!');
-        } else {
-          console.error('Email notification failed:', emailResult.error);
-          alert('Booking time updated successfully, but there was an issue sending notification emails. The customer and groomer may not have been notified.');
-        }
+      // Skip email notifications for pending bookings (not yet confirmed)
+      if (this.booking.status === 'pending') {
+        alert('Booking date updated successfully!');
       } else {
-        console.warn('Could not fetch updated booking for email notification');
-        alert('Booking time updated successfully!');
+        // Fetch updated booking for email
+        const updatedBooking = await this.bookingService.getBookingById(this.booking.id);
+
+        if (updatedBooking && result.oldValues) {
+          console.log('Sending time change notification emails...');
+
+          // Send time change notification emails
+          const emailResult = await this.emailService.sendTimeChangeEmails(
+            updatedBooking,
+            result.oldValues.scheduled_date,
+            result.oldValues.scheduled_time_start,
+            result.oldValues.scheduled_time_end,
+            this.timeChangeReason
+          );
+
+          if (emailResult.success) {
+            console.log('Email notifications sent successfully');
+            alert('Booking time updated and notifications sent to customer and groomer!');
+          } else {
+            console.error('Email notification failed:', emailResult.error);
+            alert('Booking time updated successfully, but there was an issue sending notification emails. The customer and groomer may not have been notified.');
+          }
+        } else {
+          console.warn('Could not fetch updated booking for email notification');
+          alert('Booking time updated successfully!');
+        }
       }
 
       // Close modal and reload booking
