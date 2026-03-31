@@ -55,11 +55,15 @@ export class AuthService {
     console.log(`[${timestamp}] [AUTH] Initializing authentication service`);
 
     // session$ emits on every auth state change (including INITIAL_SESSION on startup)
-    this.supabase.session$.subscribe(async (session) => {
+    this.supabase.session$.subscribe((session) => {
       const subTimestamp = new Date().toISOString();
       if (session?.user) {
         console.log(`[${subTimestamp}] [AUTH] Session state changed - user signed in:`, session.user.id);
-        await this.loadUserProfile(session.user.id);
+        // Defer profile load to next macrotask — onAuthStateChange fires inside
+        // signInWithPassword's Web Lock scope, and the Supabase PostgREST client
+        // tries to acquire the same lock to read the auth token, causing a deadlock.
+        this._loadingState$.next('loading');
+        setTimeout(() => this.loadUserProfile(session.user.id), 0);
       } else {
         console.log(`[${subTimestamp}] [AUTH] Session state changed - user signed out`);
         this._currentUser$.next(null);
