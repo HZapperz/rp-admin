@@ -37,6 +37,8 @@ class CustomLocalStorage {
 export class SupabaseService {
   private supabase: SupabaseClient;
   private _session$ = new BehaviorSubject<AuthSession | null>(null);
+  private _initialized = false;
+  private _initResolvers: (() => void)[] = [];
 
   constructor() {
     this.supabase = createClient(
@@ -54,42 +56,16 @@ export class SupabaseService {
       }
     );
 
-    // Initialize session with retry logic
-    this.initializeSession();
-
-    // Listen to auth changes
+    // onAuthStateChange fires INITIAL_SESSION on startup — no need for a separate getSession() call
     this.supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session?.user?.id);
       this._session$.next(session);
-    });
-  }
-
-  private async initializeSession(retries = 3): Promise<void> {
-    for (let i = 0; i < retries; i++) {
-      try {
-        console.log(`Initializing session (attempt ${i + 1}/${retries})...`);
-        const { data, error } = await this.supabase.auth.getSession();
-
-        if (error) {
-          console.error('Session initialization error:', error);
-          if (i === retries - 1) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          continue;
-        }
-
-        this._session$.next(data.session);
-        console.log('Session initialized successfully:', data.session?.user?.id);
-        return;
-      } catch (err) {
-        console.error(`Session init attempt ${i + 1} failed:`, err);
-        if (i === retries - 1) {
-          // Last attempt failed, set session to null
-          this._session$.next(null);
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+      if (!this._initialized) {
+        this._initialized = true;
+        this._initResolvers.forEach(r => r());
+        this._initResolvers = [];
       }
-    }
+    });
   }
 
   get session$(): Observable<AuthSession | null> {
@@ -102,22 +78,16 @@ export class SupabaseService {
 
   // Method to wait for session initialization (used by APP_INITIALIZER)
   async waitForInitialization(): Promise<void> {
-    // Wait up to 5 seconds for session to be set (either to a session or null)
-    const timeout = 5000;
-    const startTime = Date.now();
-
+    if (this._initialized) return;
     return new Promise((resolve) => {
-      const subscription = this._session$.subscribe(() => {
-        // Session has been initialized (even if null)
-        subscription.unsubscribe();
-        resolve();
-      });
-
-      // Timeout fallback
+      this._initResolvers.push(resolve);
+      // Timeout fallback — resolve after 5s even if INITIAL_SESSION never fires
       setTimeout(() => {
-        subscription.unsubscribe();
-        resolve();
-      }, timeout);
+        if (!this._initialized) {
+          this._initialized = true;
+          resolve();
+        }
+      }, 5000);
     });
   }
 

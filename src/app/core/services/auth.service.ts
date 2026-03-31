@@ -16,6 +16,7 @@ export class AuthService {
 
   private readonly PROFILE_CACHE_KEY = 'rp_admin_profile_cache';
   private readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+  private _loadingForUserId: string | null = null;
 
   constructor(
     private supabase: SupabaseService,
@@ -48,20 +49,11 @@ export class AuthService {
     return this._loadingState$.value;
   }
 
-  private async initAuth() {
+  private initAuth() {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [AUTH] Initializing authentication service`);
 
-    // Check for existing session
-    const session = this.supabase.session;
-    if (session?.user) {
-      console.log(`[${timestamp}] [AUTH] Existing session found for user:`, session.user.id);
-      await this.loadUserProfile(session.user.id);
-    } else {
-      console.log(`[${timestamp}] [AUTH] No existing session found`);
-    }
-
-    // Listen to auth state changes
+    // session$ emits on every auth state change (including INITIAL_SESSION on startup)
     this.supabase.session$.subscribe(async (session) => {
       const subTimestamp = new Date().toISOString();
       if (session?.user) {
@@ -77,23 +69,33 @@ export class AuthService {
   }
 
   private async loadUserProfile(userId: string): Promise<void> {
+    // Prevent concurrent loads for the same user (e.g. signIn() + session$ subscription firing together)
+    if (this._loadingForUserId === userId) {
+      return;
+    }
+    this._loadingForUserId = userId;
+
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [AUTH] Loading user profile for ID:`, userId);
 
     this._loadingState$.next('loading');
 
-    // Try to load from cache first
-    const cachedProfile = this.getCachedProfile(userId);
-    if (cachedProfile) {
-      console.log(`[${timestamp}] [AUTH] Using cached profile (valid until ${new Date(cachedProfile.expiresAt).toISOString()})`);
-      this.setAuthenticatedUser(cachedProfile.user);
-      // Refresh in background
-      this.refreshProfileInBackground(userId);
-      return;
-    }
+    try {
+      // Try to load from cache first
+      const cachedProfile = this.getCachedProfile(userId);
+      if (cachedProfile) {
+        console.log(`[${timestamp}] [AUTH] Using cached profile (valid until ${new Date(cachedProfile.expiresAt).toISOString()})`);
+        this.setAuthenticatedUser(cachedProfile.user);
+        // Refresh in background
+        this.refreshProfileInBackground(userId);
+        return;
+      }
 
-    // Load from database with retry logic
-    await this.loadProfileWithRetry(userId);
+      // Load from database with retry logic
+      await this.loadProfileWithRetry(userId);
+    } finally {
+      this._loadingForUserId = null;
+    }
   }
 
   private async loadProfileWithRetry(userId: string, attempt: number = 1, maxAttempts: number = 3): Promise<void> {
