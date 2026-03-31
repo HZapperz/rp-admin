@@ -17,6 +17,7 @@ export class AuthService {
   private readonly PROFILE_CACHE_KEY = 'rp_admin_profile_cache';
   private readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
   private _loadingForUserId: string | null = null;
+  private _loadingPromise: Promise<void> | null = null;
 
   constructor(
     private supabase: SupabaseService,
@@ -68,10 +69,10 @@ export class AuthService {
     });
   }
 
-  private async loadUserProfile(userId: string): Promise<void> {
-    // Prevent concurrent loads for the same user (e.g. signIn() + session$ subscription firing together)
-    if (this._loadingForUserId === userId) {
-      return;
+  private loadUserProfile(userId: string): Promise<void> {
+    // If already loading for the same user, return the existing promise so callers can await it
+    if (this._loadingForUserId === userId && this._loadingPromise) {
+      return this._loadingPromise;
     }
     this._loadingForUserId = userId;
 
@@ -80,22 +81,27 @@ export class AuthService {
 
     this._loadingState$.next('loading');
 
-    try {
-      // Try to load from cache first
-      const cachedProfile = this.getCachedProfile(userId);
-      if (cachedProfile) {
-        console.log(`[${timestamp}] [AUTH] Using cached profile (valid until ${new Date(cachedProfile.expiresAt).toISOString()})`);
-        this.setAuthenticatedUser(cachedProfile.user);
-        // Refresh in background
-        this.refreshProfileInBackground(userId);
-        return;
-      }
+    this._loadingPromise = (async () => {
+      try {
+        // Try to load from cache first
+        const cachedProfile = this.getCachedProfile(userId);
+        if (cachedProfile) {
+          console.log(`[${timestamp}] [AUTH] Using cached profile (valid until ${new Date(cachedProfile.expiresAt).toISOString()})`);
+          this.setAuthenticatedUser(cachedProfile.user);
+          // Refresh in background
+          this.refreshProfileInBackground(userId);
+          return;
+        }
 
-      // Load from database with retry logic
-      await this.loadProfileWithRetry(userId);
-    } finally {
-      this._loadingForUserId = null;
-    }
+        // Load from database with retry logic
+        await this.loadProfileWithRetry(userId);
+      } finally {
+        this._loadingForUserId = null;
+        this._loadingPromise = null;
+      }
+    })();
+
+    return this._loadingPromise;
   }
 
   private async loadProfileWithRetry(userId: string, attempt: number = 1, maxAttempts: number = 3): Promise<void> {
