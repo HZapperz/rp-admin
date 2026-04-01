@@ -156,7 +156,14 @@
     <div class="schedule-section">
       <div class="schedule-header">
         <h2>Schedule</h2>
-        <div class="period-label">{{ getPeriodLabel() }}</div>
+        <div class="schedule-header-right">
+          <label class="pending-toggle" [class.on]="showOnlyPending">
+            <input type="checkbox" [(ngModel)]="showOnlyPending">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Pending only</span>
+          </label>
+          <div class="period-label">{{ getPeriodLabel() }}</div>
+        </div>
       </div>
 
       <!-- Day View -->
@@ -183,7 +190,7 @@
                   <div class="hour-line"></div>
                 }
                 <!-- Bookings -->
-                @for (booking of slot.bookings; track booking.id) {
+                @for (booking of getVisibleBookings(slot); track booking.id) {
                   <div
                     class="time-grid-booking clickable"
                     [ngClass]="getStatusClass(booking.status)"
@@ -282,7 +289,7 @@
                   <div class="hour-line"></div>
                 }
                 <!-- Bookings -->
-                @for (booking of slot.bookings; track booking.id) {
+                @for (booking of getVisibleBookings(slot); track booking.id) {
                   <div
                     class="time-grid-booking compact clickable"
                     [ngClass]="getStatusClass(booking.status)"
@@ -323,14 +330,14 @@
                    [class.today]="slot.isToday"
                    [class.other-month]="!slot.isCurrentMonth">
                 <div class="day-number">{{ slot.date | date:'d' }}</div>
-                @if (slot.bookings.length > 0) {
-                  <div class="bookings-count">{{ slot.bookings.length }} booking{{ slot.bookings.length > 1 ? 's' : '' }}</div>
+                @if (getVisibleBookings(slot).length > 0) {
+                  <div class="bookings-count">{{ getVisibleBookings(slot).length }} booking{{ getVisibleBookings(slot).length > 1 ? 's' : '' }}</div>
                   <div class="booking-dots">
-                    @for (booking of slot.bookings.slice(0, 3); track booking.id) {
+                    @for (booking of getVisibleBookings(slot).slice(0, 3); track booking.id) {
                       <div class="booking-dot" [ngClass]="getStatusClass(booking.status)"></div>
                     }
-                    @if (slot.bookings.length > 3) {
-                      <div class="more-bookings">+{{ slot.bookings.length - 3 }}</div>
+                    @if (getVisibleBookings(slot).length > 3) {
+                      <div class="more-bookings">+{{ getVisibleBookings(slot).length - 3 }}</div>
                     }
                   </div>
                 }

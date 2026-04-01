@@ -1,5 +1,6 @@
 import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
@@ -37,7 +38,7 @@ interface DaySlot {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, BusinessSettingsModalComponent, TerritoryDashboardComponent],
+  imports: [CommonModule, FormsModule, RouterModule, BusinessSettingsModalComponent, TerritoryDashboardComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -74,6 +75,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   // Shift availability
   shiftAvailabilityMap = new Map<string, ShiftAvailability>();
   savingShifts = new Set<string>();
+
+  // Pending-only filter
+  showOnlyPending = false;
 
   // Business Settings Modal
   showBusinessSettingsModal = false;
@@ -680,6 +684,11 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     const layout = this.bookingLayoutMap.get(bookingId);
     if (!layout) return 1;
     return 1 + layout.columnIndex;
+  }
+
+  getVisibleBookings(slot: DaySlot): BookingWithDetails[] {
+    if (!this.showOnlyPending) return slot.bookings;
+    return slot.bookings.filter(b => b.status === 'pending');
   }
 
   openBookingDetail(booking: BookingWithDetails): void {

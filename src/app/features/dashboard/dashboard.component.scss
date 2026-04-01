@@ -665,6 +665,12 @@
     }
   }
 
+  .schedule-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
   .period-label {
     font-weight: 600;
     color: #6b7a99;
@@ -673,6 +679,63 @@
 
     @media (min-width: 640px) {
       font-size: 1rem;
+    }
+  }
+
+  .pending-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-track {
+      width: 32px;
+      height: 18px;
+      border-radius: 9px;
+      background: #cbd5e1;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+
+      .toggle-thumb {
+        position: absolute;
+        top: 2.5px;
+        left: 2.5px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      }
+    }
+
+    &.on .toggle-track {
+      background: #f59e0b;
+
+      .toggle-thumb {
+        transform: translateX(14px);
+      }
+    }
+
+    .toggle-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    &.on .toggle-label {
+      color: #f59e0b;
+      font-weight: 600;
     }
   }
 }
