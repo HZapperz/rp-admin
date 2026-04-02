@@ -446,7 +446,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           const preTax = b.subtotal_before_tax ?? (b.total_amount - (b.tax_amount || 0) - (b.tip_amount || 0));
           return sum + Math.max(0, preTax);
         }, 0),
-      dailyGroomCount: bookings.reduce((sum, b) => sum + (b.pets?.length || 0), 0),
+      dailyGroomCount: bookings.filter(b => b.status !== 'pending').reduce((sum, b) => sum + (b.pets?.length || 0), 0),
       shiftAvailability: { ...shiftData }
     };
   }
