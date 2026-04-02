@@ -63,7 +63,7 @@ export interface AbandonedBooking {
   updated_at: string | null;
   recovered_at: string | null;
   booking_id: string | null;
-  user: { first_name: string | null; last_name: string | null; email: string | null } | null;
+  user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
 }
 
 export interface SessionFilters {
@@ -192,12 +192,12 @@ export class SessionRecordingService {
     if (emails.length === 0) return bookings;
 
     const { data: users, error } = await this.supabase.from('users')
-      .select('email, first_name, last_name')
+      .select('id, email, first_name, last_name')
       .in('email', emails);
 
     if (error || !users) return bookings;
 
-    const userMap = new Map(users.map((u: any) => [u.email, { first_name: u.first_name, last_name: u.last_name, email: u.email }]));
+    const userMap = new Map(users.map((u: any) => [u.email, { id: u.id, first_name: u.first_name, last_name: u.last_name, email: u.email }]));
 
     return bookings.map(b => ({
       ...b,

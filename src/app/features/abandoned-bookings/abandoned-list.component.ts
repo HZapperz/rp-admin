@@ -173,9 +173,8 @@ export class AbandonedListComponent implements OnInit {
   }
 
   viewUserProfile(b: AbandonedBooking) {
-    if (b.email) {
-      // Navigate to clients list with search
-      this.router.navigate(['/clients'], { queryParams: { search: b.email } });
+    if (b.user?.id) {
+      this.router.navigate(['/clients', b.user.id]);
     }
   }
 }
