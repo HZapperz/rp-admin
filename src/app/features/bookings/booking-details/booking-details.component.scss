@@ -3010,4 +3010,46 @@
       cursor: pointer;
     }
   }
+
+  .credits-balance-badge {
+    font-size: 12px;
+    color: #475569;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    strong { color: #1d4ed8; }
+  }
+
+  .credits-loading {
+    font-size: 12px;
+    color: #94a3b8;
+    padding: 8px 0;
+  }
+
+  .credits-empty {
+    font-size: 12px;
+    color: #94a3b8;
+    padding: 4px 0;
+  }
+}
+
+.credits-btn {
+  color: #2563eb;
+  border-color: #bfdbfe;
+  &:hover { background: #eff6ff; }
+}
+
+.btn-max-sm {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover { background: #dbeafe; }
 }

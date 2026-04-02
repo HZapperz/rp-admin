@@ -146,6 +146,12 @@ export class BookingDetailsComponent implements OnInit {
   discountEditType: 'percentage' | 'amount' = 'percentage';
   discountEditValue: number = 0;
 
+  // Inline credits editor
+  isEditingCredits = false;
+  creditsEditValue: number = 0;
+  clientCreditBalance: number = 0;
+  isLoadingCredits = false;
+
   // Remove pet modal
   showRemovePetModal = false;
   petToRemove: any = null;
@@ -727,6 +733,122 @@ export class BookingDetailsComponent implements OnInit {
       this.isEditingDiscount = false;
     } catch (err: any) {
       alert('Failed to save discount: ' + (err.message || 'Unknown error'));
+    }
+  }
+
+  // --- Credits editor ---
+
+  async openCreditsEdit(): Promise<void> {
+    if (!this.booking) return;
+    this.isLoadingCredits = true;
+    this.isEditingCredits = true;
+    this.creditsEditValue = 0;
+
+    try {
+      const { data } = await this.supabase
+        .from('user_credits')
+        .select('balance')
+        .eq('user_id', this.booking.client_id)
+        .maybeSingle();
+      this.clientCreditBalance = data?.balance || 0;
+      // Default to max redeemable
+      this.creditsEditValue = Math.min(this.clientCreditBalance, this.getMaxCredits());
+    } catch {
+      this.clientCreditBalance = 0;
+    } finally {
+      this.isLoadingCredits = false;
+    }
+  }
+
+  cancelCreditsEdit(): void {
+    this.isEditingCredits = false;
+    this.creditsEditValue = 0;
+  }
+
+  getMaxCredits(): number {
+    const subtotal = Number(this.booking?.original_subtotal) || 0;
+    const discount = Number(this.booking?.discount_amount) || 0;
+    return Math.max(0, subtotal - discount);
+  }
+
+  getCreditsPreview(): { creditsApplied: number; subtotalBeforeTax: number; taxAmount: number; total: number } {
+    const subtotal = Number(this.booking?.original_subtotal) || 0;
+    const discount = Number(this.booking?.discount_amount) || 0;
+    const taxRate = Number(this.booking?.tax_rate) || 0.0825;
+    const serviceFee = Number(this.booking?.service_fee) || 0;
+    const processingFee = Number(this.booking?.processing_fee) || 0;
+    const rushFee = Number(this.booking?.rush_fee) || 0;
+    const creditsApplied = Math.min(this.creditsEditValue, this.getMaxCredits(), this.clientCreditBalance);
+    const subtotalBeforeTax = Math.max(0, subtotal + serviceFee + rushFee - discount - creditsApplied);
+    const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
+    const total = Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
+    return { creditsApplied, subtotalBeforeTax, taxAmount, total };
+  }
+
+  async saveCredits(): Promise<void> {
+    if (!this.booking) return;
+    const preview = this.getCreditsPreview();
+    if (preview.creditsApplied <= 0) return;
+
+    try {
+      const clientId = this.booking.client_id;
+      const bookingId = this.booking.id;
+      const previousCredits = Number(this.booking.credits_applied) || 0;
+      const netNew = preview.creditsApplied - previousCredits;
+
+      if (netNew > 0) {
+        // Deduct credits from user balance
+        const { data: currentCredits } = await this.supabase
+          .from('user_credits')
+          .select('balance, lifetime_spent')
+          .eq('user_id', clientId)
+          .single();
+
+        if (!currentCredits || currentCredits.balance < netNew) {
+          alert('Insufficient credit balance');
+          return;
+        }
+
+        await this.supabase
+          .from('user_credits')
+          .update({
+            balance: currentCredits.balance - netNew,
+            lifetime_spent: (currentCredits.lifetime_spent || 0) + netNew,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', clientId);
+
+        // Create transaction record
+        await this.supabase
+          .from('credit_transactions')
+          .insert({
+            user_id: clientId,
+            booking_id: bookingId,
+            amount: -netNew,
+            type: 'redeemed',
+            description: `Credits applied to booking by admin`,
+            balance_after: currentCredits.balance - netNew,
+          });
+      }
+
+      // Update booking
+      const { error } = await this.supabase
+        .from('bookings')
+        .update({
+          credits_applied: preview.creditsApplied,
+          subtotal_before_tax: preview.subtotalBeforeTax,
+          tax_amount: preview.taxAmount,
+          total_amount: preview.total,
+          authorized_amount: preview.total,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+      await this.loadBookingDetails(bookingId);
+      this.isEditingCredits = false;
+    } catch (err: any) {
+      alert('Failed to apply credits: ' + (err.message || 'Unknown error'));
     }
   }
 

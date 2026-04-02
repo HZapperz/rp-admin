@@ -436,6 +436,7 @@
               <h3>Payment</h3>
               <div style="display:flex;align-items:center;gap:6px;">
                 <button class="btn-edit-sm" (click)="openDiscountEdit()" *ngIf="!isEditingDiscount">Edit Discount</button>
+                <button class="btn-edit-sm credits-btn" (click)="openCreditsEdit()" *ngIf="!isEditingCredits && booking.status !== 'completed' && booking.status !== 'cancelled'">Apply Credits</button>
                 <span class="status-badge payment-badge" [ngClass]="booking.payment_captured_at ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
                   {{ booking.payment_captured_at ? 'Captured' : booking.payment_status | titlecase }}
                 </span>
@@ -495,9 +496,56 @@
                     <button class="btn-cancel-sm" (click)="cancelDiscountEdit()">Cancel</button>
                   </div>
                 </div>
-                <div class="price-row-compact" *ngIf="booking.credits_applied && booking.credits_applied > 0">
+                <div class="price-row-compact" *ngIf="booking.credits_applied && booking.credits_applied > 0 && !isEditingCredits">
                   <span class="text-blue-600">Credits Applied</span>
                   <span class="text-blue-600">-${{ booking.credits_applied }}</span>
+                </div>
+
+                <!-- Inline credits editor -->
+                <div class="discount-editor" *ngIf="isEditingCredits">
+                  <div class="discount-editor-header">
+                    <span>Apply Royal Rewards</span>
+                    <button class="btn-cancel-xs" (click)="cancelCreditsEdit()">✕</button>
+                  </div>
+                  <div *ngIf="isLoadingCredits" class="credits-loading">Loading balance...</div>
+                  <div *ngIf="!isLoadingCredits">
+                    <div class="credits-balance-badge">
+                      Balance: <strong>${{ clientCreditBalance | number:'1.2-2' }}</strong>
+                    </div>
+                    <div class="discount-input-row" *ngIf="clientCreditBalance > 0">
+                      <span class="discount-suffix">$</span>
+                      <input
+                        type="number"
+                        [(ngModel)]="creditsEditValue"
+                        placeholder="0.00"
+                        [min]="0"
+                        [max]="getMaxCredits() < clientCreditBalance ? getMaxCredits() : clientCreditBalance"
+                        step="0.01"
+                        class="discount-input-sm"
+                      />
+                      <button class="btn-max-sm" (click)="creditsEditValue = getMaxCredits() < clientCreditBalance ? getMaxCredits() : clientCreditBalance">Max</button>
+                    </div>
+                    <div *ngIf="clientCreditBalance === 0" class="credits-empty">This client has no credits.</div>
+                    <!-- Live preview -->
+                    <div class="discount-preview" *ngIf="creditsEditValue > 0">
+                      <div class="preview-row">
+                        <span>Credits</span>
+                        <span class="text-blue-600">-${{ getCreditsPreview().creditsApplied | number:'1.2-2' }}</span>
+                      </div>
+                      <div class="preview-row">
+                        <span>New Tax</span>
+                        <span>${{ getCreditsPreview().taxAmount | number:'1.2-2' }}</span>
+                      </div>
+                      <div class="preview-row preview-total">
+                        <span>New Total</span>
+                        <span>${{ getCreditsPreview().total | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+                    <div class="discount-actions" *ngIf="clientCreditBalance > 0">
+                      <button class="btn-save-sm" (click)="saveCredits()" [disabled]="creditsEditValue <= 0">Apply</button>
+                      <button class="btn-cancel-sm" (click)="cancelCreditsEdit()">Cancel</button>
+                    </div>
+                  </div>
                 </div>
                 <div class="price-row-compact">
                   <span>Tax</span>
