@@ -39,6 +39,11 @@ export const routes: Routes = [
           import('./features/sales-pipeline/sales-pipeline.routes').then(m => m.routes)
       },
       {
+        path: 'abandoned-bookings',
+        loadChildren: () =>
+          import('./features/abandoned-bookings/abandoned-bookings.routes').then(m => m.routes)
+      },
+      {
         path: 'fill-schedule',
         loadChildren: () =>
           import('./features/fill-schedule/fill-schedule.routes').then(m => m.routes)

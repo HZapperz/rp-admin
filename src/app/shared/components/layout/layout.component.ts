@@ -41,6 +41,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Change Requests', route: '/change-requests', icon: 'schedule' },
     { label: 'Clients', route: '/clients', icon: 'people' },
     { label: 'Sales Pipeline', route: '/sales-pipeline', icon: 'trending_up' },
+    { label: 'Abandoned', route: '/abandoned-bookings', icon: 'remove_shopping_cart' },
     { label: 'Fill Schedule', route: '/fill-schedule', icon: 'calendar_month' },
     { label: 'Rebookings', route: '/bookings/rebookings', icon: 'event_repeat' },
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },

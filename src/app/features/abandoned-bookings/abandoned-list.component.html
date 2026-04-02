@@ -1,0 +1,135 @@
+<div class="abandoned-container">
+  <div class="page-header">
+    <h1>Abandoned Bookings</h1>
+    <p class="subtitle">Users who started booking but didn't finish</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Abandoned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.today }}</div>
+      <div class="stat-label">Abandoned Today</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.withAccount }}</div>
+      <div class="stat-label">With Account</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Last Step:</label>
+      <select [(ngModel)]="stepFilter" (change)="onFilterChange()">
+        <option value="all">All Steps</option>
+        <option value="info">Contact Info</option>
+        <option value="customize">Customize</option>
+        <option value="schedule">Schedule</option>
+        <option value="checkout">Checkout</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Date:</label>
+      <select [(ngModel)]="dateFilter" (change)="onFilterChange()">
+        <option value="all">All Time</option>
+        <option value="today">Today</option>
+        <option value="7d">Last 7 Days</option>
+        <option value="30d">Last 30 Days</option>
+      </select>
+    </div>
+    <div class="results-count">{{ filteredBookings.length }} result{{ filteredBookings.length !== 1 ? 's' : '' }}</div>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading abandoned bookings...</p>
+    </div>
+  }
+
+  @if (!isLoading && filteredBookings.length === 0) {
+    <div class="empty-state">
+      <p>No abandoned bookings found.</p>
+    </div>
+  }
+
+  @if (!isLoading && filteredBookings.length > 0) {
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Contact</th>
+            <th>Pets</th>
+            <th>Service</th>
+            <th>ZIP</th>
+            <th>Last Step</th>
+            <th>Est. Total</th>
+            <th>When</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (b of filteredBookings; track b.id) {
+            <tr>
+              <td class="name-cell">
+                <div class="name">{{ getName(b) }}</div>
+                @if (b.user) {
+                  <span class="badge account">Has Account</span>
+                }
+              </td>
+              <td class="contact-cell">
+                <div class="email">{{ b.email || '-' }}</div>
+                <div class="phone">{{ b.phone || '' }}</div>
+              </td>
+              <td>
+                <div class="pet-names">{{ getPetNames(b) }}</div>
+                @if (getPetCount(b) > 1) {
+                  <span class="pet-count">{{ getPetCount(b) }} dogs</span>
+                }
+              </td>
+              <td>
+                <span class="service-badge">{{ getServiceLabel(b) }}</span>
+              </td>
+              <td>{{ getZip(b) }}</td>
+              <td>
+                <div class="step-indicator">
+                  <div class="step-dots">
+                    @for (i of [1,2,3,4]; track i) {
+                      <div class="step-dot" [class.filled]="i <= getStepIndex(b.last_step)"></div>
+                    }
+                  </div>
+                  <span class="step-label">{{ getStepLabel(b.last_step) }}</span>
+                </div>
+              </td>
+              <td>
+                @if (getEstTotal(b); as total) {
+                  ${{ total | number:'1.2-2' }}
+                } @else {
+                  -
+                }
+              </td>
+              <td class="time-cell">{{ getTimeAgo(b.updated_at || b.created_at) }}</td>
+              <td class="actions-cell">
+                @if (b.recovery_link) {
+                  <button class="action-btn" title="Copy recovery link" (click)="copyRecoveryLink(b)">
+                    <span class="material-icons">link</span>
+                  </button>
+                }
+                @if (b.user) {
+                  <button class="action-btn" title="View user profile" (click)="viewUserProfile(b)">
+                    <span class="material-icons">person</span>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
