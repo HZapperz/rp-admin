@@ -559,6 +559,10 @@
                   <span>Total</span>
                   <span>${{ booking.total_amount }}</span>
                 </div>
+                <div class="price-row-compact" *ngIf="hasPricingInconsistency()" style="color: #dc2626; font-size: 0.75rem; gap: 8px;">
+                  <span>⚠ Pricing mismatch — credits may not be reflected in total</span>
+                  <button class="btn-save-sm" style="font-size: 0.7rem; padding: 2px 8px;" (click)="fixPricingInconsistency()">Fix</button>
+                </div>
                 <div class="price-row-compact" *ngIf="booking.tip_amount && booking.tip_amount > 0">
                   <span>Tip</span>
                   <span class="text-purple-600">${{ booking.tip_amount }}</span>

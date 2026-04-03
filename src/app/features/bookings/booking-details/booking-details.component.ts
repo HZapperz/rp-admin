@@ -771,6 +771,47 @@ export class BookingDetailsComponent implements OnInit {
     return Math.max(0, subtotal - discount);
   }
 
+  hasPricingInconsistency(): boolean {
+    if (!this.booking) return false;
+    const original = Number(this.booking.original_subtotal) || 0;
+    const discount = Number(this.booking.discount_amount) || 0;
+    const credits = Number(this.booking.credits_applied) || 0;
+    const taxRate = Number(this.booking.tax_rate) || 0.0825;
+    const expectedSubtotal = Math.max(0, original - discount - credits);
+    const expectedTax = Math.round(expectedSubtotal * taxRate * 100) / 100;
+    const expectedTotal = Math.round((expectedSubtotal + expectedTax) * 100) / 100;
+    const storedTotal = Number(this.booking.total_amount) || 0;
+    return Math.abs(expectedTotal - storedTotal) > 0.01;
+  }
+
+  async fixPricingInconsistency(): Promise<void> {
+    if (!this.booking) return;
+    const original = Number(this.booking.original_subtotal) || 0;
+    const discount = Number(this.booking.discount_amount) || 0;
+    const credits = Number(this.booking.credits_applied) || 0;
+    const taxRate = Number(this.booking.tax_rate) || 0.0825;
+    const subtotalBeforeTax = Math.max(0, original - discount - credits);
+    const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
+    const totalAmount = Math.round((subtotalBeforeTax + taxAmount) * 100) / 100;
+
+    try {
+      const { error } = await this.supabase
+        .from('bookings')
+        .update({
+          subtotal_before_tax: subtotalBeforeTax,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', this.booking.id);
+
+      if (error) throw error;
+      await this.loadBookingDetails(this.booking.id);
+    } catch (err: any) {
+      alert('Failed to fix pricing: ' + (err.message || 'Unknown error'));
+    }
+  }
+
   getCreditsPreview(): { creditsApplied: number; subtotalBeforeTax: number; taxAmount: number; total: number } {
     const subtotal = Number(this.booking?.original_subtotal) || 0;
     const discount = Number(this.booking?.discount_amount) || 0;
