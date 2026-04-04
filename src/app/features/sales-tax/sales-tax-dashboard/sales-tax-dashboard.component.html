@@ -15,7 +15,7 @@
       </select>
       <button class="btn-secondary" (click)="exportAnnual()" [disabled]="quarters.length === 0">
         <span class="material-icons">download</span>
-        Annual CSV
+        <span class="btn-label">Annual CSV</span>
       </button>
     </div>
   </div>
@@ -92,149 +92,154 @@
       </div>
     </div>
 
-    <!-- Quarterly Breakdown Table -->
+    <!-- Quarterly Breakdown -->
     <div class="section">
       <div class="section-header">
         <h2>Quarterly Breakdown</h2>
         <span class="tax-rate-badge">TX Rate: 8.25%</span>
       </div>
 
-      <div class="table-container" *ngIf="quarters.length > 0; else noData">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="col-expand"></th>
-              <th>Quarter</th>
-              <th>Period</th>
-              <th class="text-right">Bookings</th>
-              <th class="text-right">Taxable Revenue</th>
-              <th class="text-right">Tax Collected</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <ng-container *ngFor="let q of quarters">
-              <!-- Quarter Row -->
-              <tr class="quarter-row" [class.row-overdue]="q.is_overdue">
-                <td class="col-expand">
-                  <button class="btn-expand" (click)="toggleQuarterDetail(q)">
-                    <span class="material-icons">{{ isExpanded(q) ? 'expand_less' : 'expand_more' }}</span>
-                  </button>
-                </td>
-                <td class="col-quarter">
-                  <strong>{{ q.label }}</strong>
-                </td>
-                <td class="col-period">{{ q.period_start }} — {{ q.period_end }}</td>
-                <td class="text-right">{{ q.booking_count }}</td>
-                <td class="text-right">{{ formatCurrency(q.taxable_revenue) }}</td>
-                <td class="text-right font-semibold">{{ formatCurrency(q.tax_collected) }}</td>
-                <td>
-                  <span class="status-badge" [ngClass]="getStatusClass(q)">
-                    <span class="material-icons status-icon" *ngIf="q.filing?.status === 'filed'">check_circle</span>
-                    <span class="material-icons status-icon" *ngIf="q.is_overdue">error</span>
-                    {{ getStatusLabel(q) }}
-                  </span>
-                </td>
-                <td class="col-actions">
-                  <button
-                    class="btn-icon"
-                    title="Mark as Filed"
-                    (click)="openFilingDialog(q)"
-                    *ngIf="!q.filing || q.filing.status === 'unfiled'">
-                    <span class="material-icons">task_alt</span>
-                  </button>
-                  <button
-                    class="btn-icon"
-                    title="Export CSV"
-                    (click)="exportQuarter(q)"
-                    [disabled]="isExporting(q)">
-                    <span class="material-icons" [class.spinning]="isExporting(q)">
-                      {{ isExporting(q) ? 'sync' : 'download' }}
+      <div *ngIf="quarters.length > 0; else noData">
+
+        <!-- Desktop Table -->
+        <div class="table-container desktop-only">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="col-expand"></th>
+                <th>Quarter</th>
+                <th>Period</th>
+                <th class="text-right">Bookings</th>
+                <th class="text-right">Taxable Revenue</th>
+                <th class="text-right">Tax Collected</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let q of quarters">
+                <tr class="quarter-row" [class.row-overdue]="q.is_overdue">
+                  <td class="col-expand">
+                    <button class="btn-expand" (click)="toggleQuarterDetail(q)">
+                      <span class="material-icons">{{ isExpanded(q) ? 'expand_less' : 'expand_more' }}</span>
+                    </button>
+                  </td>
+                  <td class="col-quarter">
+                    <strong>{{ q.label }}</strong>
+                  </td>
+                  <td class="col-period">{{ q.period_start }} — {{ q.period_end }}</td>
+                  <td class="text-right">{{ q.booking_count }}</td>
+                  <td class="text-right">{{ formatCurrency(q.taxable_revenue) }}</td>
+                  <td class="text-right font-semibold">{{ formatCurrency(q.tax_collected) }}</td>
+                  <td>
+                    <span class="status-badge" [ngClass]="getStatusClass(q)">
+                      <span class="material-icons status-icon" *ngIf="q.filing?.status === 'filed'">check_circle</span>
+                      <span class="material-icons status-icon" *ngIf="q.is_overdue">error</span>
+                      {{ getStatusLabel(q) }}
                     </span>
-                  </button>
-                </td>
-              </tr>
+                  </td>
+                  <td class="col-actions">
+                    <button
+                      class="btn-icon"
+                      title="Mark as Filed"
+                      (click)="openFilingDialog(q)"
+                      *ngIf="!q.filing || q.filing.status === 'unfiled'">
+                      <span class="material-icons">task_alt</span>
+                    </button>
+                    <button
+                      class="btn-icon"
+                      title="Export CSV"
+                      (click)="exportQuarter(q)"
+                      [disabled]="isExporting(q)">
+                      <span class="material-icons" [class.spinning]="isExporting(q)">
+                        {{ isExporting(q) ? 'sync' : 'download' }}
+                      </span>
+                    </button>
+                  </td>
+                </tr>
 
-              <!-- Expanded Monthly Detail -->
-              <tr *ngIf="isExpanded(q)" class="detail-row">
-                <td colspan="8">
-                  <div class="detail-panel">
-                    <div class="detail-loading" *ngIf="isLoadingDetail">
-                      <span class="material-icons spinning">sync</span>
-                      Loading monthly breakdown...
-                    </div>
+                <!-- Expanded Monthly Detail (Desktop) -->
+                <tr *ngIf="isExpanded(q)" class="detail-row">
+                  <td colspan="8">
+                    <ng-container *ngTemplateOutlet="quarterDetail; context: { $implicit: q }"></ng-container>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
 
-                    <div *ngIf="!isLoadingDetail && monthlyDetail.length > 0">
-                      <h4>Monthly Breakdown</h4>
-                      <table class="detail-table">
-                        <thead>
-                          <tr>
-                            <th>Month</th>
-                            <th class="text-right">Bookings</th>
-                            <th class="text-right">Taxable Revenue</th>
-                            <th class="text-right">Tax Collected</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr *ngFor="let m of monthlyDetail">
-                            <td>{{ m.label }}</td>
-                            <td class="text-right">{{ m.booking_count }}</td>
-                            <td class="text-right">{{ formatCurrency(m.taxable_revenue) }}</td>
-                            <td class="text-right">{{ formatCurrency(m.tax_collected) }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+        <!-- Mobile Cards -->
+        <div class="mobile-cards mobile-only">
+          <div
+            *ngFor="let q of quarters"
+            class="quarter-card"
+            [class.card-overdue]="q.is_overdue">
 
-                      <!-- Payment Method Split -->
-                      <div class="payment-split">
-                        <h4>Tax by Payment Method</h4>
-                        <div class="split-row">
-                          <span>
-                            <span class="material-icons split-icon">credit_card</span>
-                            Card Payments
-                          </span>
-                          <strong>{{ formatCurrency(q.card_tax) }}</strong>
-                        </div>
-                        <div class="split-row">
-                          <span>
-                            <span class="material-icons split-icon">payments</span>
-                            Cash Payments
-                          </span>
-                          <strong>{{ formatCurrency(q.cash_tax) }}</strong>
-                        </div>
-                      </div>
+            <!-- Card Header -->
+            <div class="card-header" (click)="toggleQuarterDetail(q)">
+              <div class="card-title-row">
+                <strong class="card-quarter-label">{{ q.label }}</strong>
+                <span class="status-badge" [ngClass]="getStatusClass(q)">
+                  <span class="material-icons status-icon" *ngIf="q.filing?.status === 'filed'">check_circle</span>
+                  <span class="material-icons status-icon" *ngIf="q.is_overdue">error</span>
+                  {{ getStatusLabel(q) }}
+                </span>
+              </div>
+              <div class="card-tax-row">
+                <span class="card-tax-amount">{{ formatCurrency(q.tax_collected) }}</span>
+                <span class="card-tax-label">tax collected</span>
+              </div>
+            </div>
 
-                      <!-- Filing info if filed -->
-                      <div class="filing-info" *ngIf="q.filing?.status === 'filed'">
-                        <h4>Filing Record</h4>
-                        <div class="filing-grid">
-                          <div class="filing-field">
-                            <span class="filing-label">Filed Date</span>
-                            <span>{{ q.filing?.filed_date }}</span>
-                          </div>
-                          <div class="filing-field">
-                            <span class="filing-label">Confirmation #</span>
-                            <span>{{ q.filing?.confirmation_number || '—' }}</span>
-                          </div>
-                          <div class="filing-field">
-                            <span class="filing-label">Amount Remitted</span>
-                            <span>{{ formatCurrency(q.filing?.amount_remitted || 0) }}</span>
-                          </div>
-                          <div class="filing-field">
-                            <span class="filing-label">Payment Method</span>
-                            <span>{{ q.filing?.payment_method || '—' }}</span>
-                          </div>
-                        </div>
-                        <p class="filing-notes" *ngIf="q.filing?.notes">{{ q.filing?.notes }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </ng-container>
-          </tbody>
-        </table>
+            <!-- Card Stats -->
+            <div class="card-stats">
+              <div class="card-stat">
+                <span class="card-stat-label">Revenue</span>
+                <span class="card-stat-value">{{ formatCurrency(q.taxable_revenue) }}</span>
+              </div>
+              <div class="card-stat">
+                <span class="card-stat-label">Bookings</span>
+                <span class="card-stat-value">{{ q.booking_count }}</span>
+              </div>
+              <div class="card-stat">
+                <span class="card-stat-label">Deadline</span>
+                <span class="card-stat-value" [class.text-red]="q.is_overdue || q.days_until_deadline <= 14">
+                  {{ formatDate(q.deadline) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="card-actions">
+              <button
+                class="btn-card-action"
+                (click)="openFilingDialog(q)"
+                *ngIf="!q.filing || q.filing.status === 'unfiled'">
+                <span class="material-icons">task_alt</span>
+                Mark Filed
+              </button>
+              <button
+                class="btn-card-action"
+                (click)="exportQuarter(q)"
+                [disabled]="isExporting(q)">
+                <span class="material-icons" [class.spinning]="isExporting(q)">
+                  {{ isExporting(q) ? 'sync' : 'download' }}
+                </span>
+                Export
+              </button>
+              <button class="btn-card-action btn-card-expand" (click)="toggleQuarterDetail(q)">
+                <span class="material-icons">{{ isExpanded(q) ? 'expand_less' : 'expand_more' }}</span>
+                {{ isExpanded(q) ? 'Less' : 'Details' }}
+              </button>
+            </div>
+
+            <!-- Expanded Detail (Mobile) -->
+            <div *ngIf="isExpanded(q)" class="card-detail">
+              <ng-container *ngTemplateOutlet="quarterDetail; context: { $implicit: q }"></ng-container>
+            </div>
+          </div>
+        </div>
       </div>
 
       <ng-template #noData>
@@ -245,6 +250,82 @@
       </ng-template>
     </div>
   </div>
+
+  <!-- Shared Quarter Detail Template -->
+  <ng-template #quarterDetail let-q>
+    <div class="detail-panel">
+      <div class="detail-loading" *ngIf="isLoadingDetail">
+        <span class="material-icons spinning">sync</span>
+        Loading monthly breakdown...
+      </div>
+
+      <div *ngIf="!isLoadingDetail && monthlyDetail.length > 0">
+        <h4>Monthly Breakdown</h4>
+        <div class="monthly-list">
+          <div class="monthly-item" *ngFor="let m of monthlyDetail">
+            <span class="monthly-name">{{ m.label }}</span>
+            <div class="monthly-stats">
+              <span class="monthly-stat">
+                <span class="monthly-stat-label">Tax</span>
+                {{ formatCurrency(m.tax_collected) }}
+              </span>
+              <span class="monthly-stat">
+                <span class="monthly-stat-label">Rev</span>
+                {{ formatCurrency(m.taxable_revenue) }}
+              </span>
+              <span class="monthly-stat">
+                <span class="monthly-stat-label">#</span>
+                {{ m.booking_count }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Method Split -->
+        <div class="payment-split">
+          <h4>Tax by Payment Method</h4>
+          <div class="split-row">
+            <span>
+              <span class="material-icons split-icon">credit_card</span>
+              Card
+            </span>
+            <strong>{{ formatCurrency(q.card_tax) }}</strong>
+          </div>
+          <div class="split-row">
+            <span>
+              <span class="material-icons split-icon">payments</span>
+              Cash
+            </span>
+            <strong>{{ formatCurrency(q.cash_tax) }}</strong>
+          </div>
+        </div>
+
+        <!-- Filing info if filed -->
+        <div class="filing-info" *ngIf="q.filing?.status === 'filed'">
+          <h4>Filing Record</h4>
+          <div class="filing-grid">
+            <div class="filing-field">
+              <span class="filing-label">Filed Date</span>
+              <span>{{ q.filing?.filed_date }}</span>
+            </div>
+            <div class="filing-field">
+              <span class="filing-label">Confirmation #</span>
+              <span>{{ q.filing?.confirmation_number || '—' }}</span>
+            </div>
+            <div class="filing-field">
+              <span class="filing-label">Amount Remitted</span>
+              <span>{{ formatCurrency(q.filing?.amount_remitted || 0) }}</span>
+            </div>
+            <div class="filing-field">
+              <span class="filing-label">Payment Method</span>
+              <span>{{ q.filing?.payment_method || '—' }}</span>
+            </div>
+          </div>
+          <p class="filing-notes" *ngIf="q.filing?.notes">{{ q.filing?.notes }}</p>
+        </div>
+      </div>
+    </div>
+  </ng-template>
 
   <!-- Filing Dialog -->
   <app-mark-filed-dialog
