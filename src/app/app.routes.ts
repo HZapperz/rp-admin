@@ -124,6 +124,11 @@ export const routes: Routes = [
           import('./features/ab-tests/ab-tests.routes').then(m => m.routes)
       },
       {
+        path: 'sales-tax',
+        loadChildren: () =>
+          import('./features/sales-tax/sales-tax.routes').then(m => m.routes)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

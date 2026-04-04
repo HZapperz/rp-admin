@@ -613,3 +613,62 @@ export interface TerritoryBooking {
   service_name?: string;
   created_at: string;
 }
+
+// Sales Tax Types
+export type TaxFilingStatus = 'unfiled' | 'filed' | 'amended';
+
+export interface TaxFiling {
+  id: string;
+  year: number;
+  quarter: number;
+  total_tax_collected: number;
+  total_taxable_revenue: number;
+  booking_count: number;
+  status: TaxFilingStatus;
+  filed_date: string | null;
+  confirmation_number: string | null;
+  amount_remitted: number | null;
+  payment_method: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuarterlyTaxSummary {
+  year: number;
+  quarter: number;
+  label: string;
+  period_start: string;
+  period_end: string;
+  deadline: string;
+  booking_count: number;
+  taxable_revenue: number;
+  tax_collected: number;
+  total_revenue: number;
+  cash_tax: number;
+  card_tax: number;
+  filing: TaxFiling | null;
+  is_overdue: boolean;
+  days_until_deadline: number;
+}
+
+export interface MonthlyTaxDetail {
+  year: number;
+  month: number;
+  label: string;
+  booking_count: number;
+  taxable_revenue: number;
+  tax_collected: number;
+  total_revenue: number;
+}
+
+export interface TaxBookingRecord {
+  id: string;
+  scheduled_date: string;
+  client_name: string;
+  subtotal_before_tax: number;
+  tax_amount: number;
+  tax_rate: number;
+  total_amount: number;
+  payment_method_type: string;
+}
