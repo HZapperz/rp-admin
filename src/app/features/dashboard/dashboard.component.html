@@ -125,19 +125,19 @@
             </div>
           </div>
           <div class="stat-divider"></div>
+          <div class="stat-value-group pending-value">
+            <div class="stat-number">${{ kpiCards.revenue.confirmed | number:'1.0-0' }}</div>
+            <div class="stat-label">
+              Confirmed
+              <span class="info-icon" data-tooltip="Expected service revenue from confirmed & in-progress bookings. Excludes tax and tips.">ⓘ</span>
+            </div>
+          </div>
+          <div class="stat-divider"></div>
           <div class="stat-value-group tips-value">
             <div class="stat-number">${{ kpiCards.revenue.tips | number:'1.0-0' }}</div>
             <div class="stat-label">
               In Tips
               <span class="info-icon" data-tooltip="Tips collected from clients. Paid out to groomers — not business revenue.">ⓘ</span>
-            </div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-value-group pending-value">
-            <div class="stat-number">${{ kpiCards.revenue.pending | number:'1.0-0' }}</div>
-            <div class="stat-label">
-              Pending
-              <span class="info-icon" data-tooltip="Expected service revenue from upcoming confirmed bookings. Excludes tax and tips.">ⓘ</span>
             </div>
           </div>
         </div>

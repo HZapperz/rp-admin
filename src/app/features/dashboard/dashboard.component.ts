@@ -56,10 +56,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     }
   }
   // New KPI data structure
-  kpiCards = {
+  kpiCards: { bookings: { completed: number; pending: number }; pets: { completed: number; pending: number }; revenue: { collected: number; tips: number; confirmed: number } } = {
     bookings: { completed: 0, pending: 0 },
     pets: { completed: 0, pending: 0 },
-    revenue: { collected: 0, tips: 0, pending: 0 }
+    revenue: { collected: 0, tips: 0, confirmed: 0 }
   };
 
   kpiPeriod: 'week' | 'month' = 'week';
@@ -242,7 +242,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           const revenueTips = completedBookings.reduce((sum, b) => {
             return sum + (b.tip_amount || 0);
           }, 0);
-          const revenuePending = pendingBookings.reduce((sum, b) => {
+          const confirmedBookings = monthlyBookings.filter(b =>
+            b.status === 'confirmed' || b.status === 'in_progress'
+          );
+          const revenueConfirmed = confirmedBookings.reduce((sum, b) => {
             return sum + (b.subtotal_before_tax || 0);
           }, 0);
 
@@ -258,7 +261,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             revenue: {
               collected: revenueCollected,
               tips: revenueTips,
-              pending: revenuePending
+              confirmed: revenueConfirmed
             }
           };
         },
