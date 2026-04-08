@@ -150,6 +150,11 @@
             <div class="payment-header-compact">
               <span class="card-brand-compact">{{ pm.brand | uppercase }}</span>
               <span class="badge-default" *ngIf="pm.is_default">Default</span>
+              <button class="btn-delete-card" (click)="deletePaymentMethod(pm)" title="Delete card">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </div>
             <div class="payment-details-compact">
               <div class="card-number-compact">•••• {{ pm.last4 }}</div>

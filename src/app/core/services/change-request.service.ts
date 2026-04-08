@@ -215,6 +215,18 @@ export class ChangeRequestService {
         return false;
       }
 
+      // Cancel any pending SMS reminders for this booking
+      // (the daily backfill will recreate with the correct date/time)
+      await this.supabase.client
+        .from('sms_scheduled')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('booking_id', request.booking_id)
+        .eq('notification_type', 'reminder.24h')
+        .eq('status', 'pending');
+
       // Update the change request status
       const { error: updateError } = await this.supabase.client
         .from('booking_change_requests')

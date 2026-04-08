@@ -399,6 +399,19 @@ export class ClientDetailComponent implements OnInit {
     this.showPaymentMethodModal = false;
   }
 
+  async deletePaymentMethod(pm: PaymentMethod): Promise<void> {
+    if (!confirm(`Delete ${pm.brand?.toUpperCase()} card ending in ${pm.last4}?`)) return;
+    if (!this.clientData) return;
+
+    try {
+      await this.clientService.deleteClientPaymentMethod(this.clientData.client.id, pm.id);
+      this.clientData.paymentMethods = await this.clientService.getClientPaymentMethods(this.clientData.client.id);
+    } catch (err) {
+      console.error('Error deleting payment method:', err);
+      alert('Failed to delete payment method. Please try again.');
+    }
+  }
+
   // ============================================
   // Pet Details Expansion
   // ============================================

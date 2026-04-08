@@ -325,50 +325,49 @@ export class SMSService {
     message: SMSMessage;
     twilio_sid: string;
   }> {
-    const messageData = {
-      conversation_id: conversationId,
-      direction: 'outbound',
-      message_type: 'admin_response',
-      content: request.content,
-      media_urls: request.media_urls || [],
-      status: 'queued',
-      created_at: new Date().toISOString()
-    };
-
-    const { data: message, error } = await this.supabase
-      .from('sms_messages')
-      .insert(messageData)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Update conversation + invalidate cache so list refreshes next visit
-    await this.supabase
-      .from('sms_conversations')
-      .update({ last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', conversationId);
-
-    this.invalidateCache();
-
+    // Send via backend — the SMS service's /send/sms endpoint creates the
+    // sms_messages record, so we must NOT insert one here (caused duplicates).
     const res = await fetch('/api/send-sms-reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: request.phone, content: request.content }),
     });
 
-    if (res.ok) {
-      const sent = await res.json();
-      await this.supabase
-        .from('sms_messages')
-        .update({ twilio_sid: sent.twilio_sid, status: 'sent' })
-        .eq('id', message.id);
-      message.twilio_sid = sent.twilio_sid;
-      message.status = 'sent';
-      return { status: 'sent', message: message as SMSMessage, twilio_sid: sent.twilio_sid };
+    const now = new Date().toISOString();
+
+    // Update conversation timestamp + invalidate cache
+    await this.supabase
+      .from('sms_conversations')
+      .update({ last_message_at: now, updated_at: now })
+      .eq('id', conversationId);
+
+    this.invalidateCache();
+
+    if (!res.ok) {
+      throw new Error('Failed to send message');
     }
 
-    return { status: 'queued', message: message as SMSMessage, twilio_sid: '' };
+    const sent = await res.json();
+
+    // Return an optimistic message for immediate UI display.
+    // The real DB record was created by the backend; next refresh will sync.
+    const message: SMSMessage = {
+      id: `local-${Date.now()}`,
+      conversation_id: conversationId,
+      direction: 'outbound',
+      message_type: 'admin_response',
+      notification_type: null,
+      content: request.content,
+      media_urls: request.media_urls || [],
+      twilio_sid: sent.twilio_sid || null,
+      twilio_status: null,
+      status: 'sent',
+      ai_intent: null,
+      ai_confidence: null,
+      created_at: now,
+    };
+
+    return { status: 'sent', message, twilio_sid: sent.twilio_sid || '' };
   }
 
   // ─── Update / resolve ─────────────────────────────────────────────────────
