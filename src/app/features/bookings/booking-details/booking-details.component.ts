@@ -290,7 +290,7 @@ export class BookingDetailsComponent implements OnInit {
               const newBalance = currentBalance + creditsEarned;
 
               if (userCredits) {
-                await this.supabase
+                const { error: creditUpdateError } = await this.supabase
                   .from('user_credits')
                   .update({
                     balance: newBalance,
@@ -298,8 +298,9 @@ export class BookingDetailsComponent implements OnInit {
                     updated_at: new Date().toISOString()
                   })
                   .eq('user_id', this.booking.client_id);
+                if (creditUpdateError) throw creditUpdateError;
               } else {
-                await this.supabase
+                const { error: creditInsertError } = await this.supabase
                   .from('user_credits')
                   .insert({
                     user_id: this.booking.client_id,
@@ -307,9 +308,10 @@ export class BookingDetailsComponent implements OnInit {
                     lifetime_earned: creditsEarned,
                     lifetime_spent: 0
                   });
+                if (creditInsertError) throw creditInsertError;
               }
 
-              await this.supabase
+              const { error: txInsertError } = await this.supabase
                 .from('credit_transactions')
                 .insert({
                   user_id: this.booking.client_id,
@@ -319,10 +321,11 @@ export class BookingDetailsComponent implements OnInit {
                   description: `Earned from booking on ${this.booking.scheduled_date}`,
                   balance_after: newBalance
                 });
+              if (txInsertError) throw txInsertError;
             }
           } catch (creditsErr) {
             console.error('Error awarding credits on booking completion:', creditsErr);
-            // Don't fail the status update
+            alert('Warning: Failed to award Royal Rewards credits. Please check manually.');
           }
         }
       }
