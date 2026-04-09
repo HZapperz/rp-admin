@@ -195,9 +195,15 @@ export class AbandonedListComponent implements OnInit {
   }
 
   getTotalAbandonedAmount(): number {
-    return this.filteredBookings.reduce((sum, b) => {
-      const total = this.getEstTotal(b);
-      return sum + (total || 0);
+    const total = this.filteredBookings.reduce((sum, b) => {
+      const estTotal = this.getEstTotal(b);
+      return sum + (estTotal || 0);
     }, 0);
+    console.log("DEBUG: getTotalAbandonedAmount", {
+      filteredCount: this.filteredBookings.length,
+      totals: this.filteredBookings.map(b => ({ name: this.getName(b), total: this.getEstTotal(b) })),
+      sum: total
+    });
+    return total;
   }
 }
