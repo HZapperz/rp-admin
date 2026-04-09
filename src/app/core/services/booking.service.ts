@@ -460,11 +460,101 @@ export class BookingService {
         return { success: false };
       }
 
+      // 3. Reschedule SMS reminders for the new date
+      await this.rescheduleReminders(bookingId, newDate);
+
       console.log('Booking time updated successfully');
       return { success: true, oldValues };
     } catch (error) {
       console.error('Exception while changing booking time:', error);
       return { success: false };
+    }
+  }
+
+  /**
+   * Cancel old pending SMS reminders for a booking and schedule a new one for the updated date.
+   * Computes 9:30 AM CT on the day before the appointment as the send time.
+   */
+  private async rescheduleReminders(bookingId: string, newDate: string): Promise<void> {
+    try {
+      // Cancel old pending reminders
+      await this.supabase
+        .from('sms_scheduled')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('booking_id', bookingId)
+        .eq('notification_type', 'reminder.24h')
+        .eq('status', 'pending');
+
+      // Compute 9:30 AM CT on the day before the new appointment, in UTC
+      const sendTimeUtc = this.computeDayBeforeSendTimeUtc(newDate);
+      if (!sendTimeUtc || sendTimeUtc <= new Date()) {
+        // Send time has already passed — the scheduler safety net handles this
+        return;
+      }
+
+      // Fetch client_id and pet names for the reminder metadata
+      const { data: booking } = await this.supabase
+        .from('bookings')
+        .select('client_id, booking_pets(pets(name))')
+        .eq('id', bookingId)
+        .single();
+
+      if (!booking?.client_id) return;
+
+      const petNames = (booking.booking_pets || [])
+        .map((bp: any) => bp.pets?.name)
+        .filter(Boolean);
+      const petName = petNames.join(' & ') || 'your pet';
+
+      const apptDate = new Date(newDate + 'T00:00:00Z');
+      const dateLabel = apptDate.toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', timeZone: 'UTC'
+      });
+
+      await this.supabase
+        .from('sms_scheduled')
+        .insert({
+          user_id: booking.client_id,
+          booking_id: bookingId,
+          notification_type: 'reminder.24h',
+          scheduled_for: sendTimeUtc.toISOString(),
+          status: 'pending',
+          metadata: { pet_name: petName, date: dateLabel, time: '' },
+        });
+
+      console.log(`Rescheduled SMS reminder for booking ${bookingId} to ${sendTimeUtc.toISOString()}`);
+    } catch (err) {
+      // Non-critical — the daily backfill will eventually create the reminder
+      console.error('Error rescheduling SMS reminders:', err);
+    }
+  }
+
+  /**
+   * Compute 9:30 AM America/Chicago on the day before appointmentDate, returned as UTC.
+   */
+  private computeDayBeforeSendTimeUtc(appointmentDate: string): Date | null {
+    try {
+      const apptDate = new Date(appointmentDate + 'T00:00:00Z');
+      const dayBefore = new Date(apptDate.getTime() - 24 * 60 * 60 * 1000);
+
+      // Determine the CT→UTC offset on the day before using noon as a safe reference
+      const noonUtc = new Date(Date.UTC(
+        dayBefore.getUTCFullYear(), dayBefore.getUTCMonth(), dayBefore.getUTCDate(), 12, 0, 0
+      ));
+      const ctHour = parseInt(
+        noonUtc.toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false })
+      );
+      const offsetHours = 12 - ctHour; // CDT=5, CST=6
+
+      return new Date(Date.UTC(
+        dayBefore.getUTCFullYear(), dayBefore.getUTCMonth(), dayBefore.getUTCDate(),
+        9 + offsetHours, 30, 0
+      ));
+    } catch {
+      return null;
     }
   }
 

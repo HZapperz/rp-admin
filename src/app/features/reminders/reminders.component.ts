@@ -116,7 +116,10 @@ export class RemindersComponent implements OnInit {
         }
       }
 
-      this.autoReminders = rows;
+      // Filter out reminders where the booking date has already passed
+      // (e.g. booking was rescheduled to an earlier date but old reminder wasn't cleaned up)
+      const todayStr = new Date().toISOString().split('T')[0];
+      this.autoReminders = rows.filter(r => !r.scheduled_date || r.scheduled_date >= todayStr);
     } catch (err: any) {
       this.errorAuto = 'Failed to load automated reminders';
       console.error(err);
