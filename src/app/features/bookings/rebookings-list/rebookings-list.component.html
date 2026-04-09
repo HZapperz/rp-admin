@@ -209,6 +209,10 @@
                             Email Client
                           </button>
                         }
+                        <button class="contact-btn profile" (click)="viewClientProfile(rebooking.client_id, $event)">
+                          <span class="icon">&#128100;</span>
+                          View Profile
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -336,6 +340,9 @@
                       Email
                     </button>
                   }
+                  <button class="contact-btn profile" (click)="viewClientProfile(rebooking.client_id, $event)">
+                    Profile
+                  </button>
                 </div>
               </div>
             }

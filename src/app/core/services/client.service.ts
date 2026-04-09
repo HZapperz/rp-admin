@@ -385,7 +385,11 @@ export class ClientService {
     const pets = petsResult.data || [];
     const addresses = addressesResult.data || [];
     const paymentMethods = paymentMethodsResult.data || [];
-    const royalSpaClientIds = new Set((royalSpaBookingsResult.data || []).map((b: any) => b.client_id));
+    const royalSpaClientIds = new Set(
+      (royalSpaBookingsResult.data || [])
+        .filter((b: any) => Array.isArray(b.booking_pets) && b.booking_pets.some((bp: any) => bp.package_type === 'deluxe'))
+        .map((b: any) => b.client_id)
+    );
 
     // Step 3: Create lookups by client_id
     const completedBookingsByClient: Record<string, any[]> = completedBookings.reduce((acc, booking) => {
@@ -534,7 +538,9 @@ export class ClientService {
       total_bookings: totalBookings,
       total_spent: totalSpent,
       last_booking_date: lastBookingDate,
-      has_booked_royal_spa: (royalSpaResult.data?.length || 0) > 0,
+      has_booked_royal_spa: (royalSpaResult.data || []).some((b: any) =>
+        Array.isArray(b.booking_pets) && b.booking_pets.some((bp: any) => bp.package_type === 'deluxe')
+      ),
       last_sign_in_at: authInfo?.[0]?.last_sign_in_at || null
     };
   }

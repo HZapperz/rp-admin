@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { RebookingService } from '../../../core/services/rebooking.service';
 import { RebookingWithDetails, RebookingStatus } from '../../../core/models/types';
 
@@ -30,7 +31,7 @@ export class RebookingsListComponent implements OnInit {
     { value: 'no_answer', label: 'No Answer' }
   ];
 
-  constructor(private rebookingService: RebookingService) {}
+  constructor(private rebookingService: RebookingService, private router: Router) {}
 
   ngOnInit() {
     this.loadRebookings();
@@ -173,6 +174,13 @@ export class RebookingsListComponent implements OnInit {
     event.stopPropagation();
     if (email) {
       window.location.href = `mailto:${email}`;
+    }
+  }
+
+  viewClientProfile(clientId: string | undefined, event: Event) {
+    event.stopPropagation();
+    if (clientId) {
+      this.router.navigate(['/clients', clientId]);
     }
   }
 
