@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import {
   SessionRecordingService,
   AbandonedBooking
@@ -26,7 +27,8 @@ export class AbandonedListComponent implements OnInit {
 
   constructor(
     private sessionService: SessionRecordingService,
-    private router: Router
+    private router: Router,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit() {
@@ -176,5 +178,26 @@ export class AbandonedListComponent implements OnInit {
     if (b.user?.id) {
       this.router.navigate(['/clients', b.user.id]);
     }
+  }
+
+  getIMessageUrl(b: AbandonedBooking): SafeUrl {
+    if (!b.phone) return this.sanitizer.bypassSecurityTrustUrl('');
+
+    const firstName = this.getName(b).split(' ')[0] || 'there';
+    const petNames = this.getPetNames(b);
+    const petDisplay = petNames && petNames !== '-' ? petNames : 'your pup';
+
+    const message = `Hi ${firstName}! 🐾 This is Royal Pawz Mobile Dog Grooming. We saw you were interested in booking for ${petDisplay}. Is there something we can help with? We'd love to get them groomed! Let us know.`;
+
+    return this.sanitizer.bypassSecurityTrustUrl(
+      `sms:${b.phone}&body=${encodeURIComponent(message)}`
+    );
+  }
+
+  getTotalAbandonedAmount(): number {
+    return this.filteredBookings.reduce((sum, b) => {
+      const total = this.getEstTotal(b);
+      return sum + (total || 0);
+    }, 0);
   }
 }

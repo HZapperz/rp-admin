@@ -18,6 +18,10 @@
       <div class="stat-value">{{ stats.withAccount }}</div>
       <div class="stat-label">With Account</div>
     </div>
+    <div class="stat-card highlight">
+      <div class="stat-value">${{ getTotalAbandonedAmount() | number:'1.2-2' }}</div>
+      <div class="stat-label">Total Value (Filtered)</div>
+    </div>
   </div>
 
   <!-- Filters -->
@@ -115,6 +119,11 @@
               </td>
               <td class="time-cell">{{ getTimeAgo(b.updated_at || b.created_at) }}</td>
               <td class="actions-cell">
+                @if (b.phone) {
+                  <a [href]="getIMessageUrl(b)" class="action-btn" title="Send iMessage" target="_blank">
+                    <span class="material-icons">sms</span>
+                  </a>
+                }
                 @if (b.recovery_link) {
                   <button class="action-btn" title="Copy recovery link" (click)="copyRecoveryLink(b)">
                     <span class="material-icons">link</span>

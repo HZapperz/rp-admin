@@ -46,6 +46,19 @@
     color: #666;
     margin-top: 4px;
   }
+
+  &.highlight {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+
+    .stat-value {
+      color: white;
+    }
+
+    .stat-label {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
 }
 
 // Filters
@@ -270,6 +283,10 @@ table {
   color: #64748b;
   transition: all 0.15s;
   margin-right: 4px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
     background: #f1f5f9;
