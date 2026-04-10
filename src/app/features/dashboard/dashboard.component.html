@@ -147,9 +147,15 @@
 
     <!-- Period Navigation Controls -->
     <div class="period-navigation">
-      <button class="nav-btn" (click)="previousPeriod()" title="Previous {{ kpiPeriod }}">←</button>
+      <button class="nav-btn nav-btn--week" (click)="previousPeriod()" title="Previous week">←wk</button>
+      @if (currentView === 'week') {
+        <button class="nav-btn nav-btn--day" (click)="previousDay()" title="Previous day">←day</button>
+      }
       <button class="today-btn" (click)="goToToday()">Today</button>
-      <button class="nav-btn" (click)="nextPeriod()" title="Next {{ kpiPeriod }}">→</button>
+      @if (currentView === 'week') {
+        <button class="nav-btn nav-btn--day" (click)="nextDay()" title="Next day">day→</button>
+      }
+      <button class="nav-btn nav-btn--week" (click)="nextPeriod()" title="Next week">wk→</button>
     </div>
 
     <!-- Schedule Section -->

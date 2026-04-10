@@ -476,6 +476,31 @@
       font-size: 1.375rem;
     }
   }
+
+  .nav-btn--week {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #334155;
+
+    @media (min-width: 640px) {
+      font-size: 0.8125rem;
+      min-width: 72px;
+    }
+  }
+
+  .nav-btn--day {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+
+    @media (min-width: 640px) {
+      font-size: 0.8125rem;
+      min-width: 64px;
+    }
+  }
 }
 
 // Business Settings Card

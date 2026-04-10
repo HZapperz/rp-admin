@@ -69,6 +69,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   // Schedule View
   currentView: ScheduleView = 'week';
   currentDate = new Date();
+  windowStart: Date = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
   scheduleSlots: DaySlot[] = [];
   allBookings: BookingWithDetails[] = [];
 
@@ -136,9 +137,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   toggleKPIPeriod(period: 'week' | 'month'): void {
     if (this.kpiPeriod !== period) {
       this.kpiPeriod = period;
-      // Sync schedule view with KPI period
       this.currentView = period;
-      this.currentDate = new Date(); // Reset to current period
+      this.currentDate = new Date();
+      if (period === 'week') {
+        this.windowStart = new Date();
+        this.windowStart.setHours(0, 0, 0, 0);
+      }
       this.generateScheduleSlots();
       this.loadKPIs();
     }
@@ -149,22 +153,15 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     now.setHours(0, 0, 0, 0);
 
     if (this.kpiPeriod === 'week') {
-      const currentDateNormalized = new Date(this.currentDate);
-      currentDateNormalized.setHours(0, 0, 0, 0);
+      const windowEnd = new Date(this.windowStart);
+      windowEnd.setDate(windowEnd.getDate() + 6);
 
-      const startOfCurrentWeek = this.getStartOfWeek(now);
-      const startOfViewWeek = this.getStartOfWeek(currentDateNormalized);
-
-      // Check if viewing current week
-      if (startOfCurrentWeek.getTime() === startOfViewWeek.getTime()) {
+      // Check if window starts on today
+      if (this.windowStart.getTime() === now.getTime()) {
         return 'This week';
       }
 
-      // Otherwise show date range
-      const endOfWeek = new Date(startOfViewWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
-
-      return `${startOfViewWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      return `${this.windowStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${windowEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     } else {
       // Check if viewing current month
       if (this.currentDate.getMonth() === now.getMonth() &&
@@ -197,14 +194,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
               return bookingDateStr.startsWith(monthPrefix);
             });
           } else {
-            // Filter bookings for the selected week (Sunday to Saturday)
-            const startOfWeek = this.getStartOfWeek(this.currentDate);
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(endOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
+            // Filter bookings for the current rolling 7-day window
+            const windowEnd = new Date(this.windowStart);
+            windowEnd.setDate(windowEnd.getDate() + 6);
 
-            const startDateStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
-            const endDateStr = `${endOfWeek.getFullYear()}-${String(endOfWeek.getMonth() + 1).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
+            const startDateStr = `${this.windowStart.getFullYear()}-${String(this.windowStart.getMonth() + 1).padStart(2, '0')}-${String(this.windowStart.getDate()).padStart(2, '0')}`;
+            const endDateStr = `${windowEnd.getFullYear()}-${String(windowEnd.getMonth() + 1).padStart(2, '0')}-${String(windowEnd.getDate()).padStart(2, '0')}`;
 
             filteredBookings = bookings.filter(b => {
               if (b.status === 'cancelled') return false;
@@ -323,51 +318,80 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.generateScheduleSlots();
   }
 
+  previousDay(): void {
+    this.windowStart = new Date(this.windowStart);
+    this.windowStart.setDate(this.windowStart.getDate() - 1);
+    this._refreshWeekView();
+  }
+
+  nextDay(): void {
+    this.windowStart = new Date(this.windowStart);
+    this.windowStart.setDate(this.windowStart.getDate() + 1);
+    this._refreshWeekView();
+  }
+
   previousPeriod(): void {
     if (this.currentView === 'day') {
       this.currentDate = new Date(this.currentDate.setDate(this.currentDate.getDate() - 1));
+      this.shiftAvailabilityMap.clear();
+      this.generateScheduleSlots();
+      this.loadKPIs();
+      this.loadShiftAvailability();
     } else if (this.currentView === 'week') {
-      this.currentDate = new Date(this.currentDate.setDate(this.currentDate.getDate() - 7));
+      this.windowStart = new Date(this.windowStart);
+      this.windowStart.setDate(this.windowStart.getDate() - 7);
+      this._refreshWeekView();
     } else {
-      // Construct new date directly to avoid setMonth overflow
-      // e.g., Jan 31 + setMonth(Feb) would overflow to March 3
       this.currentDate = new Date(
         this.currentDate.getFullYear(),
         this.currentDate.getMonth() - 1,
         1
       );
+      this.shiftAvailabilityMap.clear();
+      this.generateScheduleSlots();
+      this.loadKPIs();
+      this.loadShiftAvailability();
     }
-    this.shiftAvailabilityMap.clear();
-    this.generateScheduleSlots();
-    this.loadKPIs(); // Update KPIs for the new period
-    this.loadShiftAvailability();
   }
 
   nextPeriod(): void {
     if (this.currentView === 'day') {
       this.currentDate = new Date(this.currentDate.setDate(this.currentDate.getDate() + 1));
+      this.shiftAvailabilityMap.clear();
+      this.generateScheduleSlots();
+      this.loadKPIs();
+      this.loadShiftAvailability();
     } else if (this.currentView === 'week') {
-      this.currentDate = new Date(this.currentDate.setDate(this.currentDate.getDate() + 7));
+      this.windowStart = new Date(this.windowStart);
+      this.windowStart.setDate(this.windowStart.getDate() + 7);
+      this._refreshWeekView();
     } else {
-      // Construct new date directly to avoid setMonth overflow
-      // e.g., Jan 31 + setMonth(Feb) would overflow to March 3
       this.currentDate = new Date(
         this.currentDate.getFullYear(),
         this.currentDate.getMonth() + 1,
         1
       );
+      this.shiftAvailabilityMap.clear();
+      this.generateScheduleSlots();
+      this.loadKPIs();
+      this.loadShiftAvailability();
     }
-    this.shiftAvailabilityMap.clear();
-    this.generateScheduleSlots();
-    this.loadKPIs(); // Update KPIs for the new period
-    this.loadShiftAvailability();
   }
 
   goToToday(): void {
     this.currentDate = new Date();
+    this.windowStart = new Date();
+    this.windowStart.setHours(0, 0, 0, 0);
     this.shiftAvailabilityMap.clear();
     this.generateScheduleSlots();
-    this.loadKPIs(); // Update KPIs for current period
+    this.loadKPIs();
+    this.loadShiftAvailability();
+  }
+
+  private _refreshWeekView(): void {
+    this.shiftAvailabilityMap.clear();
+    this.generateScheduleSlots();
+    this.loadKPIs();
     this.loadShiftAvailability();
   }
 
@@ -381,9 +405,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       date.setHours(0, 0, 0, 0);
       this.scheduleSlots.push(this.createDaySlot(date, today));
     } else if (this.currentView === 'week') {
-      const startOfWeek = this.getStartOfWeek(this.currentDate);
       for (let i = 0; i < 7; i++) {
-        const date = new Date(startOfWeek);
+        const date = new Date(this.windowStart);
         date.setDate(date.getDate() + i);
         this.scheduleSlots.push(this.createDaySlot(date, today));
       }
@@ -505,10 +528,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         day: 'numeric'
       });
     } else if (this.currentView === 'week') {
-      const startOfWeek = this.getStartOfWeek(this.currentDate);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
-      return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const windowEnd = new Date(this.windowStart);
+      windowEnd.setDate(windowEnd.getDate() + 6);
+      return `${this.windowStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${windowEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     } else {
       return this.currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     }
