@@ -547,6 +547,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     return classes[status] || '';
   }
 
+  hasMissingRabies(booking: BookingWithDetails): boolean {
+    if (['completed', 'cancelled'].includes(booking.status)) return false;
+    if (!booking.pets || booking.pets.length === 0) return false;
+    return booking.pets.some(bp => !bp.pet?.rabies_certificate_url);
+  }
+
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       'pending': 'Pending',

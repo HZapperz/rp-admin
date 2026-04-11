@@ -1088,6 +1088,11 @@
     opacity: 0.6;
   }
 
+  // Rabies vaccine missing indicator
+  &.rabies-missing {
+    border-left-color: #ef4444 !important;
+  }
+
   // Content styles
   .tgb-time {
     font-size: 0.6875rem;
@@ -1116,6 +1121,15 @@
   .tgb-duration {
     font-size: 0.625rem;
     color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  .tgb-rabies-badge {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    color: #ef4444;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     margin-top: 2px;
   }
 

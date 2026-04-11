@@ -199,7 +199,7 @@
                 @for (booking of getVisibleBookings(slot); track booking.id) {
                   <div
                     class="time-grid-booking clickable"
-                    [ngClass]="getStatusClass(booking.status)"
+                    [ngClass]="[getStatusClass(booking.status), hasMissingRabies(booking) ? 'rabies-missing' : '']"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
                     [style.left.px]="getBookingLeft(booking.id)"
@@ -209,6 +209,9 @@
                     <div class="tgb-client">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</div>
                     @if (booking.groomer) {
                       <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
+                    }
+                    @if (hasMissingRabies(booking)) {
+                      <div class="tgb-rabies-badge">No Rabies</div>
                     }
                     <div class="tgb-service">{{ booking.service_name }}</div>
                     <div class="tgb-duration">{{ getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) }}</div>
@@ -298,7 +301,7 @@
                 @for (booking of getVisibleBookings(slot); track booking.id) {
                   <div
                     class="time-grid-booking compact clickable"
-                    [ngClass]="getStatusClass(booking.status)"
+                    [ngClass]="[getStatusClass(booking.status), hasMissingRabies(booking) ? 'rabies-missing' : '']"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
                     [style.left.px]="getBookingLeft(booking.id)"
@@ -309,6 +312,9 @@
                     <div class="tgb-client">{{ booking.client?.first_name }}</div>
                     @if (booking.groomer) {
                       <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
+                    }
+                    @if (hasMissingRabies(booking)) {
+                      <div class="tgb-rabies-badge">No Rabies</div>
                     }
                   </div>
                 }
