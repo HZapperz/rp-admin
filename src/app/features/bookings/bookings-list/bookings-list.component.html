@@ -14,35 +14,111 @@
 
   <!-- Filters -->
   <div class="filters">
-    <div class="filter-group">
-      <label for="status">Status:</label>
-      <select
-        id="status"
-        (change)="onStatusFilterChange($event)"
-        [value]="selectedStatus"
-      >
-        <option value="all">All Statuses</option>
-        <option value="needs_reminder">📲 iMessage Reminder Needed ({{ needsReminderCount }})</option>
-        <option value="unassigned">🔴 Unassigned (Needs Groomer)</option>
-        <option value="pending">Pending</option>
-        <option value="confirmed">Confirmed</option>
-        <option value="in_progress">In Progress</option>
-        <option value="completed">Completed</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
+    <!-- Status chips -->
+    <div class="filter-chips-row">
+      <div class="filter-chips">
+        <button
+          class="filter-chip filter-chip--urgent"
+          [class.filter-chip--active]="selectedStatus === 'pending'"
+          (click)="setStatusFilter('pending')"
+        >
+          Pending
+          @if (pendingCount > 0) {<span class="chip-badge chip-badge--urgent">{{ pendingCount }}</span>}
+        </button>
+        <button
+          class="filter-chip filter-chip--urgent"
+          [class.filter-chip--active]="selectedStatus === 'unassigned'"
+          (click)="setStatusFilter('unassigned')"
+        >
+          Unassigned
+          @if (unassignedCount > 0) {<span class="chip-badge chip-badge--urgent">{{ unassignedCount }}</span>}
+        </button>
+        <button
+          class="filter-chip filter-chip--reminder"
+          [class.filter-chip--active]="selectedStatus === 'needs_reminder'"
+          (click)="setStatusFilter('needs_reminder')"
+        >
+          📲 Reminder
+          @if (needsReminderCount > 0) {<span class="chip-badge chip-badge--reminder">{{ needsReminderCount }}</span>}
+        </button>
+
+        <span class="chips-divider"></span>
+
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="selectedStatus === 'confirmed'"
+          (click)="setStatusFilter('confirmed')"
+        >
+          Confirmed
+          @if (confirmedCount > 0) {<span class="chip-badge">{{ confirmedCount }}</span>}
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="selectedStatus === 'in_progress'"
+          (click)="setStatusFilter('in_progress')"
+        >
+          In Progress
+          @if (inProgressCount > 0) {<span class="chip-badge">{{ inProgressCount }}</span>}
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="selectedStatus === 'completed'"
+          (click)="setStatusFilter('completed')"
+        >
+          Completed
+          @if (completedCount > 0) {<span class="chip-badge">{{ completedCount }}</span>}
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="selectedStatus === 'cancelled'"
+          (click)="setStatusFilter('cancelled')"
+        >
+          Cancelled
+          @if (cancelledCount > 0) {<span class="chip-badge">{{ cancelledCount }}</span>}
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="selectedStatus === 'all'"
+          (click)="setStatusFilter('all')"
+        >
+          All
+        </button>
+      </div>
     </div>
 
-    <div class="filter-group">
-      <label for="search">Search:</label>
-      <input
-        type="text"
-        id="search"
-        placeholder="Search by client, groomer, or ID..."
-        (input)="onSearchChange($event)"
-        [value]="searchTerm"
-      />
+    <!-- Date + Search row -->
+    <div class="filter-secondary-row">
+      <div class="date-chips">
+        <button class="date-chip" [class.date-chip--active]="dateFilter === 'today'" (click)="setDateFilter('today')">Today</button>
+        <button class="date-chip" [class.date-chip--active]="dateFilter === 'week'" (click)="setDateFilter('week')">This Week</button>
+        <button class="date-chip" [class.date-chip--active]="dateFilter === 'month'" (click)="setDateFilter('month')">This Month</button>
+        <button class="date-chip" [class.date-chip--active]="dateFilter === 'all'" (click)="setDateFilter('all')">All Time</button>
+      </div>
+
+      <div class="filter-search">
+        <input
+          type="text"
+          placeholder="Search by client, groomer, or ID..."
+          (input)="onSearchChange($event)"
+          [value]="searchTerm"
+        />
+      </div>
     </div>
   </div>
+
+  <!-- Attention Banner -->
+  @if (showAttentionBanner) {
+  <div class="action-alert" (click)="setStatusFilter('pending')">
+    <span class="action-alert-icon">⚠</span>
+    <span class="action-alert-text">
+      <strong>{{ pendingCount }} booking{{ pendingCount !== 1 ? 's' : '' }} need{{ pendingCount === 1 ? 's' : '' }} attention</strong>
+      —
+      {{ pendingCount - unassignedCount }} pending approval
+      @if (unassignedCount > 0) {, {{ unassignedCount }} unassigned}
+    </span>
+    <span class="action-alert-cta">View Pending →</span>
+  </div>
+  }
 
   @if (isLoading) {
   <div class="loading">

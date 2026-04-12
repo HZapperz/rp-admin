@@ -20,8 +20,9 @@ export class BookingsListComponent implements OnInit {
   isLoading = true;
   error: string | null = null;
 
-  selectedStatus: string = 'all';
+  selectedStatus: string = 'pending';
   searchTerm: string = '';
+  dateFilter: string = 'all';
   expandedCards: Set<string> = new Set();
 
   constructor(
@@ -60,6 +61,24 @@ export class BookingsListComponent implements OnInit {
   applyFilters() {
     let filtered = [...this.bookings];
 
+    // Filter by date range
+    if (this.dateFilter !== 'all') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (this.dateFilter === 'today') {
+        filtered = filtered.filter(b => b.scheduled_date === todayStr);
+      } else if (this.dateFilter === 'week') {
+        const weekEnd = new Date();
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekEndStr = weekEnd.toISOString().split('T')[0];
+        filtered = filtered.filter(b => b.scheduled_date >= todayStr && b.scheduled_date <= weekEndStr);
+      } else if (this.dateFilter === 'month') {
+        const monthEnd = new Date();
+        monthEnd.setDate(monthEnd.getDate() + 29);
+        const monthEndStr = monthEnd.toISOString().split('T')[0];
+        filtered = filtered.filter(b => b.scheduled_date >= todayStr && b.scheduled_date <= monthEndStr);
+      }
+    }
+
     // Filter by status
     if (this.selectedStatus === 'unassigned') {
       filtered = filtered.filter(b => !b.groomer_id && b.status === 'pending');
@@ -81,17 +100,71 @@ export class BookingsListComponent implements OnInit {
       );
     }
 
+    // Urgency sort when viewing all
+    if (this.selectedStatus === 'all') {
+      filtered.sort((a, b) => {
+        const rankDiff = this.getUrgencyRank(a) - this.getUrgencyRank(b);
+        if (rankDiff !== 0) return rankDiff;
+        return (a.scheduled_date || '').localeCompare(b.scheduled_date || '');
+      });
+    }
+
     this.filteredBookings = filtered;
   }
 
-  onStatusFilterChange(event: Event) {
-    this.selectedStatus = (event.target as HTMLSelectElement).value;
+  getUrgencyRank(booking: BookingWithDetails): number {
+    if (booking.status === 'pending' && !booking.groomer_id) return 1;
+    if (booking.status === 'pending') return 2;
+    if (booking.status === 'confirmed' && this.isNeedingManualReminder(booking)) return 3;
+    if (booking.status === 'confirmed') return 4;
+    if (booking.status === 'in_progress') return 5;
+    if (booking.status === 'completed') return 6;
+    return 7; // cancelled
+  }
+
+  setStatusFilter(value: string) {
+    this.selectedStatus = value;
+    this.applyFilters();
+  }
+
+  setDateFilter(value: string) {
+    this.dateFilter = value;
     this.applyFilters();
   }
 
   onSearchChange(event: Event) {
     this.searchTerm = (event.target as HTMLInputElement).value;
     this.applyFilters();
+  }
+
+  get pendingCount(): number {
+    return this.bookings.filter(b => b.status === 'pending').length;
+  }
+
+  get unassignedCount(): number {
+    return this.bookings.filter(b => !b.groomer_id && b.status === 'pending').length;
+  }
+
+  get confirmedCount(): number {
+    return this.bookings.filter(b => b.status === 'confirmed').length;
+  }
+
+  get inProgressCount(): number {
+    return this.bookings.filter(b => b.status === 'in_progress').length;
+  }
+
+  get completedCount(): number {
+    return this.bookings.filter(b => b.status === 'completed').length;
+  }
+
+  get cancelledCount(): number {
+    return this.bookings.filter(b => b.status === 'cancelled').length;
+  }
+
+  get showAttentionBanner(): boolean {
+    return this.pendingCount > 0
+      && this.selectedStatus !== 'pending'
+      && this.selectedStatus !== 'unassigned';
   }
 
   getStatusClass(status: BookingStatus): string {
