@@ -182,18 +182,6 @@
     }
   }
 
-  &--reminder {
-    &:not(.filter-chip--active) {
-      border-color: #6ee7b7;
-      color: #065f46;
-      background: #f0fdf4;
-
-      &:hover {
-        border-color: #34d399;
-        background: #d1fae5;
-      }
-    }
-  }
 }
 
 .chip-badge {
@@ -215,10 +203,6 @@
     color: white;
   }
 
-  &--reminder {
-    background: #10b981;
-    color: white;
-  }
 }
 
 // Secondary row: date chips + search

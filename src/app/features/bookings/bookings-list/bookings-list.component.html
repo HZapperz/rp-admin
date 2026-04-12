@@ -33,14 +33,6 @@
           Unassigned
           @if (unassignedCount > 0) {<span class="chip-badge chip-badge--urgent">{{ unassignedCount }}</span>}
         </button>
-        <button
-          class="filter-chip filter-chip--reminder"
-          [class.filter-chip--active]="selectedStatus === 'needs_reminder'"
-          (click)="setStatusFilter('needs_reminder')"
-        >
-          📲 Reminder
-          @if (needsReminderCount > 0) {<span class="chip-badge chip-badge--reminder">{{ needsReminderCount }}</span>}
-        </button>
 
         <span class="chips-divider"></span>
 
