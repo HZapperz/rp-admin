@@ -56,15 +56,52 @@ export class SalesPipelineService {
   private leadsSubject = new BehaviorSubject<PipelineLeadWithDetails[]>([]);
   public leads$ = this.leadsSubject.asObservable();
 
+  private readonly LEADS_CACHE_KEY = 'rp_pipeline_leads';
+  private readonly STATS_CACHE_KEY = 'rp_pipeline_stats';
+  private readonly CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
   constructor(private http: HttpClient, private supabaseService: SupabaseService) {
     this.supabase = supabaseService.client;
+  }
+
+  // ==================== CACHE HELPERS ====================
+
+  getCachedLeads(): PipelineLeadWithDetails[] | null {
+    try {
+      const raw = localStorage.getItem(this.LEADS_CACHE_KEY);
+      if (!raw) return null;
+      const { data, ts } = JSON.parse(raw);
+      return Date.now() - ts < this.CACHE_TTL_MS ? data : null;
+    } catch { return null; }
+  }
+
+  getCachedStats(): PipelineStats | null {
+    try {
+      const raw = localStorage.getItem(this.STATS_CACHE_KEY);
+      if (!raw) return null;
+      const { data, ts } = JSON.parse(raw);
+      return Date.now() - ts < this.CACHE_TTL_MS ? data : null;
+    } catch { return null; }
+  }
+
+  private saveLeadsCache(leads: PipelineLeadWithDetails[]): void {
+    try { localStorage.setItem(this.LEADS_CACHE_KEY, JSON.stringify({ data: leads, ts: Date.now() })); } catch {}
+  }
+
+  private saveStatsCache(stats: PipelineStats): void {
+    try { localStorage.setItem(this.STATS_CACHE_KEY, JSON.stringify({ data: stats, ts: Date.now() })); } catch {}
   }
 
   // ==================== LEAD MANAGEMENT ====================
 
   getLeads(filters?: PipelineFilters): Observable<PipelineLeadWithDetails[]> {
     return from(this.fetchLeads(filters)).pipe(
-      tap(leads => this.leadsSubject.next(leads))
+      tap(leads => {
+        this.leadsSubject.next(leads);
+        if (!filters?.searchTerm && !filters?.priorityLevel) {
+          this.saveLeadsCache(leads);
+        }
+      })
     );
   }
 
@@ -163,7 +200,7 @@ export class SalesPipelineService {
         .select('*')
         .in('lead_id', leadIds)
         .order('created_at', { ascending: false })
-        .limit(500)
+        .limit(100)
     ]);
 
     // Create lookup maps
@@ -648,7 +685,10 @@ export class SalesPipelineService {
 
   getStats(): Observable<PipelineStats> {
     return from(this.fetchStats()).pipe(
-      tap(stats => this.statsSubject.next(stats))
+      tap(stats => {
+        this.statsSubject.next(stats);
+        this.saveStatsCache(stats);
+      })
     );
   }
 

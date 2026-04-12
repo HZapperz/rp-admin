@@ -88,7 +88,13 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadData();
-    this.pipelineService.runAutomationCheck().subscribe();
+
+    // Only run automation check once per hour
+    const lastCheck = localStorage.getItem('rp_automation_last_check');
+    if (!lastCheck || Date.now() - parseInt(lastCheck) > 60 * 60 * 1000) {
+      localStorage.setItem('rp_automation_last_check', Date.now().toString());
+      this.pipelineService.runAutomationCheck().subscribe();
+    }
 
     interval(30000)
       .pipe(takeUntil(this.destroy$))
@@ -114,6 +120,29 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
   }
 
   loadData(): void {
+    const hasActiveFilters = !!(this.searchTerm || this.priorityFilter !== 'all');
+
+    // Serve from cache instantly when no active filters
+    if (!hasActiveFilters) {
+      const cachedLeads = this.pipelineService.getCachedLeads();
+      const cachedStats = this.pipelineService.getCachedStats();
+      if (cachedLeads && cachedStats) {
+        this.allLeads = cachedLeads;
+        this.leadsByStage = this.groupLeadsByStage(cachedLeads);
+        this.nudges = this.pipelineService.getNudges(cachedLeads);
+        this.stats = cachedStats;
+        if ((this.leadsByStage[this.selectedStage] || []).length === 0) {
+          const allStages = [...this.activeStages, ...this.endStages];
+          const firstWithLeads = allStages.find(s => (this.leadsByStage[s.stage] || []).length > 0);
+          if (firstWithLeads) this.selectedStage = firstWithLeads.stage;
+        }
+        this.isLoading = false;
+        this.error = null;
+        this.refreshData(); // Silently refresh in background
+        return;
+      }
+    }
+
     this.isLoading = true;
     this.error = null;
 
@@ -154,7 +183,19 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
     });
   }
 
+  private groupLeadsByStage(leads: PipelineLeadWithDetails[]): Record<PipelineStage, PipelineLeadWithDetails[]> {
+    const grouped: Record<PipelineStage, PipelineLeadWithDetails[]> = {
+      'NEW': [], 'TEXTED': [], 'NO_RESPONSE': [], 'NEEDS_CALL': [],
+      'CALLED': [], 'BOOKED': [], 'CONVERTED': [], 'LOST': [], 'DORMANT': []
+    };
+    for (const lead of leads) {
+      if (grouped[lead.pipeline_stage]) grouped[lead.pipeline_stage].push(lead);
+    }
+    return grouped;
+  }
+
   refreshData(): void {
+    if (document.hidden) return;
     if (!this.isLoading) {
       const filters: PipelineFilters = {};
       if (this.searchTerm) {
