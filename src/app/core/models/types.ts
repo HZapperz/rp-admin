@@ -179,6 +179,8 @@ export interface BookingPet {
   total_price: number;
   notes?: string;
   created_at: string;
+  started_at?: string;
+  completed_at?: string;
   before_photo_url?: string;
   after_photo_url?: string;
 }

@@ -690,13 +690,19 @@
                 <div *ngIf="petBooking.before_photo_url || petBooking.after_photo_url" class="photo-pair">
                   <span class="photo-pet-name">{{ petBooking.pet?.name }}</span>
                   <div class="photo-thumbnails">
-                    <div *ngIf="petBooking.before_photo_url" class="photo-thumb" (click)="openPhotoGallery(petBooking.before_photo_url!)">
-                      <img [src]="petBooking.before_photo_url" alt="Before">
-                      <span class="photo-label">Before</span>
+                    <div *ngIf="petBooking.before_photo_url" class="photo-thumb-wrapper">
+                      <div class="photo-thumb" (click)="openPhotoGallery(petBooking.before_photo_url!)">
+                        <img [src]="petBooking.before_photo_url" alt="Before">
+                        <span class="photo-label">Before</span>
+                      </div>
+                      <span class="photo-timestamp" *ngIf="petBooking.started_at">{{ petBooking.started_at | date:'M/d, h:mm a' }}</span>
                     </div>
-                    <div *ngIf="petBooking.after_photo_url" class="photo-thumb" (click)="openPhotoGallery(petBooking.after_photo_url!)">
-                      <img [src]="petBooking.after_photo_url" alt="After">
-                      <span class="photo-label">After</span>
+                    <div *ngIf="petBooking.after_photo_url" class="photo-thumb-wrapper">
+                      <div class="photo-thumb" (click)="openPhotoGallery(petBooking.after_photo_url!)">
+                        <img [src]="petBooking.after_photo_url" alt="After">
+                        <span class="photo-label">After</span>
+                      </div>
+                      <span class="photo-timestamp" *ngIf="petBooking.completed_at">{{ petBooking.completed_at | date:'M/d, h:mm a' }}</span>
                     </div>
                   </div>
                 </div>

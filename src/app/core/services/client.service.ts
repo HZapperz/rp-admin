@@ -67,7 +67,7 @@ export interface ClientWithStats {
 export type ClientFilterType = 'all' | 'clients' | 'warm_leads';
 
 // Client Relations UI Types
-export type ClientSegment = 'all' | 'vip' | 'at_risk' | 'upcoming' | 'new' | 'needs_review';
+export type ClientSegment = 'all' | 'vip' | 'at_risk' | 'upcoming' | 'new' | 'needs_review' | 'retention';
 
 export interface ClientSegmentConfig {
   segment: ClientSegment;
@@ -109,9 +109,45 @@ export interface ClientRelationsStats {
   upcoming_count: number;
   new_count: number;
   needs_review_count: number;
+  retention_count: number;
   total_revenue: number;
   avg_ltv: number;
   nudges: ClientNudge[];
+}
+
+export interface OneTimerClient {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  scheduled_date: string;
+  days_since: number;
+  service_name: string;
+  total_amount: number;
+  tip_amount: number;
+  discount_amount: number;
+  credits_earned: number;
+  experience_rating: number | null;
+  retention_score: number;
+  segment_label: 'likely_return' | 'uncertain' | 'churned';
+}
+
+export interface RetentionFunnel {
+  active_recurring: number;
+  recently_groomed: number;
+  one_time_recent: number;
+  lapsing: number;
+  churned: number;
+  never_booked: number;
+  total: number;
+}
+
+export interface RetentionAnalysis {
+  funnel: RetentionFunnel;
+  oneTimers: OneTimerClient[];
+  recurringGoal: number;
+  lastRefreshed: Date;
 }
 
 // Segment configurations
@@ -163,6 +199,14 @@ export const CLIENT_SEGMENT_CONFIGS: Record<ClientSegment, ClientSegmentConfig> 
     bgColor: '#fef3c7',
     description: 'Clients who completed a booking but haven\'t received a Google review request',
     icon: 'star'
+  },
+  retention: {
+    segment: 'retention',
+    label: 'Retention',
+    color: '#0891b2',
+    bgColor: '#e0f2fe',
+    description: 'One-time clients (30–90 days ago) scored by likelihood to rebook. Track your path to 250 recurring clients.',
+    icon: 'trending_up'
   }
 };
 
@@ -276,7 +320,19 @@ export interface ClientDetailData {
   providedIn: 'root'
 })
 export class ClientService {
+  private clientsCache: { data: ClientWithStats[]; timestamp: number } | null = null;
+  private readonly CLIENTS_CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+  private retentionCache: { data: RetentionAnalysis; timestamp: number } | null = null;
+  private readonly RETENTION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  public lastClientsRefreshed: Date | null = null;
+
   constructor(private supabase: SupabaseService) {}
+
+  clearClientsCache() {
+    this.clientsCache = null;
+    this.retentionCache = null;
+    this.lastClientsRefreshed = null;
+  }
 
   /**
    * Get authorization headers for API calls
@@ -297,6 +353,14 @@ export class ClientService {
   }
 
   private async fetchClients(search?: string): Promise<ClientWithStats[]> {
+    // Return cached data when not searching and cache is fresh
+    if (!search && this.clientsCache) {
+      const age = Date.now() - this.clientsCache.timestamp;
+      if (age < this.CLIENTS_CACHE_TTL) {
+        return this.clientsCache.data;
+      }
+    }
+
     // Step 1: Get all clients
     let query = this.supabase
       .from('users')
@@ -487,6 +551,12 @@ export class ClientService {
         }
       };
     });
+
+    // Populate cache for non-search queries
+    if (!search) {
+      this.clientsCache = { data: clientsWithStats, timestamp: Date.now() };
+      this.lastClientsRefreshed = new Date();
+    }
 
     return clientsWithStats;
   }
@@ -1432,6 +1502,7 @@ export class ClientService {
     let upcomingCount = 0;
     let newCount = 0;
     let needsReviewCount = 0;
+    let retentionCount = 0;
     let totalRevenue = 0;
 
     for (const client of actualClients) {
@@ -1465,6 +1536,11 @@ export class ClientService {
       if (!client.google_review_requested && client.total_bookings >= 1) {
         needsReviewCount++;
       }
+
+      // Retention: one-time clients 30-90 days ago
+      if (client.total_bookings === 1 && daysSinceLastBooking >= 30 && daysSinceLastBooking <= 90) {
+        retentionCount++;
+      }
     }
 
     // Generate nudges
@@ -1477,6 +1553,7 @@ export class ClientService {
       upcoming_count: upcomingCount,
       new_count: newCount,
       needs_review_count: needsReviewCount,
+      retention_count: retentionCount,
       total_revenue: totalRevenue,
       avg_ltv: actualClients.length > 0 ? totalRevenue / actualClients.length : 0,
       nudges
@@ -1551,6 +1628,170 @@ export class ClientService {
     }
 
     return nudges;
+  }
+
+  // ============================================
+  // RETENTION ANALYSIS METHODS
+  // ============================================
+
+  async getRecurringGoal(): Promise<number> {
+    const { data } = await this.supabase
+      .from('business_settings')
+      .select('recurring_goal')
+      .limit(1)
+      .single();
+    return data?.recurring_goal ?? 250;
+  }
+
+  async saveRecurringGoal(goal: number): Promise<void> {
+    const { data: existing } = await this.supabase
+      .from('business_settings')
+      .select('id')
+      .limit(1)
+      .single();
+    if (existing?.id) {
+      await this.supabase
+        .from('business_settings')
+        .update({ recurring_goal: goal, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+    }
+    // Bust retention cache so the new goal reflects immediately
+    this.retentionCache = null;
+  }
+
+  async getRetentionAnalysis(forceRefresh = false): Promise<RetentionAnalysis> {
+    if (!forceRefresh && this.retentionCache) {
+      const age = Date.now() - this.retentionCache.timestamp;
+      if (age < this.RETENTION_CACHE_TTL) {
+        return this.retentionCache.data;
+      }
+    }
+
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+    const now = Date.now();
+
+    // Use clients cache (fetchClients populates it)
+    const allClientsWithStats = await this.fetchClients();
+    const actualClients = allClientsWithStats.filter(c => !c.is_warm_lead);
+
+    // Compute funnel from cached client data
+    let active_recurring = 0, recently_groomed = 0, one_time_recent = 0, lapsing = 0, churned = 0;
+    for (const client of actualClients) {
+      const daysSince = client.last_booking_date
+        ? Math.floor((now - new Date(client.last_booking_date).getTime()) / MS_PER_DAY)
+        : 999;
+
+      if (client.total_bookings === 0) {
+        // warm leads excluded above
+      } else if (daysSince <= 30) {
+        recently_groomed++;
+      } else if (daysSince <= 90 && client.total_bookings >= 2) {
+        active_recurring++;
+      } else if (daysSince <= 90 && client.total_bookings === 1) {
+        one_time_recent++;
+      } else if (daysSince <= 180) {
+        lapsing++;
+      } else {
+        churned++;
+      }
+    }
+    const never_booked = allClientsWithStats.filter(c => c.is_warm_lead).length;
+
+    // One-timer clients needing scoring
+    const oneTimerClients = actualClients.filter(c => {
+      if (c.total_bookings !== 1 || !c.last_booking_date) return false;
+      const d = Math.floor((now - new Date(c.last_booking_date).getTime()) / MS_PER_DAY);
+      return d >= 30 && d <= 90;
+    });
+
+    let oneTimers: OneTimerClient[] = [];
+
+    if (oneTimerClients.length > 0) {
+      const oneTimerIds = oneTimerClients.map(c => c.id);
+
+      const [bookingsResult, ratingsResult] = await Promise.all([
+        this.supabase
+          .from('bookings')
+          .select('client_id, scheduled_date, service_name, total_amount, tip_amount, discount_amount, credits_earned')
+          .in('client_id', oneTimerIds)
+          .eq('status', 'completed')
+          .order('scheduled_date', { ascending: false }),
+        this.supabase
+          .from('ratings')
+          .select('client_id, experience_rating')
+          .in('client_id', oneTimerIds)
+          .eq('reviewer_role', 'CLIENT')
+      ]);
+
+      const bookingsByClient: Record<string, any> = {};
+      for (const b of (bookingsResult.data || [])) {
+        if (!bookingsByClient[b.client_id]) {
+          bookingsByClient[b.client_id] = b;
+        }
+      }
+      const ratingsByClient: Record<string, number> = {};
+      for (const r of (ratingsResult.data || [])) {
+        if (!ratingsByClient[r.client_id]) {
+          ratingsByClient[r.client_id] = r.experience_rating;
+        }
+      }
+
+      for (const client of oneTimerClients) {
+        const booking = bookingsByClient[client.id];
+        if (!booking) continue;
+
+        const daysSince = Math.floor((now - new Date(booking.scheduled_date).getTime()) / MS_PER_DAY);
+        const tipAmount = booking.tip_amount || 0;
+        const discountAmount = booking.discount_amount || 0;
+        const totalAmount = booking.total_amount || 0;
+        const creditsEarned = booking.credits_earned || 0;
+        const experienceRating = ratingsByClient[client.id] ?? null;
+
+        let score = 0;
+        if (tipAmount > 0) score += 2;
+        if (tipAmount >= 20) score += 1;
+        if (experienceRating !== null && experienceRating >= 4) score += 2;
+        if (creditsEarned > 0) score += 1;
+        if (totalAmount >= 100) score += 1;
+        if (discountAmount > 0) score -= 1;
+        score += daysSince <= 45 ? 1 : -1;
+
+        const segment_label: 'likely_return' | 'uncertain' | 'churned' =
+          score >= 4 ? 'likely_return' : score >= 1 ? 'uncertain' : 'churned';
+
+        oneTimers.push({
+          id: client.id,
+          first_name: client.first_name,
+          last_name: client.last_name,
+          email: client.email,
+          phone: client.phone || '',
+          scheduled_date: booking.scheduled_date,
+          days_since: daysSince,
+          service_name: booking.service_name || '',
+          total_amount: totalAmount,
+          tip_amount: tipAmount,
+          discount_amount: discountAmount,
+          credits_earned: creditsEarned,
+          experience_rating: experienceRating,
+          retention_score: score,
+          segment_label
+        });
+      }
+
+      oneTimers.sort((a, b) => b.retention_score - a.retention_score);
+    }
+
+    const recurringGoal = await this.getRecurringGoal();
+
+    const result: RetentionAnalysis = {
+      funnel: { active_recurring, recently_groomed, one_time_recent, lapsing, churned, never_booked, total: allClientsWithStats.length },
+      oneTimers,
+      recurringGoal,
+      lastRefreshed: new Date()
+    };
+
+    this.retentionCache = { data: result, timestamp: Date.now() };
+    return result;
   }
 
   /**

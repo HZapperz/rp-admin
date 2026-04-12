@@ -1,0 +1,223 @@
+<!-- Loading State -->
+@if (isLoading) {
+  <div class="retention-loading">
+    <div class="spinner"></div>
+    <p>Analyzing client retention...</p>
+  </div>
+}
+
+@if (!isLoading && analysis) {
+  <div class="retention-dashboard">
+
+    <!-- Section 1: Progress to Goal -->
+    <div class="retention-card goal-card">
+      <div class="retention-card-header">
+        <div class="card-title-row">
+          <h3>Path to Recurring Clients</h3>
+          <div class="goal-refresh-row">
+            @if (isRefreshing) {
+              <span class="refreshing-text">Refreshing...</span>
+            } @else {
+              <span class="last-refreshed">Updated {{ formatTime(analysis.lastRefreshed) }}</span>
+              <button class="refresh-btn" (click)="refresh()" title="Refresh data">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M23 4v6h-6M1 20v-6h6" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="goal-headline">
+          <span class="goal-current">{{ analysis.funnel.active_recurring }}</span>
+          <span class="goal-sep">/</span>
+          @if (editingGoal) {
+            <input
+              type="number"
+              class="goal-input"
+              [(ngModel)]="goalDraft"
+              min="1"
+              max="9999"
+              (keydown.enter)="saveGoal()"
+              (keydown.escape)="cancelEditGoal()"
+            />
+            <button class="goal-save-btn" (click)="saveGoal()" [disabled]="savingGoal">Save</button>
+            <button class="goal-cancel-btn" (click)="cancelEditGoal()">Cancel</button>
+          } @else {
+            <span class="goal-target">{{ analysis.recurringGoal }}</span>
+            <button class="goal-edit-btn" (click)="startEditGoal()" title="Edit goal">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          }
+          <span class="goal-label">recurring clients</span>
+        </div>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="goalProgress"></div>
+          </div>
+          <span class="progress-pct">{{ goalProgress.toFixed(1) }}%</span>
+        </div>
+
+        <div class="goal-subtext">
+          {{ totalEverBooked }} clients have ever booked —
+          @if (totalEverBooked < analysis.recurringGoal) {
+            convert all + {{ analysis.recurringGoal - totalEverBooked }} new clients to hit goal
+          } @else {
+            enough pipeline, focus on retention
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Funnel Breakdown -->
+    <div class="retention-card">
+      <div class="retention-card-header">
+        <h3>Client Funnel</h3>
+        <span class="card-subtitle">{{ analysis.funnel.total }} total registered</span>
+      </div>
+      <table class="funnel-table">
+        <thead>
+          <tr>
+            <th>Segment</th>
+            <th class="num-col">Count</th>
+            <th class="num-col">% of Total</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="funnel-row funnel-active">
+            <td class="segment-name">
+              <span class="dot dot-green"></span>Active Recurring
+              <span class="segment-hint">2+ bookings within 90 days</span>
+            </td>
+            <td class="num-col">{{ analysis.funnel.active_recurring }}</td>
+            <td class="num-col">{{ ((analysis.funnel.active_recurring / analysis.funnel.total) * 100).toFixed(1) }}%</td>
+            <td><span class="status-badge status-green">You're here</span></td>
+          </tr>
+          <tr class="funnel-row">
+            <td class="segment-name">
+              <span class="dot dot-blue"></span>Recently Groomed
+              <span class="segment-hint">Last booking within 30 days</span>
+            </td>
+            <td class="num-col">{{ analysis.funnel.recently_groomed }}</td>
+            <td class="num-col">{{ ((analysis.funnel.recently_groomed / analysis.funnel.total) * 100).toFixed(1) }}%</td>
+            <td><span class="status-badge status-blue">Rebookable pipeline</span></td>
+          </tr>
+          <tr class="funnel-row funnel-focus">
+            <td class="segment-name">
+              <span class="dot dot-amber"></span>One-Time Recent
+              <span class="segment-hint">1 booking, 30–90 days ago</span>
+            </td>
+            <td class="num-col">{{ analysis.funnel.one_time_recent }}</td>
+            <td class="num-col">{{ ((analysis.funnel.one_time_recent / analysis.funnel.total) * 100).toFixed(1) }}%</td>
+            <td><span class="status-badge status-amber">Win-back target ↓</span></td>
+          </tr>
+          <tr class="funnel-row">
+            <td class="segment-name">
+              <span class="dot dot-orange"></span>Lapsing
+              <span class="segment-hint">Last booking 90–180 days ago</span>
+            </td>
+            <td class="num-col">{{ analysis.funnel.lapsing }}</td>
+            <td class="num-col">{{ ((analysis.funnel.lapsing / analysis.funnel.total) * 100).toFixed(1) }}%</td>
+            <td><span class="status-badge status-orange">Re-engagement</span></td>
+          </tr>
+          <tr class="funnel-row">
+            <td class="segment-name">
+              <span class="dot dot-red"></span>Churned
+              <span class="segment-hint">Last booking 180+ days ago</span>
+            </td>
+            <td class="num-col">{{ analysis.funnel.churned }}</td>
+            <td class="num-col">{{ ((analysis.funnel.churned / analysis.funnel.total) * 100).toFixed(1) }}%</td>
+            <td><span class="status-badge status-red">Likely churned</span></td>
+          </tr>
+          <tr class="funnel-row funnel-muted">
+            <td class="segment-name">
+              <span class="dot dot-gray"></span>Never Booked
+              <span class="segment-hint">Registered, 0 completed bookings</span>
+            </td>
+            <td class="num-col">{{ analysis.funnel.never_booked }}</td>
+            <td class="num-col">{{ ((analysis.funnel.never_booked / analysis.funnel.total) * 100).toFixed(1) }}%</td>
+            <td><span class="status-badge status-gray">Untapped</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 3: One-Timer Analysis -->
+    @if (analysis.oneTimers.length > 0) {
+      <div class="retention-card">
+        <div class="retention-card-header">
+          <div class="card-title-row">
+            <h3>One-Timer Analysis</h3>
+            <div class="segment-counts">
+              <span class="seg-chip seg-green">{{ likelyReturnCount }} Likely Return</span>
+              <span class="seg-chip seg-amber">{{ uncertainCount }} Uncertain</span>
+              <span class="seg-chip seg-red">{{ atRiskCount }} At Risk</span>
+            </div>
+          </div>
+          <div class="onetimer-stats">
+            <span class="stat-item">{{ oneTimerStats.tipped }}/{{ analysis.oneTimers.length }} tipped</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-item">avg tip ${{ oneTimerStats.avgTip.toFixed(0) }}</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-item">{{ oneTimerStats.usedDiscount }}/{{ analysis.oneTimers.length }} used discount</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-item">avg booking ${{ oneTimerStats.avgBooking.toFixed(0) }}</span>
+          </div>
+          <p class="onetimer-insight">
+            💡 Every one of these {{ analysis.oneTimers.length }} clients has unused loyalty credits they likely don't know about.
+            A "your credits are waiting" SMS could convert {{ likelyReturnCount + uncertainCount }} of them.
+          </p>
+        </div>
+
+        <div class="onetimer-table-wrap">
+          <table class="onetimer-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Service</th>
+                <th class="num-col">Days Since</th>
+                <th class="num-col">Tip</th>
+                <th class="num-col">Discount</th>
+                <th class="num-col">Credits</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (client of analysis.oneTimers; track client.id) {
+                <tr class="onetimer-row" (click)="navigateToClient(client.id)">
+                  <td class="client-cell">
+                    <div class="client-name">{{ client.first_name }} {{ client.last_name }}</div>
+                    <div class="client-phone">{{ client.phone || client.email }}</div>
+                  </td>
+                  <td class="service-cell">{{ client.service_name }}</td>
+                  <td class="num-col">{{ client.days_since }}d</td>
+                  <td class="num-col tip-cell" [class.tip-zero]="client.tip_amount === 0">
+                    {{ formatCurrency(client.tip_amount) }}
+                  </td>
+                  <td class="num-col discount-cell" [class.discount-nonzero]="client.discount_amount > 0">
+                    {{ formatCurrency(client.discount_amount) }}
+                  </td>
+                  <td class="num-col credits-cell">
+                    ${{ client.credits_earned.toFixed(0) }}
+                  </td>
+                  <td>
+                    <span class="score-badge" [class]="getScoreBadgeClass(client.segment_label)">
+                      {{ getScoreLabel(client.segment_label) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+  </div>
+}

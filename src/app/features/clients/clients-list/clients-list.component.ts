@@ -11,11 +11,12 @@ import {
   ClientSegmentConfig,
 } from '../../../core/services/client.service';
 import { CreateClientModalComponent } from '../../../shared/components/create-client-modal/create-client-modal.component';
+import { RetentionDashboardComponent } from './retention-dashboard/retention-dashboard.component';
 
 @Component({
   selector: 'app-clients-list',
   standalone: true,
-  imports: [CommonModule, CreateClientModalComponent],
+  imports: [CommonModule, CreateClientModalComponent, RetentionDashboardComponent],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
 })
@@ -44,7 +45,7 @@ export class ClientsListComponent implements OnInit {
 
   // Segment configurations
   segmentConfigs = CLIENT_SEGMENT_CONFIGS;
-  segmentList: ClientSegment[] = ['all', 'vip', 'at_risk', 'upcoming', 'new', 'needs_review'];
+  segmentList: ClientSegment[] = ['all', 'vip', 'at_risk', 'upcoming', 'new', 'needs_review', 'retention'];
 
   // Google review request state
   sendingReviewRequest = new Set<string>();
@@ -82,8 +83,10 @@ export class ClientsListComponent implements OnInit {
   // Segment handling
   selectSegment(segment: ClientSegment) {
     this.selectedSegment = segment;
-    this.isLoading = true;
+    // Retention tab renders its own component — no card loading needed
+    if (segment === 'retention') return;
 
+    this.isLoading = true;
     this.clientService.getClientsWithEngagement(this.searchTerm, segment).subscribe({
       next: (clients) => {
         this.clients = clients;
@@ -110,6 +113,7 @@ export class ClientsListComponent implements OnInit {
       case 'upcoming': return this.stats.upcoming_count;
       case 'new': return this.stats.new_count;
       case 'needs_review': return this.stats.needs_review_count;
+      case 'retention': return this.stats.retention_count;
       default: return this.stats.total;
     }
   }

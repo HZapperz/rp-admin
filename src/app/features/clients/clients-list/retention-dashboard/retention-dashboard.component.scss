@@ -1,0 +1,433 @@
+.retention-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+  color: var(--text-secondary, #6b7280);
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #0891b2;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.retention-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 0 2rem;
+}
+
+// ─── Card Shell ────────────────────────────────────────────────────────────
+.retention-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.retention-card-header {
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+
+  h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+  }
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.card-subtitle {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  display: block;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+// ─── Goal Card ─────────────────────────────────────────────────────────────
+.goal-card .retention-card-header {
+  border-bottom: none;
+}
+
+.goal-refresh-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.last-refreshed {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.refreshing-text {
+  font-size: 0.75rem;
+  color: #0891b2;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.375rem;
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: #0891b2;
+    border-color: #0891b2;
+  }
+}
+
+.goal-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.goal-current {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0891b2;
+  line-height: 1;
+}
+
+.goal-sep {
+  font-size: 1.5rem;
+  color: #d1d5db;
+}
+
+.goal-target {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.goal-label {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin-left: 0.25rem;
+}
+
+.goal-edit-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  padding: 0.2rem 0.3rem;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: #0891b2;
+    border-color: #0891b2;
+  }
+}
+
+.goal-input {
+  width: 5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: 2px solid #0891b2;
+  border-radius: 0.375rem;
+  padding: 0.1rem 0.4rem;
+  outline: none;
+  color: #374151;
+}
+
+.goal-save-btn {
+  background: #0891b2;
+  color: #fff;
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.goal-cancel-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.progress-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0891b2, #06b6d4);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.progress-pct {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0891b2;
+  min-width: 3rem;
+  text-align: right;
+}
+
+.goal-subtext {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+// ─── Funnel Table ──────────────────────────────────────────────────────────
+.funnel-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    padding: 0.625rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .num-col {
+    text-align: right;
+    width: 80px;
+  }
+}
+
+.funnel-row {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+
+  &:last-child { border-bottom: none; }
+
+  &:hover { background: #f9fafb; }
+
+  &.funnel-focus { background: #fffbeb; }
+  &.funnel-active { background: #f0fdf4; }
+  &.funnel-muted td { color: #9ca3af; }
+
+  td {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    color: #374151;
+  }
+
+  .num-col {
+    font-weight: 600;
+    text-align: right;
+  }
+}
+
+.segment-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.segment-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.dot-green  { background: #16a34a; }
+  &.dot-blue   { background: #2563eb; }
+  &.dot-amber  { background: #d97706; }
+  &.dot-orange { background: #ea580c; }
+  &.dot-red    { background: #dc2626; }
+  &.dot-gray   { background: #9ca3af; }
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-green  { background: #dcfce7; color: #15803d; }
+.status-blue   { background: #dbeafe; color: #1d4ed8; }
+.status-amber  { background: #fef3c7; color: #b45309; }
+.status-orange { background: #ffedd5; color: #c2410c; }
+.status-red    { background: #fee2e2; color: #b91c1c; }
+.status-gray   { background: #f3f4f6; color: #6b7280; }
+
+// ─── One-Timer Section ─────────────────────────────────────────────────────
+.segment-counts {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.seg-chip {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+
+  &.seg-green  { background: #dcfce7; color: #15803d; }
+  &.seg-amber  { background: #fef3c7; color: #b45309; }
+  &.seg-red    { background: #fee2e2; color: #b91c1c; }
+}
+
+.onetimer-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.stat-item { color: #374151; font-weight: 500; }
+.stat-sep  { color: #d1d5db; }
+
+.onetimer-insight {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: #4b5563;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  line-height: 1.5;
+}
+
+.onetimer-table-wrap {
+  overflow-x: auto;
+}
+
+.onetimer-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+
+  th {
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .num-col { text-align: right; width: 80px; }
+}
+
+.onetimer-row {
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: #f0f9ff; }
+
+  td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #374151;
+    vertical-align: middle;
+  }
+
+  .num-col { text-align: right; font-weight: 500; }
+}
+
+.client-cell {
+  min-width: 150px;
+}
+
+.client-name {
+  font-weight: 600;
+  color: #111827;
+}
+
+.client-phone {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.125rem;
+}
+
+.service-cell {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.tip-zero { color: #9ca3af; }
+.discount-nonzero { color: #b45309; }
+.credits-cell { color: #0891b2; font-weight: 600; }
+
+.score-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-green { background: #dcfce7; color: #15803d; }
+.badge-amber { background: #fef3c7; color: #b45309; }
+.badge-red   { background: #fee2e2; color: #b91c1c; }
