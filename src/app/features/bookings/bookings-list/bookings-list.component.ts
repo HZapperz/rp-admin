@@ -109,6 +109,15 @@ export class BookingsListComponent implements OnInit {
       });
     }
 
+    // Pending/unassigned: rabies-complete bookings first, missing rabies last
+    if (this.selectedStatus === 'pending' || this.selectedStatus === 'unassigned') {
+      filtered.sort((a, b) => {
+        const aRabies = this.hasMissingRabies(a) ? 1 : 0;
+        const bRabies = this.hasMissingRabies(b) ? 1 : 0;
+        return aRabies - bRabies;
+      });
+    }
+
     this.filteredBookings = filtered;
   }
 
