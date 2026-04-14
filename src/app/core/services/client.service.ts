@@ -1973,10 +1973,13 @@ export class ClientService {
    */
   async assignSmsRabiesCert(petId: string, userId: string, twilioMediaUrl: string): Promise<boolean> {
     try {
-      const response = await fetch(`${environment.apiUrl}/api/admin/assign-rabies-cert`, {
+      const response = await fetch(`${environment.smsService.url}/media/assign-rabies-cert`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ petId, userId, twilioMediaUrl }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': environment.smsService.apiKey,
+        },
+        body: JSON.stringify({ pet_id: petId, user_id: userId, twilio_media_url: twilioMediaUrl }),
       });
 
       if (!response.ok) {

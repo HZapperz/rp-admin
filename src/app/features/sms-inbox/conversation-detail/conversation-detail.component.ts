@@ -103,7 +103,7 @@ export class ConversationDetailComponent implements OnInit, OnDestroy, AfterView
   }
 
   getProxyUrl(twilioUrl: string): string {
-    return `${environment.apiUrl}/api/admin/twilio-media?url=${encodeURIComponent(twilioUrl)}`;
+    return `${environment.smsService.url}/media/proxy?url=${encodeURIComponent(twilioUrl)}`;
   }
 
   openAssignDropdown(url: string) {
