@@ -231,14 +231,130 @@
   margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
+}
+
+.media-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  a {
+    display: block;
+
+    &:hover .media-image {
+      opacity: 0.9;
+    }
+  }
 
   .media-image {
     max-width: 200px;
     max-height: 200px;
     border-radius: 8px;
     object-fit: cover;
+    display: block;
   }
+}
+
+.assign-cert {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.btn-assign-cert {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: #e0e7ff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.assign-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .assign-label {
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  .pet-select {
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    color: #1a1a2e;
+    outline: none;
+    cursor: pointer;
+
+    &:focus {
+      border-color: #667eea;
+    }
+  }
+
+  .btn-confirm {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: #5a67d8;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-cancel {
+    padding: 4px 10px;
+    font-size: 11px;
+    background: none;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+}
+
+.assign-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #16a34a;
 }
 
 .message-meta {

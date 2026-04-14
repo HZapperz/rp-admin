@@ -1949,4 +1949,46 @@ export class ClientService {
   getClientsNeedingReview(): Observable<ClientWithEngagement[]> {
     return this.getClientsWithEngagement(undefined, 'needs_review');
   }
+
+  /**
+   * Get pets for a client that are missing a rabies certificate.
+   */
+  async getClientPetsNeedingCert(userId: string): Promise<Pet[]> {
+    const { data, error } = await this.supabase
+      .from('pets')
+      .select('id, user_id, name, breed, rabies_certificate_url, rabies_pending, created_at, updated_at')
+      .eq('user_id', userId)
+      .or('rabies_certificate_url.is.null,rabies_pending.eq.true');
+
+    if (error) {
+      console.error('Error fetching pets needing cert:', error);
+      return [];
+    }
+    return (data as Pet[]) || [];
+  }
+
+  /**
+   * Assign a Twilio MMS image as a pet's rabies certificate.
+   * Calls the Next.js API which fetches from Twilio, uploads to storage, and updates the pet record.
+   */
+  async assignSmsRabiesCert(petId: string, userId: string, twilioMediaUrl: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${environment.apiUrl}/api/admin/assign-rabies-cert`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ petId, userId, twilioMediaUrl }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        console.error('assignSmsRabiesCert error:', err);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error assigning rabies cert:', error);
+      return false;
+    }
+  }
 }

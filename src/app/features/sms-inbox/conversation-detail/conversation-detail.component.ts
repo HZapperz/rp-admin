@@ -5,6 +5,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { SMSService, SMSConversation, SMSMessage } from '../../../core/services/sms.service';
+import { ClientService, Pet } from '../../../core/services/client.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-conversation-detail',
@@ -28,10 +30,19 @@ export class ConversationDetailComponent implements OnInit, OnDestroy, AfterView
   private shouldScrollToBottom = false;
   private destroy$ = new Subject<void>();
 
+  // Rabies cert assignment state
+  clientPets: Pet[] = [];
+  petsLoading = false;
+  assignDropdownUrl: string | null = null;
+  selectedPetId: string | null = null;
+  assigningUrls = new Set<string>();
+  assignedUrls = new Map<string, string>(); // URL -> pet name
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private smsService: SMSService
+    private smsService: SMSService,
+    private clientService: ClientService
   ) {}
 
   ngOnInit() {
@@ -69,6 +80,11 @@ export class ConversationDetailComponent implements OnInit, OnDestroy, AfterView
         this.messages = response.messages;
         this.isLoading = false;
         this.shouldScrollToBottom = true;
+
+        // Load pets needing cert if this is a known client
+        if (response.conversation?.user_id) {
+          this.loadClientPets(response.conversation.user_id);
+        }
       },
       error: (err) => {
         console.error('Error loading conversation:', err);
@@ -76,6 +92,57 @@ export class ConversationDetailComponent implements OnInit, OnDestroy, AfterView
         this.isLoading = false;
       }
     });
+  }
+
+  loadClientPets(userId: string) {
+    this.petsLoading = true;
+    this.clientService.getClientPetsNeedingCert(userId).then((pets) => {
+      this.clientPets = pets;
+      this.petsLoading = false;
+    });
+  }
+
+  getProxyUrl(twilioUrl: string): string {
+    return `${environment.apiUrl}/api/admin/twilio-media?url=${encodeURIComponent(twilioUrl)}`;
+  }
+
+  openAssignDropdown(url: string) {
+    this.assignDropdownUrl = url;
+    this.selectedPetId = this.clientPets.length === 1 ? this.clientPets[0].id : null;
+  }
+
+  closeAssignDropdown() {
+    this.assignDropdownUrl = null;
+    this.selectedPetId = null;
+  }
+
+  async assignRabiesCert(mediaUrl: string) {
+    if (!this.selectedPetId || !this.conversation?.user_id) return;
+
+    const pet = this.clientPets.find(p => p.id === this.selectedPetId);
+    if (!pet) return;
+
+    this.assigningUrls.add(mediaUrl);
+
+    const success = await this.clientService.assignSmsRabiesCert(
+      this.selectedPetId,
+      this.conversation.user_id,
+      mediaUrl
+    );
+
+    this.assigningUrls.delete(mediaUrl);
+
+    if (success) {
+      this.assignedUrls.set(mediaUrl, pet.name);
+      // Remove pet from list since it now has a cert
+      this.clientPets = this.clientPets.filter(p => p.id !== this.selectedPetId);
+      this.assignDropdownUrl = null;
+      this.selectedPetId = null;
+    }
+  }
+
+  hasInboundMedia(messages: SMSMessage[]): boolean {
+    return messages.some(m => m.direction === 'inbound' && m.media_urls && m.media_urls.length > 0);
   }
 
   refreshMessages() {
