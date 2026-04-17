@@ -308,6 +308,11 @@ export class BookingService {
         return false;
       }
 
+      // Keep sms_scheduled in sync with the confirmed date. Without this, a
+      // booking that was created as "pending" for date X and approved with a
+      // different date Y would leave any prior reminder row pointing at X.
+      await this.rescheduleReminders(bookingId, scheduledDate);
+
       console.log('Booking approved successfully', { data });
       return true;
     } catch (error) {
@@ -369,6 +374,10 @@ export class BookingService {
     if (error) {
       console.error('Error reassigning groomer:', error);
       return false;
+    }
+
+    if (scheduledDate) {
+      await this.rescheduleReminders(bookingId, scheduledDate);
     }
 
     return true;
