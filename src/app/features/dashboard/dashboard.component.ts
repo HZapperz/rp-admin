@@ -447,11 +447,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       .sort((a, b) => {
         const timeCompare = (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || '');
         if (timeCompare !== 0) return timeCompare;
-        // Same time: pending in back, completed on top (highest z-index = most visible)
-        const statusPriority: Record<string, number> = {
-          'pending': 0, 'confirmed': 1, 'in_progress': 2, 'completed': 3
-        };
-        return (statusPriority[a.status] ?? 4) - (statusPriority[b.status] ?? 4);
+        return this.getReadinessStackPriority(a) - this.getReadinessStackPriority(b);
       });
 
     const shiftData = this.shiftAvailabilityMap.get(dateStr) ?? { morning: true, afternoon: true, evening: true };
@@ -598,6 +594,18 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   getReadiness(booking: BookingWithDetails): Readiness {
     return this.readinessMap.get(booking) ?? this.deriveReadiness(booking);
+  }
+
+  private getReadinessStackPriority(booking: BookingWithDetails): number {
+    const r = this.getReadiness(booking);
+    switch (r) {
+      case 'blocked': return 0;
+      case 'completed': return 1;
+      case 'in_progress': return 2;
+      case 'confirmed': return 3;
+      case 'ready_to_confirm': return 4;
+      default: return 1;
+    }
   }
 
   getReadinessClass(booking: BookingWithDetails): string {
@@ -792,8 +800,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   getBookingZIndex(bookingId: string): number {
     const layout = this.bookingLayoutMap.get(bookingId);
-    if (!layout) return 1;
-    return 1 + layout.columnIndex;
+    const columnIndex = layout?.columnIndex ?? 0;
+    const booking = this.allBookings.find(b => b.id === bookingId);
+    const readinessPriority = booking ? this.getReadinessStackPriority(booking) : 1;
+    return readinessPriority * 100 + columnIndex + 1;
   }
 
   getVisibleBookings(slot: DaySlot): BookingWithDetails[] {
