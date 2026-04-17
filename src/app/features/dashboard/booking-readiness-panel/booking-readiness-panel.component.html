@@ -1,0 +1,111 @@
+<div class="readiness-panel">
+  <div class="panel-header">
+    <div class="panel-title">
+      <span class="title-text">Action Needed</span>
+      @if (periodLabel) {
+        <span class="title-scope">· {{ periodLabel }}</span>
+      }
+    </div>
+    @if (activeFilter !== 'all') {
+      <button class="clear-filter" (click)="filterChange.emit('all')" title="Clear filter">
+        Clear filter
+      </button>
+    }
+  </div>
+
+  <div class="panel-body">
+    <!-- Blocked pill -->
+    <div
+      class="pill pill-blocked"
+      [class.active]="activeFilter === 'blocked'"
+      [class.empty]="blocked.length === 0"
+      (click)="togglePill('blocked')"
+      [attr.aria-pressed]="activeFilter === 'blocked'"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="togglePill('blocked')"
+      (keydown.space)="togglePill('blocked')">
+      <div class="pill-head">
+        <span class="pill-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z"/>
+            <line x1="12" y1="8" x2="12" y2="13"/>
+            <line x1="12" y1="16" x2="12" y2="16.01"/>
+          </svg>
+        </span>
+        <span class="pill-count">{{ blocked.length }}</span>
+        <span class="pill-label">Blocked</span>
+        <span class="pill-reason">missing rabies</span>
+      </div>
+      @if (blocked.length > 0) {
+        <div class="pill-chips">
+          @for (booking of blocked.slice(0, maxChips); track booking.id) {
+            <button
+              class="chip"
+              type="button"
+              (click)="clickChip(booking, $event)"
+              [title]="clientLabel(booking) + ' · ' + dayShort(booking) + ' ' + shortTime(booking)">
+              <span class="chip-name">{{ clientLabel(booking) }}</span>
+              <span class="chip-when">{{ dayShort(booking) }} {{ shortTime(booking) }}</span>
+            </button>
+          }
+          @if (blocked.length > maxChips) {
+            <span class="chip-more">+{{ blocked.length - maxChips }} more</span>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Ready pill -->
+    <div
+      class="pill pill-ready"
+      [class.active]="activeFilter === 'ready'"
+      [class.empty]="ready.length === 0"
+      [class.pulse]="ready.length > 0 && activeFilter !== 'ready'"
+      (click)="togglePill('ready')"
+      [attr.aria-pressed]="activeFilter === 'ready'"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="togglePill('ready')"
+      (keydown.space)="togglePill('ready')">
+      <div class="pill-head">
+        <span class="pill-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="5 12 10 17 19 7"/>
+          </svg>
+        </span>
+        <span class="pill-count">{{ ready.length }}</span>
+        <span class="pill-label">Ready to confirm</span>
+        <span class="pill-reason">awaiting approval</span>
+      </div>
+      @if (ready.length > 0) {
+        <div class="pill-chips">
+          @for (booking of ready.slice(0, maxChips); track booking.id) {
+            <button
+              class="chip"
+              type="button"
+              (click)="clickChip(booking, $event)"
+              [title]="clientLabel(booking) + ' · ' + dayShort(booking) + ' ' + shortTime(booking)">
+              <span class="chip-name">{{ clientLabel(booking) }}</span>
+              <span class="chip-when">{{ dayShort(booking) }} {{ shortTime(booking) }}</span>
+            </button>
+          }
+          @if (ready.length > maxChips) {
+            <span class="chip-more">+{{ ready.length - maxChips }} more</span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (blocked.length === 0 && ready.length === 0) {
+      <div class="all-clear">
+        <span class="all-clear-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="5 12 10 17 19 7"/>
+          </svg>
+        </span>
+        <span>All clear — nothing needs attention in this window.</span>
+      </div>
+    }
+  </div>
+</div>

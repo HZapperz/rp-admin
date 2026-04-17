@@ -97,6 +97,18 @@ export type BookingStatus =
   | 'completed'
   | 'cancelled';
 
+// Derived readiness — computed client-side, combines status with blockers
+// like missing rabies cert. Not persisted in DB.
+export type Readiness =
+  | 'blocked'
+  | 'ready_to_confirm'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
+export type ReadinessFilter = 'all' | 'ready' | 'blocked' | 'confirmed';
+
 export interface Booking {
   id: string;
   client_id: string;

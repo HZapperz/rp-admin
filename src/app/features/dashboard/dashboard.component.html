@@ -145,6 +145,15 @@
       </div>
     </div>
 
+    <!-- Action Needed: readiness panel -->
+    <app-booking-readiness-panel
+      [blocked]="blockedBookings"
+      [ready]="readyBookings"
+      [activeFilter]="readinessFilter"
+      [periodLabel]="getPeriodLabel()"
+      (filterChange)="setReadinessFilter($event)"
+      (bookingClick)="openBookingDetail($event)" />
+
     <!-- Period Navigation Controls -->
     <div class="period-navigation">
       <button class="nav-btn nav-btn--week" (click)="previousPeriod()" title="Previous week">←wk</button>
@@ -163,11 +172,42 @@
       <div class="schedule-header">
         <h2>Schedule</h2>
         <div class="schedule-header-right">
-          <label class="pending-toggle" [class.on]="showOnlyPending">
-            <input type="checkbox" [(ngModel)]="showOnlyPending">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span class="toggle-label">Pending only</span>
-          </label>
+          <div class="readiness-filter" role="tablist" aria-label="Filter bookings by readiness">
+            <button
+              type="button"
+              role="tab"
+              class="rf-btn"
+              [class.active]="readinessFilter === 'all'"
+              [attr.aria-selected]="readinessFilter === 'all'"
+              (click)="setReadinessFilter('all')">All</button>
+            <button
+              type="button"
+              role="tab"
+              class="rf-btn rf-ready"
+              [class.active]="readinessFilter === 'ready'"
+              [attr.aria-selected]="readinessFilter === 'ready'"
+              (click)="setReadinessFilter('ready')">
+              Ready
+              @if (readyBookings.length > 0) { <span class="rf-count">{{ readyBookings.length }}</span> }
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="rf-btn rf-blocked"
+              [class.active]="readinessFilter === 'blocked'"
+              [attr.aria-selected]="readinessFilter === 'blocked'"
+              (click)="setReadinessFilter('blocked')">
+              Blocked
+              @if (blockedBookings.length > 0) { <span class="rf-count">{{ blockedBookings.length }}</span> }
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="rf-btn"
+              [class.active]="readinessFilter === 'confirmed'"
+              [attr.aria-selected]="readinessFilter === 'confirmed'"
+              (click)="setReadinessFilter('confirmed')">Confirmed</button>
+          </div>
           <div class="period-label">{{ getPeriodLabel() }}</div>
         </div>
       </div>
@@ -199,19 +239,26 @@
                 @for (booking of getVisibleBookings(slot); track booking.id) {
                   <div
                     class="time-grid-booking clickable"
-                    [ngClass]="[getStatusClass(booking.status), hasMissingRabies(booking) ? 'rabies-missing' : '']"
+                    [ngClass]="[getStatusClass(booking.status), getReadinessClass(booking), hasMissingRabies(booking) ? 'rabies-missing' : '']"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
                     [style.left.px]="getBookingLeft(booking.id)"
                     [style.z-index]="getBookingZIndex(booking.id)"
+                    [title]="getReadinessTooltip(booking)"
                     (click)="openBookingDetail(booking)">
+                    @if (hasMissingRabies(booking)) {
+                      <span class="tgb-rabies-shield" aria-label="Missing rabies certificate" title="Missing rabies certificate">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z"/>
+                          <line x1="12" y1="8" x2="12" y2="13"/>
+                          <line x1="12" y1="16" x2="12" y2="16.01"/>
+                        </svg>
+                      </span>
+                    }
                     <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
                     <div class="tgb-client">{{ booking.client?.first_name }} {{ booking.client?.last_name }}</div>
                     @if (booking.groomer) {
                       <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
-                    }
-                    @if (hasMissingRabies(booking)) {
-                      <div class="tgb-rabies-badge">No Rabies</div>
                     }
                     <div class="tgb-service">{{ booking.service_name }}</div>
                     <div class="tgb-duration">{{ getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) }}</div>
@@ -301,20 +348,26 @@
                 @for (booking of getVisibleBookings(slot); track booking.id) {
                   <div
                     class="time-grid-booking compact clickable"
-                    [ngClass]="[getStatusClass(booking.status), hasMissingRabies(booking) ? 'rabies-missing' : '']"
+                    [ngClass]="[getStatusClass(booking.status), getReadinessClass(booking), hasMissingRabies(booking) ? 'rabies-missing' : '']"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
                     [style.left.px]="getBookingLeft(booking.id)"
                     [style.z-index]="getBookingZIndex(booking.id)"
-                    [title]="booking.client?.first_name + ' ' + booking.client?.last_name + ' - ' + booking.service_name + ' (' + getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) + ')'"
+                    [title]="getReadinessTooltip(booking) + ' · ' + booking.service_name + ' (' + getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) + ')'"
                     (click)="openBookingDetail(booking)">
+                    @if (hasMissingRabies(booking)) {
+                      <span class="tgb-rabies-shield" aria-label="Missing rabies certificate" title="Missing rabies certificate">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z"/>
+                          <line x1="12" y1="8" x2="12" y2="13"/>
+                          <line x1="12" y1="16" x2="12" y2="16.01"/>
+                        </svg>
+                      </span>
+                    }
                     <div class="tgb-time">{{ formatTime(booking.scheduled_time_start) }}</div>
                     <div class="tgb-client">{{ booking.client?.first_name }}</div>
                     @if (booking.groomer) {
                       <div class="tgb-groomer">{{ booking.groomer.first_name }}</div>
-                    }
-                    @if (hasMissingRabies(booking)) {
-                      <div class="tgb-rabies-badge">No Rabies</div>
                     }
                   </div>
                 }
@@ -346,7 +399,7 @@
                   <div class="bookings-count">{{ getVisibleBookings(slot).length }} booking{{ getVisibleBookings(slot).length > 1 ? 's' : '' }}</div>
                   <div class="booking-dots">
                     @for (booking of getVisibleBookings(slot).slice(0, 3); track booking.id) {
-                      <div class="booking-dot" [ngClass]="getStatusClass(booking.status)"></div>
+                      <div class="booking-dot" [ngClass]="getMonthDotClass(booking)" [title]="getReadinessTooltip(booking)"></div>
                     }
                     @if (getVisibleBookings(slot).length > 3) {
                       <div class="more-bookings">+{{ getVisibleBookings(slot).length - 3 }}</div>

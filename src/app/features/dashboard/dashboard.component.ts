@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
-import { KPIData, BookingWithDetails } from '../../core/models/types';
+import { KPIData, BookingWithDetails, Readiness, ReadinessFilter } from '../../core/models/types';
 import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
 import { BusinessSettingsService, OperatingDay, OperatingHours, ShiftDateAvailability } from '../../core/services/business-settings.service';
 import { TerritoryDashboardComponent } from '../territory-intelligence/territory-dashboard/territory-dashboard.component';
+import { BookingReadinessPanelComponent } from './booking-readiness-panel/booking-readiness-panel.component';
 
 
 type ScheduleView = 'day' | 'week' | 'month';
@@ -38,7 +39,7 @@ interface DaySlot {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, BusinessSettingsModalComponent, TerritoryDashboardComponent],
+  imports: [CommonModule, FormsModule, RouterModule, BusinessSettingsModalComponent, TerritoryDashboardComponent, BookingReadinessPanelComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -77,8 +78,11 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   shiftAvailabilityMap = new Map<string, ShiftAvailability>();
   savingShifts = new Set<string>();
 
-  // Pending-only filter
-  showOnlyPending = false;
+  // Readiness filter (replaces the old pending-only toggle)
+  readinessFilter: ReadinessFilter = 'all';
+  private readinessMap = new WeakMap<BookingWithDetails, Readiness>();
+  blockedBookings: BookingWithDetails[] = [];
+  readyBookings: BookingWithDetails[] = [];
 
   // Business Settings Modal
   showBusinessSettingsModal = false;
@@ -427,6 +431,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     }
 
     this.computeBookingLayouts();
+    this.computeReadiness();
   }
 
   private createDaySlot(date: Date, today: Date, isCurrentMonth: boolean = true): DaySlot {
@@ -551,6 +556,80 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     if (['completed', 'cancelled'].includes(booking.status)) return false;
     if (!booking.pets || booking.pets.length === 0) return false;
     return booking.pets.some(bp => !bp.pet?.rabies_certificate_url);
+  }
+
+  // Derives a client-side "readiness" state per booking by combining raw status
+  // with blockers (currently just missing rabies). Only pending|confirmed can
+  // flip to 'blocked'; in_progress/completed/cancelled stay as-is.
+  private computeReadiness(): void {
+    this.readinessMap = new WeakMap<BookingWithDetails, Readiness>();
+    const blocked: BookingWithDetails[] = [];
+    const ready: BookingWithDetails[] = [];
+
+    const visible = this.scheduleSlots.flatMap(s => s.bookings);
+    for (const booking of visible) {
+      const readiness = this.deriveReadiness(booking);
+      this.readinessMap.set(booking, readiness);
+      if (readiness === 'blocked') blocked.push(booking);
+      if (readiness === 'ready_to_confirm') ready.push(booking);
+    }
+
+    const byTime = (a: BookingWithDetails, b: BookingWithDetails) => {
+      const d = (a.scheduled_date || '').localeCompare(b.scheduled_date || '');
+      if (d !== 0) return d;
+      return (a.scheduled_time_start || '').localeCompare(b.scheduled_time_start || '');
+    };
+    blocked.sort(byTime);
+    ready.sort(byTime);
+
+    this.blockedBookings = blocked;
+    this.readyBookings = ready;
+  }
+
+  private deriveReadiness(booking: BookingWithDetails): Readiness {
+    const status = booking.status;
+    if (status === 'cancelled' || status === 'completed' || status === 'in_progress') {
+      return status;
+    }
+    if (this.hasMissingRabies(booking)) return 'blocked';
+    if (status === 'pending') return 'ready_to_confirm';
+    return 'confirmed';
+  }
+
+  getReadiness(booking: BookingWithDetails): Readiness {
+    return this.readinessMap.get(booking) ?? this.deriveReadiness(booking);
+  }
+
+  getReadinessClass(booking: BookingWithDetails): string {
+    const r = this.getReadiness(booking);
+    const classes: Record<Readiness, string> = {
+      blocked: 'readiness-blocked',
+      ready_to_confirm: 'readiness-ready',
+      confirmed: 'readiness-confirmed',
+      in_progress: 'readiness-progress',
+      completed: 'readiness-completed',
+      cancelled: 'readiness-cancelled',
+    };
+    return classes[r] || '';
+  }
+
+  getReadinessTooltip(booking: BookingWithDetails): string {
+    const r = this.getReadiness(booking);
+    const labels: Record<Readiness, string> = {
+      blocked: 'Blocked — missing rabies certificate',
+      ready_to_confirm: 'Ready to confirm',
+      confirmed: 'Confirmed',
+      in_progress: 'In progress',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+    };
+    const name = `${booking.client?.first_name ?? ''} ${booking.client?.last_name ?? ''}`.trim();
+    return `${name}${name ? ' · ' : ''}${labels[r]}`;
+  }
+
+  setReadinessFilter(filter: ReadinessFilter): void {
+    // Toggle off if clicking the already-active filter
+    this.readinessFilter = this.readinessFilter === filter && filter !== 'all' ? 'all' : filter;
   }
 
   getStatusLabel(status: string): string {
@@ -718,8 +797,18 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   getVisibleBookings(slot: DaySlot): BookingWithDetails[] {
-    if (!this.showOnlyPending) return slot.bookings;
-    return slot.bookings.filter(b => b.status === 'pending');
+    if (this.readinessFilter === 'all') return slot.bookings;
+    return slot.bookings.filter(b => {
+      const r = this.getReadiness(b);
+      if (this.readinessFilter === 'blocked') return r === 'blocked';
+      if (this.readinessFilter === 'ready') return r === 'ready_to_confirm';
+      if (this.readinessFilter === 'confirmed') return r === 'confirmed' || r === 'in_progress';
+      return true;
+    });
+  }
+
+  getMonthDotClass(booking: BookingWithDetails): string {
+    return this.getReadinessClass(booking);
   }
 
   openBookingDetail(booking: BookingWithDetails): void {
