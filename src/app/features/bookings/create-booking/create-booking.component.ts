@@ -212,7 +212,11 @@ export class CreateBookingComponent implements OnInit {
           base_price: packagePrice,
           package_price: packagePrice,
           total_price: ps.price,
-          addons: addons.length > 0 ? addons : undefined
+          addons: addons.length > 0 ? addons : undefined,
+          // Phase 2: breed coat-surcharge snapshot
+          breed_id: ps.breed_id,
+          coat_category: ps.coat_category,
+          breed_premium_amount: Number(ps.breed_premium) || 0,
         };
       });
 

@@ -13,6 +13,10 @@ export interface PetBooking {
   total_price: number;
   addons?: AddonBooking[];
   notes?: string;
+  // Phase 2 breed coat-type surcharge
+  breed_id?: string;
+  coat_category?: 'POODLE_DOODLE' | 'DOUBLE_COAT' | 'LONG_COAT_SPANIEL' | 'WIRE_COAT' | 'STANDARD';
+  breed_premium_amount?: number;
 }
 
 export interface AddonBooking {
@@ -77,6 +81,7 @@ export interface PricingItem {
   pet_name: string;
   package: string;
   base_price: number;
+  breed_premium?: number;
   addons: { name: string; price: number }[];
   pet_total: number;
 }
@@ -160,15 +165,16 @@ export class AdminBookingService {
   }
 
   /**
-   * Calculate pricing for selected pets and services
+   * Calculate pricing for selected pets and services (Phase 2: includes breed surcharge)
    */
   calculatePricing(pets: PetBooking[]): PricingBreakdown {
     let subtotal = 0;
     const items: PricingItem[] = [];
 
     pets.forEach(pet => {
-      const petTotal = pet.base_price + pet.package_price +
-        (pet.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0);
+      const addonTotal = pet.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0;
+      const breedPremium = Number(pet.breed_premium_amount) || 0;
+      const petTotal = pet.base_price + pet.package_price + breedPremium + addonTotal;
 
       subtotal += petTotal;
 
@@ -176,6 +182,7 @@ export class AdminBookingService {
         pet_name: 'Pet', // You'll need to pass pet names from the component
         package: pet.package_type,
         base_price: pet.base_price,
+        breed_premium: breedPremium,
         addons: pet.addons || [],
         pet_total: petTotal
       });
@@ -190,5 +197,84 @@ export class AdminBookingService {
       total,
       items
     };
+  }
+
+  /**
+   * Fetch the canonical breed list (Phase 2) — consumed by the booking wizard,
+   * pet editor, and admin breeds editor.
+   */
+  getBreeds(): Observable<Array<{
+    id: string;
+    name: string;
+    coat_category: 'POODLE_DOODLE' | 'DOUBLE_COAT' | 'LONG_COAT_SPANIEL' | 'WIRE_COAT' | 'STANDARD';
+    typical_size?: 'small' | 'medium' | 'large' | 'xl';
+    aliases?: string[];
+    is_active?: boolean;
+    display_order?: number;
+  }>> {
+    return new Observable(observer => {
+      this.supabase.client
+        .from('breeds')
+        .select('id, name, coat_category, typical_size, aliases, is_active, display_order')
+        .eq('is_active', true)
+        .order('display_order')
+        .order('name')
+        .then(({ data, error }) => {
+          if (error) {
+            observer.error(error);
+          } else {
+            observer.next(data || []);
+            observer.complete();
+          }
+        });
+    });
+  }
+
+  /**
+   * Fetch the breed coat upcharge matrix (Phase 2) — 48 rows.
+   */
+  getBreedPremiums(): Observable<Array<{
+    id: string;
+    coat_category: 'POODLE_DOODLE' | 'DOUBLE_COAT' | 'LONG_COAT_SPANIEL' | 'WIRE_COAT';
+    size: 'small' | 'medium' | 'large' | 'xl';
+    package_type: 'basic' | 'premium' | 'deluxe';
+    upcharge_amount: number;
+  }>> {
+    return new Observable(observer => {
+      this.supabase.client
+        .from('breed_premiums')
+        .select('id, coat_category, size, package_type, upcharge_amount')
+        .order('coat_category')
+        .order('size')
+        .order('package_type')
+        .then(({ data, error }) => {
+          if (error) {
+            observer.error(error);
+          } else {
+            observer.next(data || []);
+            observer.complete();
+          }
+        });
+    });
+  }
+
+  /**
+   * Lookup a single upcharge amount. Returns 0 for STANDARD / unknown.
+   */
+  getBreedPremiumAmount(
+    premiums: Array<{ coat_category: string; size: string; package_type: string; upcharge_amount: number }> | null | undefined,
+    coatCategory: string | null | undefined,
+    size: string | null | undefined,
+    packageType: string | null | undefined
+  ): number {
+    if (!premiums || !coatCategory || coatCategory === 'STANDARD' || !size || !packageType) {
+      return 0;
+    }
+    const hit = premiums.find(p =>
+      p.coat_category === coatCategory &&
+      p.size === size &&
+      p.package_type === packageType
+    );
+    return hit ? Number(hit.upcharge_amount) : 0;
   }
 }

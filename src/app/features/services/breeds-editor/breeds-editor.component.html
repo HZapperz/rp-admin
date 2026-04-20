@@ -1,0 +1,132 @@
+<div class="breeds-editor">
+  <header class="be-header">
+    <div>
+      <h1>Breeds</h1>
+      <p class="subtitle">Canonical breed list with coat category. Used by the booking flow breed dropdown and pricing lookup.</p>
+    </div>
+    <div class="actions" *ngIf="!loading">
+      <span *ngIf="dirtyCount > 0" class="dirty-pill">{{ dirtyCount }} unsaved</span>
+      <button type="button" class="btn-primary" (click)="save()" [disabled]="dirtyCount === 0 || saving">
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+      <button type="button" class="btn-secondary" (click)="openAdd()">+ Add breed</button>
+    </div>
+  </header>
+
+  <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+  <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+
+  <div class="toolbar" *ngIf="!loading">
+    <input
+      class="search-input"
+      type="text"
+      placeholder="Search breeds or aliases…"
+      [(ngModel)]="filter"
+    />
+    <select class="category-select" [(ngModel)]="categoryFilter">
+      <option value="ALL">All categories</option>
+      <option *ngFor="let c of categories" [value]="c">{{ categoryLabels[c] }}</option>
+    </select>
+    <span class="count">{{ filteredBreeds.length }} of {{ breeds.length }}</span>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading breeds…</div>
+
+  <table *ngIf="!loading" class="breeds-table">
+    <thead>
+      <tr>
+        <th style="width: 22%">Name</th>
+        <th style="width: 18%">Coat category</th>
+        <th style="width: 12%">Typical size</th>
+        <th style="width: 32%">Aliases (comma-separated)</th>
+        <th style="width: 8%">Active</th>
+        <th style="width: 8%"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let breed of filteredBreeds" [class.dirty]="breed.dirty">
+        <td>
+          <input
+            type="text"
+            class="cell-input name-input"
+            [(ngModel)]="breed.name"
+            (ngModelChange)="markDirty(breed)"
+          />
+        </td>
+        <td>
+          <select class="cell-input" [(ngModel)]="breed.coat_category" (ngModelChange)="markDirty(breed)">
+            <option *ngFor="let c of categories" [value]="c">{{ categoryLabels[c] }}</option>
+          </select>
+        </td>
+        <td>
+          <select class="cell-input" [(ngModel)]="breed.typical_size" (ngModelChange)="markDirty(breed)">
+            <option *ngFor="let s of sizes" [ngValue]="s">{{ s || '—' }}</option>
+          </select>
+        </td>
+        <td>
+          <input
+            type="text"
+            class="cell-input"
+            [ngModel]="breed.aliasesInput"
+            (ngModelChange)="onAliasesChange(breed, $event)"
+            placeholder="e.g. goldendoodle, golden-doodle"
+          />
+        </td>
+        <td class="center">
+          <label class="switch">
+            <input type="checkbox" [checked]="breed.is_active" (change)="toggleActive(breed)" />
+            <span></span>
+          </label>
+        </td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Add modal -->
+  <div class="modal-backdrop" *ngIf="showAddModal" (click)="closeAdd()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Add new breed</h2>
+
+      <label class="field">
+        <span>Name *</span>
+        <input type="text" [(ngModel)]="newBreed.name" />
+      </label>
+
+      <label class="field">
+        <span>Coat category *</span>
+        <select [(ngModel)]="newBreed.coat_category">
+          <option *ngFor="let c of categories" [value]="c">{{ categoryLabels[c] }}</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Typical size</span>
+        <select [(ngModel)]="newBreed.typical_size">
+          <option *ngFor="let s of sizes" [ngValue]="s">{{ s || '—' }}</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Aliases (comma-separated)</span>
+        <input
+          type="text"
+          [(ngModel)]="newAliasesInput"
+          placeholder="e.g. alt-name-1, alt-name-2"
+        />
+      </label>
+
+      <label class="field checkbox">
+        <input type="checkbox" [(ngModel)]="newBreed.is_active" />
+        <span>Active</span>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closeAdd()" [disabled]="saving">Cancel</button>
+        <button type="button" class="btn-primary" (click)="createNew()" [disabled]="saving">
+          {{ saving ? 'Creating…' : 'Create breed' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

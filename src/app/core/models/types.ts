@@ -42,11 +42,48 @@ export interface User {
 // Pet Types
 export type PetSize = 'small' | 'medium' | 'large' | 'xl';
 
+// Coat-type taxonomy (Phase 2 breed surcharges)
+export type CoatCategory =
+  | 'POODLE_DOODLE'
+  | 'DOUBLE_COAT'
+  | 'LONG_COAT_SPANIEL'
+  | 'WIRE_COAT'
+  | 'STANDARD';
+
+export type SurchargeCoatCategory = Exclude<CoatCategory, 'STANDARD'>;
+
+// Canonical breed reference (public.breeds)
+export interface Breed {
+  id: string;
+  name: string;
+  coat_category: CoatCategory;
+  typical_size?: PetSize;
+  aliases?: string[];
+  is_active?: boolean;
+  display_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Coat upcharge matrix row (public.breed_premiums)
+export interface BreedPremium {
+  id: string;
+  coat_category: SurchargeCoatCategory;
+  size: PetSize;
+  package_type: 'basic' | 'premium' | 'deluxe';
+  upcharge_amount: number;
+  updated_at?: string;
+}
+
 export interface Pet {
   id: string;
   user_id: string;
   name: string;
   breed?: string;
+  // Phase 2: canonical breed FK
+  breed_id?: string;
+  // Phase 2: admin-set category override
+  coat_category_override?: CoatCategory;
   age?: string;
   size_category?: PetSize;
   special_notes?: string;
@@ -195,6 +232,10 @@ export interface BookingPet {
   completed_at?: string;
   before_photo_url?: string;
   after_photo_url?: string;
+  // Phase 2 breed surcharge snapshot (grandfathered — never recomputed on read)
+  breed_id?: string;
+  coat_category?: CoatCategory;
+  breed_premium_amount?: number;
 }
 
 export interface BookingAddon {

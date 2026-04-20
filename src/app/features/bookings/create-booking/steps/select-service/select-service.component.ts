@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { PackageService, ServicePackage } from '../../../../../core/services/package.service';
+import { AdminBookingService } from '../../../../../core/services/admin-booking.service';
 
 export interface PetServiceSelection {
   pet_id: string;
@@ -11,6 +12,10 @@ export interface PetServiceSelection {
   package_type: 'BASIC' | 'PREMIUM' | 'DELUXE' | null;
   add_ons: string[];
   price: number;
+  // Phase 2 breed coat-type surcharge
+  breed_id?: string;
+  coat_category?: 'POODLE_DOODLE' | 'DOUBLE_COAT' | 'LONG_COAT_SPANIEL' | 'WIRE_COAT' | 'STANDARD';
+  breed_premium?: number;
 }
 
 export interface PackageOption {
@@ -52,8 +57,14 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   petServices: PetServiceSelection[] = [];
   packages: PackageOption[] = [];
   loading = true;
+  // Phase 2: cached breed data for coat-surcharge lookup
+  private breeds: Array<{ id: string; coat_category: string; name: string }> = [];
+  private breedPremiums: Array<{ coat_category: string; size: string; package_type: string; upcharge_amount: number }> = [];
 
-  constructor(private packageService: PackageService) {}
+  constructor(
+    private packageService: PackageService,
+    private adminBookingService: AdminBookingService,
+  ) {}
 
   addOns: AddOnOption[] = [
     {
@@ -84,7 +95,43 @@ export class SelectServiceComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.loadPackages();
+    this.loadBreedData();
     this.initializePetServices();
+  }
+
+  private loadBreedData(): void {
+    this.adminBookingService.getBreeds().subscribe({
+      next: (breeds) => {
+        this.breeds = breeds as any;
+        // Re-compute breed info for existing services now that data is loaded
+        this.petServices.forEach((ps) => this.resolveBreedContext(ps));
+        this.petServices.forEach((ps) => this.calculatePrice(ps));
+        this.emitServices();
+      },
+      error: (err) => console.error('[select-service] loadBreeds failed:', err),
+    });
+    this.adminBookingService.getBreedPremiums().subscribe({
+      next: (premiums) => {
+        this.breedPremiums = premiums as any;
+        this.petServices.forEach((ps) => this.calculatePrice(ps));
+        this.emitServices();
+      },
+      error: (err) => console.error('[select-service] loadPremiums failed:', err),
+    });
+  }
+
+  /**
+   * Determine the effective coat_category for a pet (pet.coat_category_override beats
+   * breed.coat_category). Sets breed_id + coat_category on the PetServiceSelection.
+   */
+  private resolveBreedContext(petService: PetServiceSelection): void {
+    const pet = this.selectedPets.find((p) => p.id === petService.pet_id);
+    if (!pet) return;
+    const override = pet.coat_category_override;
+    const breed = pet.breed_id ? this.breeds.find((b) => b.id === pet.breed_id) : undefined;
+    const category = (override || breed?.coat_category || 'STANDARD') as PetServiceSelection['coat_category'];
+    petService.breed_id = pet.breed_id;
+    petService.coat_category = category;
   }
 
   loadPackages(): void {
@@ -146,14 +193,17 @@ export class SelectServiceComponent implements OnInit, OnChanges {
     this.petServices = this.selectedPets.map(pet => {
       // Convert size_category to uppercase format expected by priceBySize
       const sizeCategory = pet.size_category?.toUpperCase() || 'SMALL';
-      return {
+      const ps: PetServiceSelection = {
         pet_id: pet.id,
         pet_name: pet.name,
         pet_size: sizeCategory,
         package_type: null,
         add_ons: [],
-        price: 0
+        price: 0,
+        breed_premium: 0,
       };
+      this.resolveBreedContext(ps);
+      return ps;
     });
     this.emitServices();
   }
@@ -195,6 +245,18 @@ export class SelectServiceComponent implements OnInit, OnChanges {
       }
     }
 
+    // Phase 2: breed coat-type surcharge
+    const pkgTypeLower = petService.package_type?.toLowerCase(); // 'basic' | 'premium' | 'deluxe'
+    const sizeLower = petService.pet_size.toLowerCase();         // 'small' | 'medium' | 'large' | 'xl'
+    const breedPremium = this.adminBookingService.getBreedPremiumAmount(
+      this.breedPremiums,
+      petService.coat_category,
+      sizeLower,
+      pkgTypeLower,
+    );
+    petService.breed_premium = breedPremium;
+    total += breedPremium;
+
     // Add add-ons prices
     petService.add_ons.forEach(addOnId => {
       const addOn = this.addOns.find(a => a.id === addOnId);
@@ -208,6 +270,27 @@ export class SelectServiceComponent implements OnInit, OnChanges {
     });
 
     petService.price = total;
+  }
+
+  /**
+   * Returns the breed coat-surcharge for a pet's currently-selected package, or 0 if none.
+   * Used by the template to display the line item.
+   */
+  getBreedPremium(petService: PetServiceSelection): number {
+    return Number(petService.breed_premium) || 0;
+  }
+
+  /**
+   * Human-readable coat category label for the UI helper.
+   */
+  getCoatLabel(petService: PetServiceSelection): string {
+    switch (petService.coat_category) {
+      case 'POODLE_DOODLE': return 'Doodle / Poodle coat';
+      case 'DOUBLE_COAT': return 'Double coat';
+      case 'LONG_COAT_SPANIEL': return 'Long / silky coat';
+      case 'WIRE_COAT': return 'Wire coat';
+      default: return '';
+    }
   }
 
   getPackagePrice(packageType: 'BASIC' | 'PREMIUM' | 'DELUXE', size: string): number {

@@ -1,0 +1,64 @@
+<div class="bp-editor">
+  <header class="bp-header">
+    <div>
+      <h1>Breed Coat-Type Upcharges</h1>
+      <p class="subtitle">Phase 2 pricing matrix — applied on top of base service prices. Changes take effect on new bookings only.</p>
+    </div>
+    <div class="actions" *ngIf="!loading">
+      <span *ngIf="dirtyCount > 0" class="dirty-pill">{{ dirtyCount }} unsaved</span>
+      <button type="button" class="btn-secondary" (click)="resetAll()" [disabled]="dirtyCount === 0 || saving">
+        Discard
+      </button>
+      <button type="button" class="btn-primary" (click)="save()" [disabled]="dirtyCount === 0 || saving">
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+    </div>
+  </header>
+
+  <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+  <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+
+  <div *ngIf="loading" class="loading">Loading matrix…</div>
+
+  <div *ngIf="!loading" class="category-grid">
+    <section *ngFor="let cat of categoryOrder" class="category-card">
+      <h2>{{ categoryLabels[cat] }}</h2>
+      <p class="category-note">Upcharge in USD, applied on top of the base service price.</p>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th></th>
+            <th *ngFor="let pkg of packageOrder">{{ packageLabels[pkg] }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let size of sizeOrder">
+            <th class="size-header">{{ size.toUpperCase() }}</th>
+            <td *ngFor="let pkg of packageOrder">
+              <ng-container *ngIf="find(cat, size, pkg) as cell">
+                <div class="cell" [class.dirty]="cell.dirty">
+                  <span class="dollar">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    [ngModel]="cell.upcharge_amount"
+                    (ngModelChange)="onAmountChange(cell, $event)"
+                    [name]="cat + '-' + size + '-' + pkg"
+                  />
+                  <button
+                    *ngIf="cell.dirty"
+                    type="button"
+                    class="reset-cell"
+                    title="Reset to saved value"
+                    (click)="resetOne(cell)"
+                  >↺</button>
+                </div>
+              </ng-container>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
