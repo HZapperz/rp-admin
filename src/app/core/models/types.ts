@@ -75,6 +75,26 @@ export interface BreedPremium {
   updated_at?: string;
 }
 
+// Add-on catalog row (public.addons). Size columns override flat `price` when present.
+export interface Addon {
+  id: string;
+  name: string;
+  description?: string | null;
+  price?: number | null;
+  price_small?: number | null;
+  price_medium?: number | null;
+  price_large?: number | null;
+  price_xl?: number | null;
+  is_percentage: boolean;
+  percentage?: number | null;
+  category?: string | null;
+  required_packages?: Array<'basic' | 'premium' | 'deluxe'> | null;
+  is_active: boolean;
+  display_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Pet {
   id: string;
   user_id: string;

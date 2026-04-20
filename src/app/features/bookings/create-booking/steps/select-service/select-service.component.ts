@@ -11,6 +11,13 @@ export interface PetServiceSelection {
   pet_size: string;
   package_type: 'BASIC' | 'PREMIUM' | 'DELUXE' | null;
   add_ons: string[];
+  /**
+   * Addons resolved to their display name + size-priced amount. Populated by the
+   * select-service step so the parent wizard doesn't need its own addon catalog —
+   * this prevents a race where `addons` could be billed at $0 if the parent's fetch
+   * hadn't resolved by submit time.
+   */
+  addons_resolved?: Array<{ id: string; name: string; price: number }>;
   price: number;
   // Phase 2 breed coat-type surcharge
   breed_id?: string;
@@ -31,6 +38,9 @@ export interface PackageOption {
   };
 }
 
+/**
+ * Admin-view view model for an add-on. Hydrated from the public.addons table.
+ */
 export interface AddOnOption {
   id: string;
   name: string;
@@ -39,8 +49,9 @@ export interface AddOnOption {
     SMALL: number;
     MEDIUM: number;
     LARGE: number;
-    XL?: number;
+    XL: number;
   };
+  required_packages: Array<'BASIC' | 'PREMIUM' | 'DELUXE'> | null;
 }
 
 @Component({
@@ -66,37 +77,55 @@ export class SelectServiceComponent implements OnInit, OnChanges {
     private adminBookingService: AdminBookingService,
   ) {}
 
-  addOns: AddOnOption[] = [
-    {
-      id: 'premium-products',
-      name: 'Premium Products',
-      description: 'Upgraded shampoo, conditioner, and grooming products',
-      priceBySize: { SMALL: 20, MEDIUM: 20, LARGE: 20, XL: 20 }
-    },
-    {
-      id: 'flea-treatment',
-      name: 'Flea Treatment',
-      description: 'Professional flea treatment and prevention',
-      priceBySize: { SMALL: 20, MEDIUM: 20, LARGE: 20, XL: 20 }
-    },
-    {
-      id: 'de-shedding',
-      name: 'De-Shedding',
-      description: 'Deep de-shedding treatment to reduce shedding',
-      priceBySize: { SMALL: 30, MEDIUM: 30, LARGE: 30, XL: 30 }
-    },
-    {
-      id: 'skunk-works',
-      name: 'Skunk Works',
-      description: 'Specialized treatment for skunk spray odor removal',
-      priceBySize: { SMALL: 100, MEDIUM: 100, LARGE: 100, XL: 100 }
-    }
-  ];
+  addOns: AddOnOption[] = [];
 
   ngOnInit(): void {
     this.loadPackages();
     this.loadBreedData();
+    this.loadAddons();
     this.initializePetServices();
+  }
+
+  /**
+   * Pulls the addon catalog from Supabase so admins see the same options clients see
+   * (previously this was a hardcoded 4-item list that drifted from the DB).
+   */
+  private loadAddons(): void {
+    this.adminBookingService.getAddons().subscribe({
+      next: (addons) => {
+        this.addOns = addons.map((a) => {
+          const flat = a.price != null ? Number(a.price) : 0;
+          const pkgs = (a.required_packages || null) as string[] | null;
+          return {
+            id: a.id,
+            name: a.name,
+            description: a.description || '',
+            priceBySize: {
+              SMALL:  a.price_small  != null ? Number(a.price_small)  : flat,
+              MEDIUM: a.price_medium != null ? Number(a.price_medium) : flat,
+              LARGE:  a.price_large  != null ? Number(a.price_large)  : flat,
+              XL:     a.price_xl     != null ? Number(a.price_xl)     : flat,
+            },
+            required_packages: pkgs ? (pkgs.map((p) => p.toUpperCase()) as Array<'BASIC' | 'PREMIUM' | 'DELUXE'>) : null,
+          };
+        });
+        // If pets + selections are already in place, re-price them now that the catalog is loaded.
+        this.petServices.forEach((ps) => this.calculatePrice(ps));
+        this.emitServices();
+      },
+      error: (err) => console.error('[select-service] loadAddons failed:', err),
+    });
+  }
+
+  /**
+   * Filter add-ons to those applicable to the pet's currently selected package tier.
+   * Returns all add-ons if no package is selected yet (so the user sees the full catalog).
+   */
+  getAvailableAddons(petService: PetServiceSelection): AddOnOption[] {
+    if (!petService.package_type) return this.addOns;
+    return this.addOns.filter(
+      (a) => !a.required_packages || a.required_packages.includes(petService.package_type!)
+    );
   }
 
   private loadBreedData(): void {
@@ -210,6 +239,13 @@ export class SelectServiceComponent implements OnInit, OnChanges {
 
   selectPackage(petService: PetServiceSelection, packageType: 'BASIC' | 'PREMIUM' | 'DELUXE'): void {
     petService.package_type = packageType;
+    // Drop any previously-selected addons that don't apply to the new tier —
+    // otherwise they stay in the payload (billed) even though the UI hides them.
+    petService.add_ons = petService.add_ons.filter((addOnId) => {
+      const addOn = this.addOns.find((a) => a.id === addOnId);
+      if (!addOn || !addOn.required_packages) return true;
+      return addOn.required_packages.includes(packageType);
+    });
     this.calculatePrice(petService);
     this.emitServices();
   }
@@ -324,7 +360,24 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   }
 
   emitServices(): void {
-    this.servicesSelected.emit([...this.petServices]);
+    // Resolve each pet's addons against the current catalog so the parent wizard
+    // has authoritative names + sized prices without doing a second fetch.
+    const resolved = this.petServices.map((ps) => {
+      const sizeKey = ps.pet_size.toUpperCase() as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
+      const addons_resolved = ps.add_ons
+        .map((id) => {
+          const a = this.addOns.find((x) => x.id === id);
+          if (!a) return null;
+          return {
+            id: a.id,
+            name: a.name,
+            price: a.priceBySize[sizeKey] ?? 0,
+          };
+        })
+        .filter((x): x is { id: string; name: string; price: number } => x !== null);
+      return { ...ps, addons_resolved };
+    });
+    this.servicesSelected.emit(resolved);
   }
 
   formatCurrency(amount: number): string {

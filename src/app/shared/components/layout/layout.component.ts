@@ -47,6 +47,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { label: 'Groomers', route: '/groomers', icon: 'content_cut' },
     { label: 'Promotions', route: '/promotions', icon: 'card_giftcard' },
     { label: 'Services', route: '/services', icon: 'spa' },
+    { label: 'Add-ons', route: '/services/addons', icon: 'add_circle_outline' },
     { label: 'Breeds', route: '/services/breeds', icon: 'pets' },
     { label: 'Breed Premiums', route: '/services/breed-premiums', icon: 'attach_money' },
     { label: 'Time Slots', route: '/time-slots', icon: 'schedule' },

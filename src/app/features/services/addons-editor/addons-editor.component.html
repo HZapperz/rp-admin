@@ -1,0 +1,223 @@
+<div class="addons-editor">
+  <header class="ae-header">
+    <div>
+      <h1>Add-ons</h1>
+      <p class="subtitle">Size-priced grooming extras (e.g. De-Shedding, Shave Down). Surfaces in both booking flows and groomer upsells.</p>
+    </div>
+    <div class="actions" *ngIf="!loading">
+      <span *ngIf="dirtyCount > 0" class="dirty-pill">{{ dirtyCount }} unsaved</span>
+      <button type="button" class="btn-primary" (click)="save()" [disabled]="dirtyCount === 0 || saving">
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+      <button type="button" class="btn-secondary" (click)="openAdd()">+ Add add-on</button>
+    </div>
+  </header>
+
+  <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+  <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+
+  <div class="toolbar" *ngIf="!loading">
+    <input
+      class="search-input"
+      type="text"
+      placeholder="Search add-ons or category…"
+      [(ngModel)]="filter"
+    />
+    <span class="count">{{ filteredAddons.length }} of {{ addons.length }}</span>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading add-ons…</div>
+
+  <table *ngIf="!loading" class="addons-table">
+    <thead>
+      <tr>
+        <th style="width: 22%">Name</th>
+        <th style="width: 10%">Category</th>
+        <th style="width: 18%">Available on</th>
+        <th style="width: 8%" class="right">Small</th>
+        <th style="width: 8%" class="right">Medium</th>
+        <th style="width: 8%" class="right">Large</th>
+        <th style="width: 8%" class="right">XL</th>
+        <th style="width: 6%" class="center">Order</th>
+        <th style="width: 6%" class="center">Active</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let addon of filteredAddons" [class.dirty]="addon.dirty" [class.inactive]="!addon.is_active">
+        <td>
+          <input
+            type="text"
+            class="cell-input name-input"
+            [(ngModel)]="addon.name"
+            (ngModelChange)="markDirty(addon)"
+          />
+          <p class="addon-desc" *ngIf="addon.description">{{ addon.description }}</p>
+          <p class="legacy-price-hint" *ngIf="!addon.is_percentage && addon.price != null && !hasSizePrices(addon)">
+            Legacy flat price: <strong>${{ addon.price }}</strong> — set size prices to upgrade.
+          </p>
+        </td>
+        <td>
+          <input
+            type="text"
+            class="cell-input"
+            [(ngModel)]="addon.category"
+            (ngModelChange)="markDirty(addon)"
+            placeholder="—"
+          />
+        </td>
+        <td>
+          <div class="pkg-chips">
+            <button
+              type="button"
+              *ngFor="let pkg of packages"
+              class="pkg-chip"
+              [class.on]="isPackageRequired(addon, pkg)"
+              (click)="togglePackage(addon, pkg)"
+              title="{{ packageLabels[pkg] }}"
+            >
+              {{ packageLabels[pkg] }}
+            </button>
+          </div>
+        </td>
+        <!-- Size price cells (or percentage for percentage-based) -->
+        <ng-container *ngIf="!addon.is_percentage; else percentCells">
+          <td class="right">
+            <input
+              type="number"
+              min="0"
+              class="cell-input price-input"
+              [(ngModel)]="addon.price_small"
+              (ngModelChange)="markDirty(addon)"
+              placeholder="—"
+            />
+          </td>
+          <td class="right">
+            <input
+              type="number"
+              min="0"
+              class="cell-input price-input"
+              [(ngModel)]="addon.price_medium"
+              (ngModelChange)="markDirty(addon)"
+              placeholder="—"
+            />
+          </td>
+          <td class="right">
+            <input
+              type="number"
+              min="0"
+              class="cell-input price-input"
+              [(ngModel)]="addon.price_large"
+              (ngModelChange)="markDirty(addon)"
+              placeholder="—"
+            />
+          </td>
+          <td class="right">
+            <input
+              type="number"
+              min="0"
+              class="cell-input price-input"
+              [(ngModel)]="addon.price_xl"
+              (ngModelChange)="markDirty(addon)"
+              placeholder="—"
+            />
+          </td>
+        </ng-container>
+        <ng-template #percentCells>
+          <td class="right percent-cell" colspan="4">
+            <input
+              type="number"
+              min="0"
+              class="cell-input price-input"
+              [(ngModel)]="addon.percentage"
+              (ngModelChange)="markDirty(addon)"
+            />
+            <span class="percent-suffix">% surcharge</span>
+          </td>
+        </ng-template>
+        <td class="center">
+          <input
+            type="number"
+            min="0"
+            class="cell-input order-input"
+            [(ngModel)]="addon.display_order"
+            (ngModelChange)="markDirty(addon)"
+          />
+        </td>
+        <td class="center">
+          <label class="switch">
+            <input type="checkbox" [checked]="addon.is_active" (change)="toggleActive(addon)" />
+            <span></span>
+          </label>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Add modal -->
+  <div class="modal-backdrop" *ngIf="showAddModal" (click)="closeAdd()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Add new add-on</h2>
+
+      <label class="field">
+        <span>Name *</span>
+        <input type="text" [(ngModel)]="newAddon.name" placeholder="e.g. Shave Down" />
+      </label>
+
+      <label class="field">
+        <span>Description</span>
+        <input type="text" [(ngModel)]="newAddon.description" placeholder="Shown to the customer below the price" />
+      </label>
+
+      <label class="field">
+        <span>Category</span>
+        <input type="text" [(ngModel)]="newAddon.category" placeholder="e.g. grooming, treatment" />
+      </label>
+
+      <label class="field checkbox">
+        <input type="checkbox" [(ngModel)]="newAddon.is_percentage" />
+        <span>Percentage-based (e.g. Same-Day surcharge)</span>
+      </label>
+
+      <div *ngIf="!newAddon.is_percentage" class="size-grid">
+        <label class="field">
+          <span>Small</span>
+          <input type="number" min="0" [(ngModel)]="newAddon.price_small" />
+        </label>
+        <label class="field">
+          <span>Medium</span>
+          <input type="number" min="0" [(ngModel)]="newAddon.price_medium" />
+        </label>
+        <label class="field">
+          <span>Large</span>
+          <input type="number" min="0" [(ngModel)]="newAddon.price_large" />
+        </label>
+        <label class="field">
+          <span>XL</span>
+          <input type="number" min="0" [(ngModel)]="newAddon.price_xl" />
+        </label>
+      </div>
+
+      <label class="field" *ngIf="newAddon.is_percentage">
+        <span>Percentage (%)</span>
+        <input type="number" min="0" [(ngModel)]="newAddon.percentage" placeholder="e.g. 25" />
+      </label>
+
+      <label class="field">
+        <span>Display order</span>
+        <input type="number" min="0" [(ngModel)]="newAddon.display_order" />
+      </label>
+
+      <label class="field checkbox">
+        <input type="checkbox" [(ngModel)]="newAddon.is_active" />
+        <span>Active</span>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closeAdd()" [disabled]="saving">Cancel</button>
+        <button type="button" class="btn-primary" (click)="createNew()" [disabled]="saving">
+          {{ saving ? 'Creating…' : 'Create add-on' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

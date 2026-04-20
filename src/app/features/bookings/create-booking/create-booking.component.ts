@@ -77,6 +77,9 @@ export class CreateBookingComponent implements OnInit {
       payment_type: 'pay_on_completion'
     };
     this.currentStepIndex = 0;
+    // NOTE: the addon catalog is fetched + resolved inside SelectServiceComponent and
+    // piggy-backed on each PetServiceSelection via `addons_resolved`. We read from there
+    // at submit time (see submitBooking) so this wizard doesn't race its own fetch.
   }
 
   // Step 1: Client selected
@@ -196,14 +199,12 @@ export class CreateBookingComponent implements OnInit {
         // Calculate package price (without addons)
         const packagePrice = this.calculatePackagePrice(ps.package_type!, ps.pet_size);
 
-        // Calculate addons total and build addons array
-        const addons = ps.add_ons.map(addonId => {
-          const addonPrice = this.calculateAddonPrice(addonId, ps.pet_size);
-          return {
-            name: this.getAddonName(addonId),
-            price: addonPrice
-          };
-        });
+        // Use the addon data resolved by the select-service step (names + sized prices).
+        // Fallback to empty array if resolution somehow didn't run (shouldn't happen).
+        const addons = (ps.addons_resolved || []).map((a) => ({
+          name: a.name,
+          price: a.price,
+        }));
 
         return {
           pet_id: ps.pet_id,
@@ -303,28 +304,6 @@ export class CreateBookingComponent implements OnInit {
     return packages[packageType]?.[size] || 0;
   }
 
-  private calculateAddonPrice(addonId: string, size: string): number {
-    // Addon prices - flat rate regardless of size
-    const addons: Record<string, number> = {
-      'premium-products': 20,
-      'flea-treatment': 20,
-      'de-shedding': 30,
-      'skunk-works': 100
-    };
-
-    return addons[addonId] || 0;
-  }
-
-  private getAddonName(addonId: string): string {
-    const names: Record<string, string> = {
-      'premium-products': 'Premium Products',
-      'flea-treatment': 'Flea Treatment',
-      'de-shedding': 'De-Shedding',
-      'skunk-works': 'Skunk Works'
-    };
-
-    return names[addonId] || addonId;
-  }
 
   getSubmitButtonLabel(): string {
     const r = this.paymentConfig?.recurring;

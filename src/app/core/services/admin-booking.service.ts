@@ -277,4 +277,44 @@ export class AdminBookingService {
     );
     return hit ? Number(hit.upcharge_amount) : 0;
   }
+
+  /**
+   * Fetch the active add-on catalog (excludes percentage-based surcharges like Same-Day).
+   * Used by the admin booking wizard and addons editor.
+   */
+  getAddons(): Observable<Array<{
+    id: string;
+    name: string;
+    description?: string | null;
+    price?: number | null;
+    price_small?: number | null;
+    price_medium?: number | null;
+    price_large?: number | null;
+    price_xl?: number | null;
+    is_percentage?: boolean;
+    percentage?: number | null;
+    category?: string | null;
+    required_packages?: string[] | null;
+    is_active: boolean;
+    display_order?: number;
+  }>> {
+    return new Observable(observer => {
+      this.supabase.client
+        .from('addons')
+        .select('id, name, description, price, price_small, price_medium, price_large, price_xl, is_percentage, percentage, category, required_packages, is_active, display_order')
+        .eq('is_active', true)
+        .eq('is_percentage', false)
+        .order('display_order')
+        .order('name')
+        .then(({ data, error }) => {
+          if (error) {
+            observer.error(error);
+          } else {
+            observer.next(data || []);
+            observer.complete();
+          }
+        });
+    });
+  }
+
 }

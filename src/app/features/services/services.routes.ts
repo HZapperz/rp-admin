@@ -9,6 +9,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'addons',
+    loadComponent: () =>
+      import('./addons-editor/addons-editor.component').then(
+        (m) => m.AddonsEditorComponent
+      ),
+  },
+  {
     path: 'breeds',
     loadComponent: () =>
       import('./breeds-editor/breeds-editor.component').then(
