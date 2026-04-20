@@ -84,6 +84,7 @@
         @if (currentStepIndex === 0) {
         <div class="step-content">
           <app-select-client
+            [preSelectedClientId]="selectedClient?.id || preSelectedClientId"
             (clientSelected)="onClientSelected($event)"
           ></app-select-client>
         </div>

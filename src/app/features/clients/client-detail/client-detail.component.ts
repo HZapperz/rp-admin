@@ -330,6 +330,13 @@ export class ClientDetailComponent implements OnInit {
     this.showEditClientModal = false;
   }
 
+  createBooking(): void {
+    if (!this.clientData?.client.id) return;
+    this.router.navigate(['/bookings/create'], {
+      queryParams: { clientId: this.clientData.client.id }
+    });
+  }
+
   // ============================================
   // Address Modal methods
   // ============================================

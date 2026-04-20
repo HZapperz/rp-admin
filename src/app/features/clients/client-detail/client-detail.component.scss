@@ -158,6 +158,29 @@
   }
 }
 
+.btn-create-booking-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #059669;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
 // ========================================
 // Info Chips
 // ========================================

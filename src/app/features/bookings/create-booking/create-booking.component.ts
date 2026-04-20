@@ -1,12 +1,13 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AdminBookingService, AdminBookingRequest, PetBooking, PricingOverride } from '../../../core/services/admin-booking.service';
+import { ClientService } from '../../../core/services/client.service';
 import { SelectClientComponent } from './steps/select-client/select-client.component';
 import { SelectPetsComponent } from './steps/select-pets/select-pets.component';
 import { SelectServiceComponent, PetServiceSelection } from './steps/select-service/select-service.component';
@@ -55,6 +56,7 @@ export class CreateBookingComponent implements OnInit {
   isSubmitting = false;
   submitError: string | null = null;
   currentStepIndex = 0;
+  preSelectedClientId: string | null = null;
 
   steps = [
     { index: 0, label: 'Client' },
@@ -68,7 +70,9 @@ export class CreateBookingComponent implements OnInit {
 
   constructor(
     private adminBookingService: AdminBookingService,
-    private router: Router
+    private clientService: ClientService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
@@ -80,6 +84,34 @@ export class CreateBookingComponent implements OnInit {
     // NOTE: the addon catalog is fetched + resolved inside SelectServiceComponent and
     // piggy-backed on each PetServiceSelection via `addons_resolved`. We read from there
     // at submit time (see submitBooking) so this wizard doesn't race its own fetch.
+
+    const clientIdParam = this.route.snapshot.queryParamMap.get('clientId');
+    if (clientIdParam) {
+      this.preSelectedClientId = clientIdParam;
+      this.prefillClient(clientIdParam);
+    }
+  }
+
+  private async prefillClient(clientId: string): Promise<void> {
+    try {
+      const client = await this.clientService.getClientById(clientId);
+      // Don't clobber a selection the admin made manually while we were fetching
+      if (this.selectedClient) return;
+      if (client) {
+        this.onClientSelected(client);
+        // Advance past the client step so the admin lands on "Pets"
+        this.currentStepIndex = 1;
+        if (this.stepper) {
+          this.stepper.selectedIndex = 1;
+        }
+      } else {
+        // Client not found — fall back to normal flow
+        this.preSelectedClientId = null;
+      }
+    } catch (err) {
+      console.error('Failed to prefill client for booking:', err);
+      this.preSelectedClientId = null;
+    }
   }
 
   // Step 1: Client selected

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +13,7 @@ import { debounceTime, Subject } from 'rxjs';
   styleUrls: ['./select-client.component.scss']
 })
 export class SelectClientComponent implements OnInit {
+  @Input() preSelectedClientId: string | null = null;
   @Output() clientSelected = new EventEmitter<ClientWithStats>();
 
   clients: ClientWithStats[] = [];
@@ -45,6 +46,13 @@ export class SelectClientComponent implements OnInit {
           this.clients = clients;
           this.filteredClients = clients;
           this.isLoading = false;
+
+          if (this.preSelectedClientId && !this.selectedClient) {
+            const match = clients.find(c => c.id === this.preSelectedClientId);
+            if (match) {
+              this.selectedClient = match;
+            }
+          }
         },
         error: (err) => {
           console.error('Error loading clients:', err);
