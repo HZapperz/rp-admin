@@ -140,6 +140,43 @@ export class AdminBookingService {
   }
 
   /**
+   * Fetch the current public payment link for a booking (also returns client contact info).
+   */
+  getPaymentLinkPreview(bookingId: string): Observable<{
+    payLink: string;
+    clientEmail: string | null;
+    clientPhone: string | null;
+    amountDue: number;
+    lastSentAt: string | null;
+    lastSentUrl: string | null;
+    canSend: boolean;
+  }> {
+    return this.http.get<any>(
+      `${this.apiUrl}/api/admin/bookings/${bookingId}/send-payment-link`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /**
+   * Send the public payment link to the client via email, SMS, or both.
+   */
+  sendPaymentLink(
+    bookingId: string,
+    channels: ('email' | 'sms')[]
+  ): Observable<{
+    success: boolean;
+    payLink: string;
+    sentAt: string | null;
+    results: Record<string, { ok: boolean; error?: string }>;
+  }> {
+    return this.http.post<any>(
+      `${this.apiUrl}/api/admin/bookings/${bookingId}/send-payment-link`,
+      { channels },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /**
    * Get available time slots for a groomer on a specific date
    * This is a placeholder - you'll need to implement the actual logic
    */

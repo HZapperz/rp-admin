@@ -597,6 +597,12 @@
                   {{ isCapturingPayment ? 'Processing...' : 'Capture Payment' }}
                 </button>
                 <button
+                  *ngIf="booking.payment_status !== 'captured' && booking.status !== 'cancelled'"
+                  (click)="openSendPaymentLinkModal()"
+                  class="btn-send-pay-link">
+                  Send Payment Link
+                </button>
+                <button
                   *ngIf="!booking.payment_captured_at && booking.status !== 'cancelled'"
                   (click)="openChangePaymentMethod()"
                   class="btn-change-payment">
@@ -610,6 +616,11 @@
                 </button>
                 <span *ngIf="booking.payment_captured_at" class="captured-at">
                   Captured {{ booking.payment_captured_at | date:'short' }}
+                </span>
+                <span
+                  *ngIf="booking.payment_link_sent_at && !booking.payment_captured_at"
+                  class="payment-link-sent-pill">
+                  Pay link sent {{ booking.payment_link_sent_at | date:'short' }}
                 </span>
               </div>
 
@@ -917,6 +928,82 @@
         <button (click)="closeCaptureModal()" class="btn btn-secondary">Cancel</button>
         <button (click)="capturePayment()" [disabled]="isCapturingPayment" class="btn btn-capture-confirm">
           {{ isCapturingPayment ? 'Processing...' : 'Capture $' + (captureAmount + (captureTipAmount || 0)).toFixed(2) }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send Payment Link Modal -->
+  <div class="modal-overlay" *ngIf="showPaymentLinkModal" (click)="closeSendPaymentLinkModal()">
+    <div class="capture-modal-content send-pay-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Send Payment Link</h3>
+        <button class="modal-close" (click)="closeSendPaymentLinkModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="paymentLinkLoading" class="pay-link-loading">Loading link…</div>
+
+        <ng-container *ngIf="!paymentLinkLoading">
+          <p class="pay-link-preview-label">Secure link (valid 14 days)</p>
+          <div class="pay-link-preview-row">
+            <input
+              type="text"
+              class="pay-link-preview"
+              [value]="paymentLinkPreviewUrl || ''"
+              readonly
+              (focus)="$any($event.target).select()">
+            <button (click)="copyPaymentLink()" class="btn-copy-link">
+              {{ paymentLinkCopied ? 'Copied' : 'Copy' }}
+            </button>
+          </div>
+          <p class="pay-link-amount">Amount due: <strong>${{ paymentLinkAmountDue.toFixed(2) }}</strong></p>
+
+          <div class="pay-link-channels">
+            <label class="pay-link-channel" [class.disabled]="!paymentLinkClientEmail">
+              <input
+                type="checkbox"
+                [(ngModel)]="sendPaymentLinkViaEmail"
+                [disabled]="!paymentLinkClientEmail">
+              <div class="pay-link-channel-body">
+                <span class="pay-link-channel-label">Email</span>
+                <span class="pay-link-channel-value">
+                  {{ paymentLinkClientEmail || 'No email on file' }}
+                </span>
+              </div>
+            </label>
+            <label class="pay-link-channel" [class.disabled]="!paymentLinkClientPhone">
+              <input
+                type="checkbox"
+                [(ngModel)]="sendPaymentLinkViaSms"
+                [disabled]="!paymentLinkClientPhone">
+              <div class="pay-link-channel-body">
+                <span class="pay-link-channel-label">SMS</span>
+                <span class="pay-link-channel-value">
+                  {{ paymentLinkClientPhone || 'No phone on file' }}
+                </span>
+              </div>
+            </label>
+          </div>
+        </ng-container>
+
+        <div *ngIf="paymentLinkError" class="alert alert-error">{{ paymentLinkError }}</div>
+        <div *ngIf="paymentLinkSuccess" class="alert alert-success">{{ paymentLinkSuccess }}</div>
+      </div>
+      <div class="modal-footer">
+        <button (click)="closeSendPaymentLinkModal()" class="btn btn-secondary">
+          {{ paymentLinkSuccess ? 'Close' : 'Cancel' }}
+        </button>
+        <button
+          *ngIf="!paymentLinkSuccess"
+          (click)="sendPaymentLink()"
+          [disabled]="paymentLinkSending || paymentLinkLoading || (!sendPaymentLinkViaEmail && !sendPaymentLinkViaSms)"
+          class="btn btn-capture-confirm">
+          {{ paymentLinkSending ? 'Sending…' : 'Send Link' }}
         </button>
       </div>
     </div>

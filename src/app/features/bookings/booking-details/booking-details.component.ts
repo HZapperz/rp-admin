@@ -3,6 +3,7 @@ import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { BookingService } from '../../../core/services/booking.service';
+import { AdminBookingService } from '../../../core/services/admin-booking.service';
 import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../../core/services/groomer.service';
@@ -47,6 +48,7 @@ export class BookingDetailsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private bookingService = inject(BookingService);
+  private adminBookingService = inject(AdminBookingService);
   private adminNotesService = inject(AdminNotesService);
   private supabase = inject(SupabaseService);
   private groomerService = inject(GroomerService);
@@ -210,6 +212,20 @@ export class BookingDetailsComponent implements OnInit {
   isChangingPaymentMethod = false;
   selectedNewPaymentMethod: PaymentMethod | null = null;
   changePaymentToCash = false;
+
+  // Send Payment Link
+  showPaymentLinkModal = false;
+  paymentLinkLoading = false;
+  paymentLinkSending = false;
+  paymentLinkError: string | null = null;
+  paymentLinkSuccess: string | null = null;
+  paymentLinkCopied = false;
+  sendPaymentLinkViaEmail = true;
+  sendPaymentLinkViaSms = true;
+  paymentLinkPreviewUrl: string | null = null;
+  paymentLinkClientEmail: string | null = null;
+  paymentLinkClientPhone: string | null = null;
+  paymentLinkAmountDue = 0;
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -2545,6 +2561,101 @@ export class BookingDetailsComponent implements OnInit {
       this.paymentError = err.error?.error || 'Failed to process tip';
     } finally {
       this.isProcessingTip = false;
+    }
+  }
+
+  async openSendPaymentLinkModal() {
+    if (!this.booking) return;
+    this.showPaymentLinkModal = true;
+    this.paymentLinkError = null;
+    this.paymentLinkSuccess = null;
+    this.paymentLinkCopied = false;
+    this.paymentLinkPreviewUrl = null;
+    this.paymentLinkClientEmail = null;
+    this.paymentLinkClientPhone = null;
+    this.paymentLinkLoading = true;
+    this.sendPaymentLinkViaEmail = true;
+    this.sendPaymentLinkViaSms = true;
+
+    try {
+      const preview = await this.adminBookingService
+        .getPaymentLinkPreview(this.booking.id)
+        .toPromise();
+      if (!preview) throw new Error('Could not load payment link');
+      this.paymentLinkPreviewUrl = preview.payLink;
+      this.paymentLinkClientEmail = preview.clientEmail;
+      this.paymentLinkClientPhone = preview.clientPhone;
+      this.paymentLinkAmountDue = preview.amountDue;
+      if (!preview.clientEmail) this.sendPaymentLinkViaEmail = false;
+      if (!preview.clientPhone) this.sendPaymentLinkViaSms = false;
+      if (!preview.canSend) {
+        this.paymentLinkError = 'This booking is already paid or cancelled. No link needed.';
+      }
+    } catch (err: any) {
+      this.paymentLinkError = err?.error?.error || err?.message || 'Could not load payment link';
+    } finally {
+      this.paymentLinkLoading = false;
+    }
+  }
+
+  closeSendPaymentLinkModal() {
+    this.showPaymentLinkModal = false;
+    this.paymentLinkError = null;
+    this.paymentLinkSuccess = null;
+    this.paymentLinkCopied = false;
+  }
+
+  async copyPaymentLink() {
+    if (!this.paymentLinkPreviewUrl) return;
+    try {
+      await navigator.clipboard.writeText(this.paymentLinkPreviewUrl);
+      this.paymentLinkCopied = true;
+      setTimeout(() => {
+        this.paymentLinkCopied = false;
+      }, 2000);
+    } catch {
+      this.paymentLinkError = 'Could not copy to clipboard';
+    }
+  }
+
+  async sendPaymentLink() {
+    if (!this.booking) return;
+    const channels: ('email' | 'sms')[] = [];
+    if (this.sendPaymentLinkViaEmail) channels.push('email');
+    if (this.sendPaymentLinkViaSms) channels.push('sms');
+    if (channels.length === 0) {
+      this.paymentLinkError = 'Select at least one channel to send';
+      return;
+    }
+
+    this.paymentLinkSending = true;
+    this.paymentLinkError = null;
+    this.paymentLinkSuccess = null;
+
+    try {
+      const res = await this.adminBookingService
+        .sendPaymentLink(this.booking.id, channels)
+        .toPromise();
+      if (!res?.success) {
+        const failures = res ? Object.entries(res.results).filter(([, v]) => !v.ok) : [];
+        const msg = failures.length
+          ? failures.map(([k, v]) => `${k}: ${v.error}`).join('; ')
+          : 'Send failed';
+        throw new Error(msg);
+      }
+
+      const parts: string[] = [];
+      for (const [channel, info] of Object.entries(res.results)) {
+        parts.push(info.ok ? `${channel} sent` : `${channel} failed (${info.error})`);
+      }
+      this.paymentLinkSuccess = parts.join(', ');
+      this.paymentLinkPreviewUrl = res.payLink;
+
+      await this.loadBookingDetails(this.booking.id);
+    } catch (err: any) {
+      this.paymentLinkError = err?.error?.error || err?.message || 'Failed to send payment link';
+    } finally {
+      this.paymentLinkSending = false;
     }
   }
 
