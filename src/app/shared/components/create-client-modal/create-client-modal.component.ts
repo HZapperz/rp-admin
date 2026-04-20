@@ -2,6 +2,7 @@ import { Component, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientService } from '../../../core/services/client.service';
+import { toE164 } from '../../utils/phone';
 
 @Component({
   selector: 'app-create-client-modal',
@@ -37,8 +38,10 @@ export class CreateClientModalComponent {
   }
 
   formatPhoneNumber(): void {
-    // Remove all non-digit characters
     let digits = this.formData.phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.substring(1);
+    }
 
     // Limit to 10 digits
     digits = digits.substring(0, 10);
@@ -80,6 +83,12 @@ export class CreateClientModalComponent {
       return false;
     }
 
+    // Phone is optional, but if provided must be complete (10 digits)
+    if (this.formData.phone.trim() && !toE164(this.formData.phone)) {
+      this.error = 'Please enter a complete 10-digit phone number';
+      return false;
+    }
+
     return true;
   }
 
@@ -96,7 +105,7 @@ export class CreateClientModalComponent {
         firstName: this.formData.firstName.trim(),
         lastName: this.formData.lastName.trim(),
         email: this.formData.email.trim().toLowerCase(),
-        phone: this.formData.phone.trim() || undefined
+        phone: toE164(this.formData.phone)
       });
 
       if (result?.id) {

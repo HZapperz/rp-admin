@@ -9,14 +9,14 @@ export interface CreateClientData {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
 }
 
 export interface UpdateClientData {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
 }
 
 export interface AddressFormData {

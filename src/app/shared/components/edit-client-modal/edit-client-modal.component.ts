@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientService, ClientWithStats } from '../../../core/services/client.service';
+import { toE164 } from '../../utils/phone';
 
 @Component({
   selector: 'app-edit-client-modal',
@@ -35,6 +36,8 @@ export class EditClientModalComponent implements OnInit {
       email: this.client.email || '',
       phone: this.client.phone || ''
     };
+    // Reformat stored phone (E.164 post-migration, or legacy formats) for display.
+    this.formatPhoneNumber();
     this.originalEmail = this.client.email?.toLowerCase() || '';
   }
 
@@ -54,6 +57,9 @@ export class EditClientModalComponent implements OnInit {
 
   formatPhoneNumber(): void {
     let digits = this.formData.phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.substring(1);
+    }
     digits = digits.substring(0, 10);
 
     if (digits.length >= 6) {
@@ -91,6 +97,11 @@ export class EditClientModalComponent implements OnInit {
       return false;
     }
 
+    if (this.formData.phone.trim() && !toE164(this.formData.phone)) {
+      this.error = 'Please enter a complete 10-digit phone number';
+      return false;
+    }
+
     return true;
   }
 
@@ -107,7 +118,7 @@ export class EditClientModalComponent implements OnInit {
         firstName: this.formData.firstName.trim(),
         lastName: this.formData.lastName.trim(),
         email: this.formData.email.trim().toLowerCase(),
-        phone: this.formData.phone.trim() || undefined
+        phone: toE164(this.formData.phone)
       });
 
       this.clientUpdated.emit();
