@@ -601,9 +601,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     switch (r) {
       case 'blocked': return 0;
       case 'completed': return 1;
-      case 'in_progress': return 2;
-      case 'confirmed': return 3;
-      case 'ready_to_confirm': return 4;
+      case 'ready_to_confirm': return 2;
+      case 'in_progress': return 3;
+      case 'confirmed': return 4;
       default: return 1;
     }
   }
