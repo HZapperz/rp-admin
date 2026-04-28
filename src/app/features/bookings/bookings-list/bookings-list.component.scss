@@ -506,6 +506,17 @@
   }
 }
 
+.submitted-ago {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.125rem;
+
+  &--stale {
+    color: #b45309;
+    font-weight: 600;
+  }
+}
+
 .amount {
   font-weight: 600;
   color: #10b981;

@@ -87,6 +87,12 @@
         <button class="date-chip" [class.date-chip--active]="dateFilter === 'all'" (click)="setDateFilter('all')">All Time</button>
       </div>
 
+      <div class="date-chips rabies-chips">
+        <button class="date-chip" [class.date-chip--active]="rabiesFilter === 'all'" (click)="setRabiesFilter('all')">All Rabies</button>
+        <button class="date-chip" [class.date-chip--active]="rabiesFilter === 'has'" (click)="setRabiesFilter('has')">✓ Has Rabies</button>
+        <button class="date-chip" [class.date-chip--active]="rabiesFilter === 'missing'" (click)="setRabiesFilter('missing')">⚠ Missing Rabies</button>
+      </div>
+
       <div class="filter-search">
         <input
           type="text"
@@ -185,6 +191,10 @@
               <div class="time">
                 Assigned: {{ booking.scheduled_time_start }} -
                 {{ booking.scheduled_time_end }}
+              </div>
+              } @if (booking.created_at) {
+              <div class="submitted-ago" [class.submitted-ago--stale]="isStaleSubmission(booking)" [title]="getSubmittedTooltip(booking)">
+                Submitted: {{ getSubmittedAgo(booking) }}
               </div>
               }
             </div>
@@ -336,6 +346,14 @@
             formatDate(booking.scheduled_date)
           }}</span>
         </div>
+        @if (booking.created_at) {
+        <div class="summary-row">
+          <span class="summary-label">Submitted:</span>
+          <span class="summary-value submitted-ago" [class.submitted-ago--stale]="isStaleSubmission(booking)" [title]="getSubmittedTooltip(booking)">
+            {{ getSubmittedAgo(booking) }}
+          </span>
+        </div>
+        }
         <div class="summary-row amount-row">
           <span class="summary-label">Amount:</span>
           <span class="summary-value amount">{{

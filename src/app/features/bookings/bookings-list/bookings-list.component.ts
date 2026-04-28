@@ -23,6 +23,7 @@ export class BookingsListComponent implements OnInit {
   selectedStatus: string = 'pending';
   searchTerm: string = '';
   dateFilter: string = 'all';
+  rabiesFilter: 'all' | 'has' | 'missing' = 'all';
   expandedCards: Set<string> = new Set();
 
   constructor(
@@ -88,6 +89,13 @@ export class BookingsListComponent implements OnInit {
       filtered = filtered.filter(b => b.status === this.selectedStatus);
     }
 
+    // Filter by rabies certificate status
+    if (this.rabiesFilter === 'has') {
+      filtered = filtered.filter(b => !this.hasMissingRabies(b));
+    } else if (this.rabiesFilter === 'missing') {
+      filtered = filtered.filter(b => this.hasMissingRabies(b));
+    }
+
     // Filter by search term
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
@@ -134,6 +142,11 @@ export class BookingsListComponent implements OnInit {
 
   setDateFilter(value: string) {
     this.dateFilter = value;
+    this.applyFilters();
+  }
+
+  setRabiesFilter(value: 'all' | 'has' | 'missing') {
+    this.rabiesFilter = value;
     this.applyFilters();
   }
 
@@ -212,6 +225,36 @@ export class BookingsListComponent implements OnInit {
 
   formatCurrency(amount: number): string {
     return `$${amount.toFixed(2)}`;
+  }
+
+  getSubmittedAgo(booking: BookingWithDetails): string {
+    if (!booking.created_at) return '';
+    const created = new Date(booking.created_at).getTime();
+    const diffMs = Date.now() - created;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 30) return `${diffDays} days ago`;
+    const diffMonths = Math.floor(diffDays / 30);
+    return diffMonths === 1 ? '1 mo ago' : `${diffMonths} mo ago`;
+  }
+
+  getSubmittedTooltip(booking: BookingWithDetails): string {
+    if (!booking.created_at) return '';
+    return new Date(booking.created_at).toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  isStaleSubmission(booking: BookingWithDetails): boolean {
+    if (booking.status !== 'pending' || !booking.created_at) return false;
+    const ageDays = (Date.now() - new Date(booking.created_at).getTime()) / 86400000;
+    return ageDays >= 3;
   }
 
   navigateToCreateBooking(): void {
