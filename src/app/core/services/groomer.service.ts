@@ -1127,12 +1127,12 @@ export class GroomerService {
     const weekMap = new Map<string, { start: Date; end: Date; grooms: GroomDetail[] }>();
 
     grooms.forEach(groom => {
-      const date = new Date(groom.scheduled_date);
+      const date = this.parseScheduledDate(groom.scheduled_date);
       const weekStart = this.getWeekStart(date);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
 
-      const key = weekStart.toISOString().split('T')[0];
+      const key = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
 
       if (!weekMap.has(key)) {
         weekMap.set(key, { start: weekStart, end: weekEnd, grooms: [] });
@@ -1144,8 +1144,8 @@ export class GroomerService {
       const weekGrooms = data.grooms;
       const commissionEarnings = weekGrooms.reduce((sum, g) => sum + (g.pre_tax_amount * commissionRate), 0);
       return {
-        week_start: data.start.toISOString().split('T')[0],
-        week_end: data.end.toISOString().split('T')[0],
+        week_start: this.formatLocalDate(data.start),
+        week_end: this.formatLocalDate(data.end),
         week_label: this.formatWeekLabel(data.start, data.end),
         totals: {
           pre_tax_total: weekGrooms.reduce((sum, g) => sum + g.pre_tax_amount, 0),
@@ -1171,6 +1171,15 @@ export class GroomerService {
     d.setDate(diff);
     d.setHours(0, 0, 0, 0);
     return d;
+  }
+
+  private parseScheduledDate(dateString: string): Date {
+    const [y, m, d] = dateString.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  private formatLocalDate(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
   private formatWeekLabel(start: Date, end: Date): string {
