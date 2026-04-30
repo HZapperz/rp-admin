@@ -1,0 +1,172 @@
+<div class="notes-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1>📝 All Notes</h1>
+        <p class="subtitle">Admin notes, groomer notes from bookings, and pet behavior notes — in one place</p>
+      </div>
+      <button class="refresh-btn" (click)="load()" [disabled]="isLoading">
+        <span class="icon">↻</span>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-chips-row">
+      <div class="filter-chips">
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'all'"
+          (click)="setTypeFilter('all')"
+        >
+          All
+          <span class="chip-badge">{{ totalCount }}</span>
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'admin'"
+          (click)="setTypeFilter('admin')"
+        >
+          Admin Notes
+          <span class="chip-badge">{{ adminCount }}</span>
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'groomer_session'"
+          (click)="setTypeFilter('groomer_session')"
+        >
+          Groomer Notes
+          <span class="chip-badge">{{ groomerSessionCount }}</span>
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'pet_behavior'"
+          (click)="setTypeFilter('pet_behavior')"
+        >
+          Pet Behavior
+          <span class="chip-badge">{{ petBehaviorCount }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-secondary-row">
+      @if (typeFilter === 'admin' || typeFilter === 'all') {
+        <div class="date-chips">
+          <button class="date-chip" [class.date-chip--active]="priorityFilter === 'all'" (click)="setPriorityFilter('all')">All Priority</button>
+          <button class="date-chip priority-urgent" [class.date-chip--active]="priorityFilter === 'urgent'" (click)="setPriorityFilter('urgent')">
+            Urgent
+            @if (urgentAdminCount > 0) {<span class="inline-badge">{{ urgentAdminCount }}</span>}
+          </button>
+          <button class="date-chip priority-high" [class.date-chip--active]="priorityFilter === 'high'" (click)="setPriorityFilter('high')">
+            High
+            @if (highAdminCount > 0) {<span class="inline-badge">{{ highAdminCount }}</span>}
+          </button>
+          <button class="date-chip priority-medium" [class.date-chip--active]="priorityFilter === 'medium'" (click)="setPriorityFilter('medium')">Medium</button>
+          <button class="date-chip priority-low" [class.date-chip--active]="priorityFilter === 'low'" (click)="setPriorityFilter('low')">Low</button>
+        </div>
+      }
+
+      <div class="filter-search">
+        <input
+          type="text"
+          placeholder="Search note text, client, groomer, or pet..."
+          [value]="searchTerm"
+          (input)="onSearchChange($event)"
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (isLoading) {
+    <div class="state-card">
+      <div class="spinner"></div>
+      <p>Loading notes…</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error && !isLoading) {
+    <div class="state-card state-card--error">
+      <p>{{ error }}</p>
+      <button class="refresh-btn" (click)="load()">Try again</button>
+    </div>
+  }
+
+  <!-- Empty -->
+  @if (!isLoading && !error && filtered.length === 0) {
+    <div class="state-card">
+      @if (notes.length === 0) {
+        <p>No notes have been written yet.</p>
+      } @else {
+        <p>No notes match the current filters.</p>
+        <button class="refresh-btn" (click)="clearFilters()">Clear filters</button>
+      }
+    </div>
+  }
+
+  <!-- Notes feed -->
+  @if (!isLoading && !error && filtered.length > 0) {
+    <div class="notes-feed">
+      @for (note of filtered; track trackById($index, note)) {
+        <div class="note-card" [class.clickable]="hasSourceLink(note)" (click)="openSource(note)">
+          <div class="note-header">
+            <div class="note-tags">
+              <span class="type-badge" [class]="typeClass(note.type)">
+                {{ typeLabel(note.type) }}
+              </span>
+              @if (note.type === 'admin' && note.priority) {
+                <span class="priority-badge" [class]="priorityClass(note.priority)">
+                  {{ note.priority }}
+                </span>
+              }
+            </div>
+            <div class="note-meta">
+              <span class="time-ago" [title]="formatDate(note.createdAt)">{{ timeAgo(note.createdAt) }}</span>
+            </div>
+          </div>
+
+          <div class="note-body">{{ note.text }}</div>
+
+          <div class="note-footer">
+            <div class="footer-left">
+              @if (note.authorName) {
+                <span class="author">
+                  <strong>{{ note.authorName }}</strong>
+                  <span class="author-role">({{ note.authorRole }})</span>
+                </span>
+              }
+            </div>
+            <div class="footer-right">
+              @if (note.clientName) {
+                <span class="context-chip">
+                  <span class="ctx-label">Client:</span> {{ note.clientName }}
+                </span>
+              }
+              @if (note.petName) {
+                <span class="context-chip">
+                  <span class="ctx-label">Pet:</span> {{ note.petName }}
+                </span>
+              }
+              @if (note.groomerName && note.type !== 'pet_behavior' && note.authorName !== note.groomerName) {
+                <span class="context-chip">
+                  <span class="ctx-label">Groomer:</span> {{ note.groomerName }}
+                </span>
+              }
+              @if (note.bookingDate) {
+                <span class="context-chip">
+                  <span class="ctx-label">Booking:</span> {{ formatBookingDate(note.bookingDate) }}
+                </span>
+              }
+              @if (hasSourceLink(note)) {
+                <span class="open-link">Open →</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

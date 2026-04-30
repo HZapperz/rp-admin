@@ -79,6 +79,11 @@ export const routes: Routes = [
           import('./features/complaints/complaints.routes').then(m => m.routes)
       },
       {
+        path: 'notes',
+        loadChildren: () =>
+          import('./features/notes/notes.routes').then(m => m.routes)
+      },
+      {
         path: 'incidents',
         loadChildren: () =>
           import('./features/incidents/incidents.routes').then(m => m.routes)
