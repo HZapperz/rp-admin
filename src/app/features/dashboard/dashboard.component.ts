@@ -792,10 +792,23 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     return hours * 60 + minutes;
   }
 
-  getBookingLeft(bookingId: string): number {
+  // Side-by-side rendering for overlapping bookings: each card occupies
+  // 1/totalColumns of the column width. We must set BOTH left and right inline
+  // so the CSS `right: 4px` default doesn't stretch every card to the column's
+  // right edge (which previously made later cards visually cover earlier ones).
+  getBookingLeftStyle(bookingId: string): string {
     const layout = this.bookingLayoutMap.get(bookingId);
-    if (!layout || layout.totalColumns <= 1) return 4;
-    return 4 + layout.columnIndex * 16;
+    if (!layout || layout.totalColumns <= 1) return '4px';
+    const inset = layout.columnIndex === 0 ? '4px' : '1px';
+    return `calc(100% / ${layout.totalColumns} * ${layout.columnIndex} + ${inset})`;
+  }
+
+  getBookingRightStyle(bookingId: string): string {
+    const layout = this.bookingLayoutMap.get(bookingId);
+    if (!layout || layout.totalColumns <= 1) return '4px';
+    const remaining = layout.totalColumns - layout.columnIndex - 1;
+    const inset = remaining === 0 ? '4px' : '1px';
+    return `calc(100% / ${layout.totalColumns} * ${remaining} + ${inset})`;
   }
 
   getBookingZIndex(bookingId: string): number {

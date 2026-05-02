@@ -242,7 +242,8 @@
                     [ngClass]="[getStatusClass(booking.status), getReadinessClass(booking), hasMissingRabies(booking) ? 'rabies-missing' : '']"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
-                    [style.left.px]="getBookingLeft(booking.id)"
+                    [style.left]="getBookingLeftStyle(booking.id)"
+                    [style.right]="getBookingRightStyle(booking.id)"
                     [style.z-index]="getBookingZIndex(booking.id)"
                     [title]="getReadinessTooltip(booking)"
                     (click)="openBookingDetail(booking)">
@@ -351,7 +352,8 @@
                     [ngClass]="[getStatusClass(booking.status), getReadinessClass(booking), hasMissingRabies(booking) ? 'rabies-missing' : '']"
                     [style.top.%]="getBookingTop(booking.scheduled_time_start)"
                     [style.height.%]="getBookingHeight(booking.scheduled_time_start, booking.scheduled_time_end)"
-                    [style.left.px]="getBookingLeft(booking.id)"
+                    [style.left]="getBookingLeftStyle(booking.id)"
+                    [style.right]="getBookingRightStyle(booking.id)"
                     [style.z-index]="getBookingZIndex(booking.id)"
                     [title]="getReadinessTooltip(booking) + ' · ' + booking.service_name + ' (' + getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) + ')'"
                     (click)="openBookingDetail(booking)">
