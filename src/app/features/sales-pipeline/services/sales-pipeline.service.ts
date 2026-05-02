@@ -40,6 +40,7 @@ import {
   PRIORITY_THRESHOLDS
 } from '../models/pipeline.types';
 import { SMSConversation, SMSMessage } from '../../../core/services/sms.service';
+import { chunkedIn } from '../../../shared/utils/supabase-chunk';
 
 @Injectable({
   providedIn: 'root'
@@ -169,62 +170,83 @@ export class SalesPipelineService {
     const userIds = leads.map(l => l.user_id);
     const leadIds = leads.map(l => l.id);
 
-    // Batch fetch all related data in parallel
+    // Batch fetch all related data in parallel — IN filters are chunked because
+    // a 600+ UUID list overflows the Supabase URL limit and hangs the request.
     const [usersResult, petsResult, addressesResult, paymentMethodsResult, bookingsResult, conversationsResult, activitiesResult] = await Promise.all([
-      this.supabase
-        .from('users')
-        .select('id, first_name, last_name, email, phone, avatar_url, created_at')
-        .in('id', userIds),
-      this.supabase
-        .from('pets')
-        .select('id, name, breed, size_category, user_id')
-        .in('user_id', userIds),
-      this.supabase
-        .from('addresses')
-        .select('id, street, city, zip_code, is_default, user_id')
-        .in('user_id', userIds),
-      this.supabase
-        .from('payment_methods')
-        .select('id, last4, brand, is_default, user_id')
-        .in('user_id', userIds),
-      this.supabase
-        .from('bookings')
-        .select('client_id')
-        .in('client_id', userIds),
-      this.supabase
-        .from('sms_conversations')
-        .select('id, status, unread_count, last_message_at, user_id')
-        .in('user_id', userIds),
-      this.supabase
-        .from('contact_activities')
-        .select('*')
-        .in('lead_id', leadIds)
-        .order('created_at', { ascending: false })
-        .limit(100)
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('users')
+          .select('id, first_name, last_name, email, phone, avatar_url, created_at')
+          .in('id', chunk),
+        userIds
+      ),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('pets')
+          .select('id, name, breed, size_category, user_id')
+          .in('user_id', chunk),
+        userIds
+      ),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('addresses')
+          .select('id, street, city, zip_code, is_default, user_id')
+          .in('user_id', chunk),
+        userIds
+      ),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('payment_methods')
+          .select('id, last4, brand, is_default, user_id')
+          .in('user_id', chunk),
+        userIds
+      ),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('bookings')
+          .select('client_id')
+          .in('client_id', chunk),
+        userIds
+      ),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('sms_conversations')
+          .select('id, status, unread_count, last_message_at, user_id')
+          .in('user_id', chunk),
+        userIds
+      ),
+      chunkedIn<ContactActivity>(
+        chunk => this.supabase
+          .from('contact_activities')
+          .select('*')
+          .in('lead_id', chunk)
+          .order('created_at', { ascending: false }),
+        leadIds
+      )
     ]);
 
     // Create lookup maps
-    const usersMap = new Map((usersResult.data || []).map(u => [u.id, u]));
+    const usersMap = new Map(usersResult.data.map(u => [u.id, u]));
     const petsMap = new Map<string, any[]>();
     const addressesMap = new Map<string, any[]>();
     const paymentMethodsMap = new Map<string, any[]>();
-    const bookingsSet = new Set((bookingsResult.data || []).map(b => b.client_id));
-    const conversationsMap = new Map((conversationsResult.data || []).map(c => [c.user_id, c]));
+    const bookingsSet = new Set(bookingsResult.data.map(b => b.client_id));
+    const conversationsMap = new Map(conversationsResult.data.map(c => [c.user_id, c]));
     const activitiesMap = new Map<string, ContactActivity[]>();
 
-    for (const pet of petsResult.data || []) {
+    for (const pet of petsResult.data) {
       if (!petsMap.has(pet.user_id)) petsMap.set(pet.user_id, []);
       petsMap.get(pet.user_id)!.push(pet);
     }
-    for (const addr of addressesResult.data || []) {
+    for (const addr of addressesResult.data) {
       if (!addressesMap.has(addr.user_id)) addressesMap.set(addr.user_id, []);
       addressesMap.get(addr.user_id)!.push(addr);
     }
-    for (const pm of paymentMethodsResult.data || []) {
+    for (const pm of paymentMethodsResult.data) {
       if (!paymentMethodsMap.has(pm.user_id)) paymentMethodsMap.set(pm.user_id, []);
       paymentMethodsMap.get(pm.user_id)!.push(pm);
     }
-    for (const activity of activitiesResult.data || []) {
+    for (const activity of activitiesResult.data) {
       if (!activitiesMap.has(activity.lead_id)) activitiesMap.set(activity.lead_id, []);
       activitiesMap.get(activity.lead_id)!.push(activity);
     }

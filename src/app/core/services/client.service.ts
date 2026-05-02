@@ -3,6 +3,7 @@ import { SupabaseService } from './supabase.service';
 import { Observable, from } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { UserCredits, CreditTransaction } from '../models/types';
+import { chunkedIn } from '../../shared/utils/supabase-chunk';
 
 // Types for create/update operations
 export interface CreateClientData {
@@ -401,56 +402,77 @@ export class ClientService {
 
     const [completedBookingsResult, upcomingBookingsResult, allBookingsResult, petsResult, addressesResult, paymentMethodsResult, royalSpaBookingsResult] = await Promise.all([
       // Completed bookings for stats
-      this.supabase
-        .from('bookings')
-        .select('client_id, total_amount, scheduled_date, status, tip_amount')
-        .in('client_id', clientIds)
-        .eq('status', 'completed')
-        .order('scheduled_date', { ascending: false }),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('bookings')
+          .select('client_id, total_amount, scheduled_date, status, tip_amount')
+          .in('client_id', chunk)
+          .eq('status', 'completed')
+          .order('scheduled_date', { ascending: false }),
+        clientIds
+      ),
       // Upcoming bookings (scheduled or confirmed)
-      this.supabase
-        .from('bookings')
-        .select('client_id, scheduled_date, status')
-        .in('client_id', clientIds)
-        .in('status', ['scheduled', 'confirmed'])
-        .gte('scheduled_date', new Date().toISOString()),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('bookings')
+          .select('client_id, scheduled_date, status')
+          .in('client_id', chunk)
+          .in('status', ['scheduled', 'confirmed'])
+          .gte('scheduled_date', new Date().toISOString()),
+        clientIds
+      ),
       // All bookings to check "has started booking"
-      this.supabase
-        .from('bookings')
-        .select('client_id')
-        .in('client_id', clientIds),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('bookings')
+          .select('client_id')
+          .in('client_id', chunk),
+        clientIds
+      ),
       // Pets
-      this.supabase
-        .from('pets')
-        .select('id, user_id, name')
-        .in('user_id', clientIds),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('pets')
+          .select('id, user_id, name')
+          .in('user_id', chunk),
+        clientIds
+      ),
       // Addresses
-      this.supabase
-        .from('addresses')
-        .select('user_id')
-        .in('user_id', clientIds),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('addresses')
+          .select('user_id')
+          .in('user_id', chunk),
+        clientIds
+      ),
       // Payment methods
-      this.supabase
-        .from('payment_methods')
-        .select('user_id')
-        .in('user_id', clientIds),
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('payment_methods')
+          .select('user_id')
+          .in('user_id', chunk),
+        clientIds
+      ),
       // Royal Spa (deluxe) bookings — clients who booked Royal Spa are VIP
-      this.supabase
-        .from('bookings')
-        .select('client_id, booking_pets!inner(package_type)')
-        .in('client_id', clientIds)
-        .eq('status', 'completed')
-        .eq('booking_pets.package_type', 'deluxe')
+      chunkedIn<any>(
+        chunk => this.supabase
+          .from('bookings')
+          .select('client_id, booking_pets!inner(package_type)')
+          .in('client_id', chunk)
+          .eq('status', 'completed')
+          .eq('booking_pets.package_type', 'deluxe'),
+        clientIds
+      )
     ]);
 
-    const completedBookings = completedBookingsResult.data || [];
-    const upcomingBookings = upcomingBookingsResult.data || [];
-    const allBookings = allBookingsResult.data || [];
-    const pets = petsResult.data || [];
-    const addresses = addressesResult.data || [];
-    const paymentMethods = paymentMethodsResult.data || [];
+    const completedBookings = completedBookingsResult.data;
+    const upcomingBookings = upcomingBookingsResult.data;
+    const allBookings = allBookingsResult.data;
+    const pets = petsResult.data;
+    const addresses = addressesResult.data;
+    const paymentMethods = paymentMethodsResult.data;
     const royalSpaClientIds = new Set(
-      (royalSpaBookingsResult.data || [])
+      royalSpaBookingsResult.data
         .filter((b: any) => Array.isArray(b.booking_pets) && b.booking_pets.some((bp: any) => bp.package_type === 'deluxe'))
         .map((b: any) => b.client_id)
     );
