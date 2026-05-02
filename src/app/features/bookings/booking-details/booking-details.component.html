@@ -187,6 +187,16 @@
                 class="notes-textarea-compact"
                 rows="2"
                 placeholder="Booking notes..."></textarea>
+
+              <div class="instructions-inline" *ngIf="booking.admin_note_to_groomer && !editMode">
+                <strong>🔑 For groomer:</strong> {{ booking.admin_note_to_groomer }}
+              </div>
+              <textarea
+                *ngIf="editMode"
+                [(ngModel)]="editingFields.admin_note_to_groomer"
+                class="notes-textarea-compact instructions-textarea"
+                rows="2"
+                placeholder="🔑 Note for groomer (gate codes, parking, side door, where the dog will be) — visible in their app"></textarea>
             </div>
           </div>
 

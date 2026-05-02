@@ -185,6 +185,7 @@ export interface Booking {
   state: string;
   zip_code: string;
   notes?: string;
+  admin_note_to_groomer?: string;
   cancellation_reason?: string;
   cancelled_at?: string;
   completed_at?: string;

@@ -479,6 +479,25 @@
   }
 }
 
+.instructions-inline {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: #dbeafe;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  color: #1e3a8a;
+  border-left: 3px solid #3b82f6;
+}
+
+.instructions-textarea {
+  background: #f0f9ff;
+  border-color: #bfdbfe;
+
+  &:focus {
+    border-color: #3b82f6;
+  }
+}
+
 .groomer-notes {
   margin-top: 0.75rem;
   font-size: 0.8125rem;

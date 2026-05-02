@@ -673,7 +673,8 @@ export class BookingDetailsComponent implements OnInit {
       // Initialize editing fields
       this.editingFields = {
         notes: this.booking.notes || '',
-        groomer_notes: this.booking.groomer_notes || ''
+        groomer_notes: this.booking.groomer_notes || '',
+        admin_note_to_groomer: this.booking.admin_note_to_groomer || ''
       };
     }
   }
@@ -687,6 +688,7 @@ export class BookingDetailsComponent implements OnInit {
         .update({
           notes: this.editingFields.notes,
           groomer_notes: this.editingFields.groomer_notes,
+          admin_note_to_groomer: this.editingFields.admin_note_to_groomer,
           updated_at: new Date().toISOString()
         })
         .eq('id', this.booking.id);
