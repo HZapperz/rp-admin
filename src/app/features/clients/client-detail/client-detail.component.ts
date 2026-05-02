@@ -294,7 +294,7 @@ export class ClientDetailComponent implements OnInit {
       ? missing[0].name
       : missing.map(p => p.name).join(' & ');
 
-    const msg = `Hi ${firstName}! This is Royal Pawz 🐾 We need a current rabies certificate for ${petNames} before we can confirm your grooming appointment. You can upload it quickly at royalpawzusa.com — log in, go to My Pets, and tap Rabies Certificate. Thank you!`;
+    const msg = `Hi ${firstName}! This is Royal Pawz 🐾 We need a current rabies certificate for ${petNames} before we can confirm your grooming appointment. You can upload it quickly at royalpawzusa.com — log in, go to My Pets, and tap Rabies Certificate. Thank you! For queries call (832) 504-0760.`;
 
     return this.sanitizer.bypassSecurityTrustUrl(
       `sms:${phone}&body=${encodeURIComponent(msg)}`

@@ -1619,7 +1619,7 @@ export class BookingDetailsComponent implements OnInit {
     if (missing.length === 0) return this.sanitizer.bypassSecurityTrustUrl('');
 
     const petNames = missing.length === 1 ? missing[0] : missing.join(' & ');
-    const msg = `Hi ${firstName}! This is Royal Pawz 🐾 We need a current rabies certificate for ${petNames} before we can confirm your grooming appointment. You can upload it quickly at royalpawzusa.com — log in, go to My Pets, and tap Rabies Certificate. Thank you!`;
+    const msg = `Hi ${firstName}! This is Royal Pawz 🐾 We need a current rabies certificate for ${petNames} before we can confirm your grooming appointment. You can upload it quickly at royalpawzusa.com — log in, go to My Pets, and tap Rabies Certificate. Thank you! For queries call (832) 504-0760.`;
 
     return this.sanitizer.bypassSecurityTrustUrl(
       `sms:${phone}&body=${encodeURIComponent(msg)}`

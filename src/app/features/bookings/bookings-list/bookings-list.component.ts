@@ -322,7 +322,7 @@ export class BookingsListComponent implements OnInit {
 
     const hasMissingRabies = this.hasMissingRabies(booking);
     const rabiesPart = hasMissingRabies
-      ? ` Please also have the rabies vaccination certificate ready — text us at (832) 504-0760 or reply to your confirmation email to submit it.`
+      ? ` We still need a current rabies certificate for ${petNames} — please upload it at royalpawzusa.com (log in, go to My Pets, and tap Rabies Certificate) before tomorrow. For queries call (832) 504-0760.`
       : '';
 
     const msg = `Hi ${firstName}! Reminder: ${petNames}'s grooming is tomorrow at ${timeDisplay}.${rabiesPart} See you soon! 🐾`;
