@@ -2243,20 +2243,33 @@ export class BookingDetailsComponent implements OnInit {
     }
   }
 
-  // Calculate new tax
+  // Helper — read credits_applied off the current booking. Same bug pattern
+  // as changeBookingService had: ignoring this means the customer pays tax on
+  // credits they already redeemed and the total ends up higher than expected.
+  private getRemovePetCreditsApplied(): number {
+    if (!this.booking) return 0;
+    const v = (this.booking as any).credits_applied;
+    const n = typeof v === 'number' ? v : parseFloat(String(v || '0')) || 0;
+    return Math.max(0, n);
+  }
+
+  // Calculate new tax — must include credits in the deductions so we tax the
+  // actual amount owed, not the gross-minus-discount amount.
   calculateRemovePetTax(): number {
     const newSubtotal = this.calculateRemovePetNewSubtotal();
     const newDiscount = this.calculateRemovePetDiscount();
-    const taxableAmount = newSubtotal - newDiscount;
-    return taxableAmount * 0.0825; // 8.25% tax
+    const credits = this.getRemovePetCreditsApplied();
+    const taxableAmount = Math.max(0, newSubtotal - newDiscount - credits);
+    return Math.round(taxableAmount * 0.0825 * 100) / 100; // 8.25% tax
   }
 
   // Calculate new total
   calculateRemovePetNewTotal(): number {
     const newSubtotal = this.calculateRemovePetNewSubtotal();
     const newDiscount = this.calculateRemovePetDiscount();
+    const credits = this.getRemovePetCreditsApplied();
     const newTax = this.calculateRemovePetTax();
-    return newSubtotal - newDiscount + newTax;
+    return Math.max(0, Math.round((newSubtotal - newDiscount - credits + newTax) * 100) / 100);
   }
 
   async confirmRemovePet() {

@@ -611,13 +611,27 @@ export class BookingService {
         addons: currentAddons || []
       };
 
-      // 3. Update booking_pets record with new package_type and prices
+      // 3. Update booking_pets record with new package_type and prices.
+      // Reconcile breed_premium_amount so package_price + breed_premium + addons
+      // exactly equals total_price. The admin is the source of truth here, so
+      // any residual surcharge gets folded into breed_premium (or zeroed out).
+      const addonsSumForPet = addons.reduce(
+        (s, a) => s + (Number(a.price) || 0),
+        0
+      );
+      const reconciledBreedPremium = Math.max(
+        0,
+        Math.round((newTotalPrice - newPackagePrice - addonsSumForPet) * 100) / 100
+      );
+
       const { error: updatePetError } = await this.supabase
         .from('booking_pets')
         .update({
           package_type: newPackageType,
           package_price: newPackagePrice,
-          total_price: newTotalPrice
+          total_price: newTotalPrice,
+          breed_premium_amount: reconciledBreedPremium,
+          updated_at: new Date().toISOString()
         })
         .eq('id', bookingPetId);
 
@@ -673,10 +687,13 @@ export class BookingService {
         0
       );
 
-      // Get current booking for tax rate and fees
+      // Get current booking for tax rate, fees, and reward credits applied.
+      // Credits MUST be subtracted from the taxable subtotal so the customer
+      // isn't taxed on credits they redeemed (and so total_amount matches the
+      // amount actually owed, not what they would have owed without credits).
       const { data: currentBooking, error: fetchBookingError } = await this.supabase
         .from('bookings')
-        .select('tax_rate, service_fee, processing_fee, rush_fee, discount_amount')
+        .select('tax_rate, service_fee, processing_fee, rush_fee, discount_amount, credits_applied')
         .eq('id', bookingId)
         .single();
 
@@ -694,12 +711,20 @@ export class BookingService {
       const discountAmount = newDiscountAmount !== undefined
         ? newDiscountAmount
         : (parseFloat(currentBooking.discount_amount) || 0);
+      const creditsApplied = parseFloat(currentBooking.credits_applied) || 0;
 
-      const subtotalBeforeTax = subtotal + serviceFee + rushFee - discountAmount;
+      const subtotalBeforeTax = Math.max(
+        0,
+        Math.round((subtotal + serviceFee + rushFee - discountAmount - creditsApplied) * 100) / 100
+      );
       const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
       const newTotalAmount = Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
 
-      // Update booking totals, service_name, and discount
+      // Update booking totals, service_name, and discount.
+      // authorized_amount must mirror total_amount so the eventual Stripe capture
+      // matches what the customer was shown — leaving it stale (as before) means
+      // Stripe could capture more than the displayed total. See James Foster's
+      // booking 222cda48 for the canonical example of this bug.
       const serviceName = this.getServiceNameFromPackage(newPackageType);
       const { error: updateBookingError } = await this.supabase
         .from('bookings')
@@ -710,6 +735,7 @@ export class BookingService {
           subtotal_before_tax: subtotalBeforeTax,
           tax_amount: taxAmount,
           total_amount: newTotalAmount,
+          authorized_amount: newTotalAmount,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId);
@@ -811,7 +837,10 @@ export class BookingService {
         return false;
       }
 
-      // 4. Update the booking totals
+      // 4. Update the booking totals.
+      // authorized_amount must mirror total_amount — same reason as
+      // changeBookingService: leaving it stale causes Stripe holds that don't
+      // match the displayed total, which is the actual trust break.
       const { error: updateBookingError } = await this.supabase
         .from('bookings')
         .update({
@@ -820,6 +849,7 @@ export class BookingService {
           subtotal_before_tax: newTotals.newSubtotalBeforeTax,
           tax_amount: newTotals.newTaxAmount,
           total_amount: newTotals.newTotalAmount,
+          authorized_amount: newTotals.newTotalAmount,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId);

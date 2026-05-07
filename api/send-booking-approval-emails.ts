@@ -4,6 +4,17 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env['RESEND_API_KEY']);
 const FROM_EMAIL = process.env['FROM_EMAIL'] || 'confirmations@royalpawzusa.com';
 
+interface PetLineItem {
+  pet_name: string;
+  package_name: string;        // 'Royal Bath' / 'Royal Groom' / 'Royal Spa'
+  service_size: string;        // 'small' | 'medium' | 'large' | 'xl'
+  service_charge: number;      // back-derived so Service + Coat + Addons = pet_total exactly
+  breed_premium_amount: number;
+  coat_category?: string;      // e.g. 'DOUBLE_COAT' (only displayed if surcharge > 0 and consistent)
+  addons: Array<{ name: string; price: number }>;
+  pet_total: number;           // matches what the booking actually charges for this pet
+}
+
 interface BookingEmailData {
   booking: {
     id: string;
@@ -15,6 +26,16 @@ interface BookingEmailData {
     state: string;
     total_amount: number;
     service_name?: string;
+    // Pricing breakdown (optional — if absent, fall back to total-only display).
+    original_subtotal?: number;
+    discount_amount?: number;
+    credits_applied?: number;
+    subtotal_before_tax?: number;
+    tax_amount?: number;
+    tax_rate?: number;
+    tip_amount?: number;
+    payment_method_type?: string;
+    payment_method_last4?: string;
   };
   client: {
     first_name: string;
@@ -29,7 +50,188 @@ interface BookingEmailData {
   pets: Array<{
     name: string;
   }>;
+  pet_breakdown?: PetLineItem[];
   adminEmail?: string;
+}
+
+const COAT_CATEGORY_LABELS: Record<string, string> = {
+  STANDARD: 'Standard coat',
+  DOUBLE_COAT: 'Double coat',
+  CURLY: 'Curly coat',
+  WIRE: 'Wire coat',
+  LONG: 'Long coat',
+  HEAVY: 'Heavy coat',
+};
+
+const SIZE_LABELS: Record<string, string> = {
+  small: 'Small',
+  medium: 'Medium',
+  large: 'Large',
+  xl: 'Extra Large',
+};
+
+function fmt(n: number | null | undefined): string {
+  const v = Number(n) || 0;
+  return v.toFixed(2);
+}
+
+function escapeHtml(s: string | undefined | null): string {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Render a per-pet line-item breakdown that always sums exactly to pet.pet_total.
+ *
+ * The service charge is back-derived from pet_total - addons (- breed_premium if
+ * we can verify it's in the total). This guarantees the visible math adds up,
+ * even when underlying data has stale package_price or partially-applied
+ * breed surcharges (see James Foster booking 222cda48 — package_price=125 vs
+ * base_price=140, breed_premium stored but missing from pet_total).
+ */
+function renderPetBreakdownRows(pet: PetLineItem): string {
+  const sizeLabel = SIZE_LABELS[pet.service_size?.toLowerCase()] || pet.service_size || '';
+  const coatLabel = pet.coat_category ? COAT_CATEGORY_LABELS[pet.coat_category] || pet.coat_category : '';
+  const lines: string[] = [];
+
+  lines.push(`
+    <tr>
+      <td style="padding:6px 0;color:#1e293b;font-size:14px;">${escapeHtml(pet.package_name)} (${escapeHtml(sizeLabel)})</td>
+      <td style="padding:6px 0;text-align:right;color:#1e293b;font-size:14px;">$${fmt(pet.service_charge)}</td>
+    </tr>
+  `);
+
+  if (pet.breed_premium_amount > 0) {
+    lines.push(`
+      <tr>
+        <td style="padding:6px 0;color:#475569;font-size:13px;padding-left:12px;">+ Coat surcharge${coatLabel ? ` <span style="color:#94a3b8">(${escapeHtml(coatLabel)})</span>` : ''}</td>
+        <td style="padding:6px 0;text-align:right;color:#475569;font-size:13px;">$${fmt(pet.breed_premium_amount)}</td>
+      </tr>
+    `);
+  }
+
+  for (const addon of pet.addons || []) {
+    lines.push(`
+      <tr>
+        <td style="padding:6px 0;color:#475569;font-size:13px;padding-left:12px;">+ ${escapeHtml(addon.name)}</td>
+        <td style="padding:6px 0;text-align:right;color:#475569;font-size:13px;">$${fmt(addon.price)}</td>
+      </tr>
+    `);
+  }
+
+  return lines.join('');
+}
+
+function generatePricingBreakdownHTML(data: BookingEmailData, opts: { showCreditsEarnedNote?: boolean } = {}): string {
+  const b = data.booking;
+  const breakdown = data.pet_breakdown || [];
+
+  // Fallback: no pet-level data → render the legacy total-only block.
+  if (breakdown.length === 0) {
+    return `
+      <div style="background-color:#f8fafc;border-left:4px solid #667eea;padding:16px 20px;margin:20px 0;border-radius:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="color:#1e293b;font-size:16px;">Total Amount</strong>
+          <strong style="color:#1e293b;font-size:18px;">$${fmt(b.total_amount)}</strong>
+        </div>
+      </div>
+    `;
+  }
+
+  const subtotal = Number(b.original_subtotal ?? breakdown.reduce((s, p) => s + p.pet_total, 0));
+  const discount = Number(b.discount_amount || 0);
+  const credits = Number(b.credits_applied || 0);
+  const subtotalBeforeTax = Number(b.subtotal_before_tax ?? Math.max(0, subtotal - discount - credits));
+  const tax = Number(b.tax_amount || 0);
+  const taxRate = Number(b.tax_rate || 0.0825);
+  const tip = Number(b.tip_amount || 0);
+  const total = Number(b.total_amount || 0);
+
+  const petBlocks = breakdown.map((pet) => `
+    <div style="padding:14px 0;border-bottom:1px solid #e2e8f0;">
+      <div style="font-weight:600;color:#1e293b;font-size:14px;margin-bottom:6px;">${escapeHtml(pet.pet_name)}</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+        ${renderPetBreakdownRows(pet)}
+        <tr>
+          <td style="padding:8px 0 0 0;color:#1e293b;font-size:13px;font-weight:600;">Subtotal for ${escapeHtml(pet.pet_name)}</td>
+          <td style="padding:8px 0 0 0;text-align:right;color:#1e293b;font-size:13px;font-weight:600;">$${fmt(pet.pet_total)}</td>
+        </tr>
+      </table>
+    </div>
+  `).join('');
+
+  const discountRow = discount > 0 ? `
+    <tr>
+      <td style="padding:6px 0;color:#16a34a;font-size:14px;">Promo discount</td>
+      <td style="padding:6px 0;text-align:right;color:#16a34a;font-size:14px;">-$${fmt(discount)}</td>
+    </tr>
+  ` : '';
+
+  const creditsRow = credits > 0 ? `
+    <tr>
+      <td style="padding:6px 0;color:#16a34a;font-size:14px;">Royal Rewards credits applied</td>
+      <td style="padding:6px 0;text-align:right;color:#16a34a;font-size:14px;">-$${fmt(credits)}</td>
+    </tr>
+  ` : '';
+
+  const netSubtotalRow = (discount > 0 || credits > 0) ? `
+    <tr>
+      <td style="padding:6px 0;color:#475569;font-size:14px;border-top:1px solid #e2e8f0;">Subtotal after savings</td>
+      <td style="padding:6px 0;text-align:right;color:#475569;font-size:14px;border-top:1px solid #e2e8f0;">$${fmt(subtotalBeforeTax)}</td>
+    </tr>
+  ` : '';
+
+  const tipRow = tip > 0 ? `
+    <tr>
+      <td style="padding:6px 0;color:#475569;font-size:14px;">Tip</td>
+      <td style="padding:6px 0;text-align:right;color:#475569;font-size:14px;">$${fmt(tip)}</td>
+    </tr>
+  ` : '';
+
+  const paymentMethodLine = (b.payment_method_last4 || b.payment_method_type) ? `
+    <p style="color:#64748b;font-size:13px;margin:8px 0 0 0;">
+      Payment: ${escapeHtml(b.payment_method_type || 'card')}${b.payment_method_last4 ? ` ending in ${escapeHtml(b.payment_method_last4)}` : ''}
+    </p>
+  ` : '';
+
+  const creditsEarnedNote = opts.showCreditsEarnedNote
+    ? `<p style="color:#0f766e;font-size:13px;margin:10px 0 0 0;">You'll earn 10% Royal Rewards credits on this booking after service.</p>`
+    : '';
+
+  return `
+    <div style="background-color:#f8fafc;border:1px solid #e2e8f0;padding:20px;margin:20px 0;border-radius:8px;">
+      <h3 style="margin:0 0 12px 0;color:#1e293b;font-size:16px;font-weight:700;">Pricing details</h3>
+
+      ${petBlocks}
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin-top:14px;">
+        <tr>
+          <td style="padding:8px 0;color:#1e293b;font-size:14px;font-weight:600;">Subtotal</td>
+          <td style="padding:8px 0;text-align:right;color:#1e293b;font-size:14px;font-weight:600;">$${fmt(subtotal)}</td>
+        </tr>
+        ${discountRow}
+        ${creditsRow}
+        ${netSubtotalRow}
+        <tr>
+          <td style="padding:6px 0;color:#475569;font-size:14px;">Tax (${(taxRate * 100).toFixed(2)}%)</td>
+          <td style="padding:6px 0;text-align:right;color:#475569;font-size:14px;">$${fmt(tax)}</td>
+        </tr>
+        ${tipRow}
+        <tr>
+          <td style="padding:12px 0 0 0;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">Total</td>
+          <td style="padding:12px 0 0 0;text-align:right;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">$${fmt(total)}</td>
+        </tr>
+      </table>
+
+      ${paymentMethodLine}
+      ${creditsEarnedNote}
+    </div>
+  `;
 }
 
 function generateClientEmailHTML(data: BookingEmailData): string {
@@ -40,6 +242,8 @@ function generateClientEmailHTML(data: BookingEmailData): string {
     month: 'long',
     day: 'numeric'
   });
+
+  const breakdownHTML = generatePricingBreakdownHTML(data, { showCreditsEarnedNote: true });
 
   return `
 <!DOCTYPE html>
@@ -154,44 +358,41 @@ function generateClientEmailHTML(data: BookingEmailData): string {
     </div>
 
     <div class="content">
-      <div class="greeting">Hi ${data.client.first_name},</div>
+      <div class="greeting">Hi ${escapeHtml(data.client.first_name)},</div>
 
       <div>
         Great news! Your grooming appointment has been confirmed. We're excited to pamper your furry friend${petNames.length > 1 ? 's' : ''}!
       </div>
 
       <div class="highlight">
-        <strong>${date} at ${data.booking.scheduled_time_start} - ${data.booking.scheduled_time_end}</strong>
+        <strong>${escapeHtml(date)} at ${escapeHtml(data.booking.scheduled_time_start)} - ${escapeHtml(data.booking.scheduled_time_end)}</strong>
       </div>
 
       <div class="details-box">
         <div class="detail-row">
           <span class="detail-label">Service:</span>
-          <span class="detail-value">${data.booking.service_name || 'Grooming Service'}</span>
+          <span class="detail-value">${escapeHtml(data.booking.service_name || 'Grooming Service')}</span>
         </div>
 
         <div class="detail-row">
           <span class="detail-label">Pet${petNames.length > 1 ? 's' : ''}:</span>
           <span class="detail-value">
-            ${petNames.map((name) => `<span class="pet-item">${name}</span>`).join('')}
+            ${petNames.map((name) => `<span class="pet-item">${escapeHtml(name)}</span>`).join('')}
           </span>
         </div>
 
         <div class="detail-row">
           <span class="detail-label">Groomer:</span>
-          <span class="detail-value">${data.groomer.first_name} ${data.groomer.last_name}</span>
+          <span class="detail-value">${escapeHtml(data.groomer.first_name)} ${escapeHtml(data.groomer.last_name)}</span>
         </div>
 
         <div class="detail-row">
           <span class="detail-label">Location:</span>
-          <span class="detail-value">${data.booking.address}, ${data.booking.city}, ${data.booking.state}</span>
-        </div>
-
-        <div class="detail-row">
-          <span class="detail-label">Total Amount:</span>
-          <span class="detail-value"><strong>$${data.booking.total_amount.toFixed(2)}</strong></span>
+          <span class="detail-value">${escapeHtml(data.booking.address)}, ${escapeHtml(data.booking.city)}, ${escapeHtml(data.booking.state)}</span>
         </div>
       </div>
+
+      ${breakdownHTML}
 
       <p style="color: #475569; margin-top: 25px;">
         <strong>What to expect:</strong><br>
@@ -242,15 +443,15 @@ function generateGroomerEmailHTML(data: BookingEmailData): string {
       <h1>New Booking Assignment</h1>
     </div>
     <div class="content">
-      <p>Hi ${data.groomer.first_name},</p>
+      <p>Hi ${escapeHtml(data.groomer.first_name)},</p>
       <p>You have been assigned a new grooming appointment:</p>
 
       <div class="detail">
-        <div><span class="label">Date & Time:</span> ${date} at ${data.booking.scheduled_time_start} - ${data.booking.scheduled_time_end}</div>
-        <div><span class="label">Client:</span> ${data.client.first_name} ${data.client.last_name}</div>
-        <div><span class="label">Pet(s):</span> ${petNames.join(', ')}</div>
-        <div><span class="label">Location:</span> ${data.booking.address}, ${data.booking.city}, ${data.booking.state}</div>
-        <div><span class="label">Service:</span> ${data.booking.service_name || 'Grooming Service'}</div>
+        <div><span class="label">Date & Time:</span> ${escapeHtml(date)} at ${escapeHtml(data.booking.scheduled_time_start)} - ${escapeHtml(data.booking.scheduled_time_end)}</div>
+        <div><span class="label">Client:</span> ${escapeHtml(data.client.first_name)} ${escapeHtml(data.client.last_name)}</div>
+        <div><span class="label">Pet(s):</span> ${petNames.map(escapeHtml).join(', ')}</div>
+        <div><span class="label">Location:</span> ${escapeHtml(data.booking.address)}, ${escapeHtml(data.booking.city)}, ${escapeHtml(data.booking.state)}</div>
+        <div><span class="label">Service:</span> ${escapeHtml(data.booking.service_name || 'Grooming Service')}</div>
       </div>
 
       <p>Please ensure you arrive on time and have all necessary equipment ready.</p>
@@ -270,6 +471,8 @@ function generateAdminEmailHTML(data: BookingEmailData): string {
     month: 'long',
     day: 'numeric'
   });
+
+  const breakdownHTML = generatePricingBreakdownHTML(data);
 
   return `
 <!DOCTYPE html>
@@ -294,14 +497,15 @@ function generateAdminEmailHTML(data: BookingEmailData): string {
       <p>A booking has been approved and assigned:</p>
 
       <div class="detail">
-        <div><span class="label">Booking ID:</span> ${data.booking.id}</div>
-        <div><span class="label">Date & Time:</span> ${date} at ${data.booking.scheduled_time_start} - ${data.booking.scheduled_time_end}</div>
-        <div><span class="label">Client:</span> ${data.client.first_name} ${data.client.last_name} (${data.client.email})</div>
-        <div><span class="label">Groomer:</span> ${data.groomer.first_name} ${data.groomer.last_name} (${data.groomer.email})</div>
-        <div><span class="label">Pet(s):</span> ${petNames.join(', ')}</div>
-        <div><span class="label">Location:</span> ${data.booking.address}, ${data.booking.city}, ${data.booking.state}</div>
-        <div><span class="label">Total Amount:</span> $${data.booking.total_amount.toFixed(2)}</div>
+        <div><span class="label">Booking ID:</span> ${escapeHtml(data.booking.id)}</div>
+        <div><span class="label">Date & Time:</span> ${escapeHtml(date)} at ${escapeHtml(data.booking.scheduled_time_start)} - ${escapeHtml(data.booking.scheduled_time_end)}</div>
+        <div><span class="label">Client:</span> ${escapeHtml(data.client.first_name)} ${escapeHtml(data.client.last_name)} (${escapeHtml(data.client.email)})</div>
+        <div><span class="label">Groomer:</span> ${escapeHtml(data.groomer.first_name)} ${escapeHtml(data.groomer.last_name)} (${escapeHtml(data.groomer.email)})</div>
+        <div><span class="label">Pet(s):</span> ${petNames.map(escapeHtml).join(', ')}</div>
+        <div><span class="label">Location:</span> ${escapeHtml(data.booking.address)}, ${escapeHtml(data.booking.city)}, ${escapeHtml(data.booking.state)}</div>
       </div>
+
+      ${breakdownHTML}
 
       <p>All parties have been notified via email.</p>
     </div>

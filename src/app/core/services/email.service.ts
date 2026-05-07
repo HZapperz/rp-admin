@@ -4,6 +4,17 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { BookingWithDetails } from '../models/types';
 import { environment } from '../../../environments/environment';
 
+interface PetLineItem {
+  pet_name: string;
+  package_name: string;
+  service_size: string;
+  service_charge: number;
+  breed_premium_amount: number;
+  coat_category?: string;
+  addons: Array<{ name: string; price: number }>;
+  pet_total: number;
+}
+
 interface BookingEmailData {
   booking: {
     id: string;
@@ -15,6 +26,16 @@ interface BookingEmailData {
     state: string;
     total_amount: number;
     service_name?: string;
+    // Breakdown fields (so the email can render itemized pricing).
+    original_subtotal?: number;
+    discount_amount?: number;
+    credits_applied?: number;
+    subtotal_before_tax?: number;
+    tax_amount?: number;
+    tax_rate?: number;
+    tip_amount?: number;
+    payment_method_type?: string;
+    payment_method_last4?: string;
   };
   client: {
     first_name: string;
@@ -29,7 +50,74 @@ interface BookingEmailData {
   pets: Array<{
     name: string;
   }>;
+  pet_breakdown?: PetLineItem[];
   adminEmail?: string;
+}
+
+const PACKAGE_DISPLAY_NAMES: Record<string, string> = {
+  basic: 'Royal Bath',
+  premium: 'Royal Groom',
+  deluxe: 'Royal Spa',
+};
+
+/**
+ * Build per-pet line items that always sum exactly to pet.total_price.
+ *
+ * Real-world data has cases where breed_premium_amount is stored on the row
+ * but was never added into total_price (e.g. James Foster's Shetland —
+ * package_price=125, base_price=140, breed_premium=20, total=155 but
+ * 125+20+30=175). Rather than show a breakdown that doesn't add up, we
+ * back-derive the service charge from total_price minus addons, and only
+ * surface the coat surcharge as its own line item when the expected math
+ * (package_price + breed_premium) matches what's actually in pet_total.
+ */
+function buildPetBreakdown(booking: BookingWithDetails, fallbackServiceName?: string): PetLineItem[] {
+  const pets = booking.pets || [];
+  return pets.map((bp) => {
+    const addonList = (bp.addons || []).map((a) => ({
+      name: a.addon_name,
+      price: Number(a.addon_price) || 0,
+    }));
+    const addonsSum = addonList.reduce((s, a) => s + a.price, 0);
+
+    const petTotal = Number(bp.total_price) || 0;
+    const packagePrice = Number(bp.package_price) || 0;
+    const breedPremium = Number(bp.breed_premium_amount) || 0;
+
+    const inferredService = Math.round((petTotal - addonsSum) * 100) / 100;
+    const expectedService = Math.round((packagePrice + breedPremium) * 100) / 100;
+
+    let serviceCharge: number;
+    let displayBreedPremium: number;
+
+    if (Math.abs(inferredService - expectedService) < 0.01) {
+      // Clean case — package_price + breed_premium + addons = pet_total.
+      serviceCharge = packagePrice;
+      displayBreedPremium = breedPremium;
+    } else {
+      // Inconsistent stored data — fold the implied surcharge into the service line
+      // so the displayed math still sums to pet_total. Customer sees one Service line
+      // covering the actual amount charged, with no phantom coat surcharge.
+      serviceCharge = Math.max(0, inferredService);
+      displayBreedPremium = 0;
+    }
+
+    const packageName =
+      PACKAGE_DISPLAY_NAMES[(bp.package_type || '').toLowerCase()] ||
+      fallbackServiceName ||
+      'Grooming Service';
+
+    return {
+      pet_name: bp.pet?.name || 'Pet',
+      package_name: packageName,
+      service_size: bp.service_size || '',
+      service_charge: serviceCharge,
+      breed_premium_amount: displayBreedPremium,
+      coat_category: displayBreedPremium > 0 ? bp.coat_category : undefined,
+      addons: addonList,
+      pet_total: petTotal,
+    };
+  });
 }
 
 interface EmailResponse {
@@ -184,8 +272,17 @@ export class EmailService {
           address: booking.address,
           city: booking.city,
           state: booking.state,
-          total_amount: booking.total_amount,
-          service_name: booking.service_name
+          total_amount: Number(booking.total_amount) || 0,
+          service_name: booking.service_name,
+          original_subtotal: Number(booking.original_subtotal) || undefined,
+          discount_amount: Number(booking.discount_amount) || undefined,
+          credits_applied: Number(booking.credits_applied) || undefined,
+          subtotal_before_tax: Number(booking.subtotal_before_tax) || undefined,
+          tax_amount: Number(booking.tax_amount) || undefined,
+          tax_rate: Number(booking.tax_rate) || undefined,
+          tip_amount: Number(booking.tip_amount) || undefined,
+          payment_method_type: booking.payment_method_type,
+          payment_method_last4: booking.payment_method_last4,
         },
         client: {
           first_name: booking.client.first_name,
@@ -200,6 +297,7 @@ export class EmailService {
         pets: booking.pets.map(bp => ({
           name: bp.pet?.name || 'Unknown Pet'
         })),
+        pet_breakdown: buildPetBreakdown(booking, booking.service_name),
         adminEmail: adminEmail
       };
 
@@ -207,7 +305,10 @@ export class EmailService {
         bookingId: booking.id,
         clientEmail: emailData.client.email,
         groomerEmail: emailData.groomer.email,
-        adminEmail: adminEmail
+        adminEmail: adminEmail,
+        breakdownPets: emailData.pet_breakdown?.length || 0,
+        bookingTotal: emailData.booking.total_amount,
+        bookingSubtotal: emailData.booking.original_subtotal
       });
 
       // Send request to email service
