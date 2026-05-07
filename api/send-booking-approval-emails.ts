@@ -186,12 +186,31 @@ function generatePricingBreakdownHTML(data: BookingEmailData, opts: { showCredit
     </tr>
   ` : '';
 
-  const tipRow = tip > 0 ? `
-    <tr>
-      <td style="padding:6px 0;color:#475569;font-size:14px;">Tip</td>
-      <td style="padding:6px 0;text-align:right;color:#475569;font-size:14px;">$${fmt(tip)}</td>
-    </tr>
-  ` : '';
+  // total_amount stored on the booking is the SERVICE TOTAL (pre-tip).
+  // amount_paid (set after capture) = total_amount + tip_amount. When tip > 0,
+  // we surface both so the breakdown adds up: ... Tax → Service Total → Tip
+  // → Total Paid. Without this the email showed Tip but used total_amount as
+  // the final line, which didn't match the tip+service math the customer
+  // expected.
+  const totalSection = tip > 0 ? `
+        <tr>
+          <td style="padding:8px 0 0 0;color:#1e293b;font-size:14px;font-weight:600;border-top:1px solid #e2e8f0;">Service Total</td>
+          <td style="padding:8px 0 0 0;text-align:right;color:#1e293b;font-size:14px;font-weight:600;border-top:1px solid #e2e8f0;">$${fmt(total)}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:#475569;font-size:14px;">Tip</td>
+          <td style="padding:6px 0;text-align:right;color:#475569;font-size:14px;">$${fmt(tip)}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 0 0 0;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">Total Paid</td>
+          <td style="padding:12px 0 0 0;text-align:right;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">$${fmt(total + tip)}</td>
+        </tr>
+  ` : `
+        <tr>
+          <td style="padding:12px 0 0 0;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">Total</td>
+          <td style="padding:12px 0 0 0;text-align:right;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">$${fmt(total)}</td>
+        </tr>
+  `;
 
   const paymentMethodLine = (b.payment_method_last4 || b.payment_method_type) ? `
     <p style="color:#64748b;font-size:13px;margin:8px 0 0 0;">
@@ -221,11 +240,7 @@ function generatePricingBreakdownHTML(data: BookingEmailData, opts: { showCredit
           <td style="padding:6px 0;color:#475569;font-size:14px;">Tax (${(taxRate * 100).toFixed(2)}%)</td>
           <td style="padding:6px 0;text-align:right;color:#475569;font-size:14px;">$${fmt(tax)}</td>
         </tr>
-        ${tipRow}
-        <tr>
-          <td style="padding:12px 0 0 0;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">Total</td>
-          <td style="padding:12px 0 0 0;text-align:right;color:#1e293b;font-size:18px;font-weight:700;border-top:2px solid #1e293b;">$${fmt(total)}</td>
-        </tr>
+        ${totalSection}
       </table>
 
       ${paymentMethodLine}
