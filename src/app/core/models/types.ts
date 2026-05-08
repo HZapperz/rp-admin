@@ -478,6 +478,12 @@ export interface BookingFilters {
   };
   groomerId?: string;
   clientId?: string;
+  /**
+   * When omitted (or false), cancelled bookings are excluded from the result.
+   * Set to true on a "Cancelled" tab/filter to surface them explicitly.
+   * Ignored when `status` is provided — that overrides the default.
+   */
+  includeCancelled?: boolean;
 }
 
 export interface UserFilters {

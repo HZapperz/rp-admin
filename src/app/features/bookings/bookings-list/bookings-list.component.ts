@@ -40,7 +40,10 @@ export class BookingsListComponent implements OnInit {
   async loadBookings() {
     try {
       this.isLoading = true;
-      this.bookingService.getAllBookings().subscribe({
+      // Bookings-list owns the Cancelled tab, so it must opt into receiving
+      // cancelled rows. Other callers (dashboard, calendar) get the default
+      // operational view that excludes them.
+      this.bookingService.getAllBookings({ includeCancelled: true }).subscribe({
         next: (bookings) => {
           this.bookings = bookings;
           this.applyFilters();

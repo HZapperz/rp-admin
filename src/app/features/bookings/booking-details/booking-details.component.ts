@@ -737,6 +737,7 @@ export class BookingDetailsComponent implements OnInit {
   async saveDiscount(): Promise<void> {
     if (!this.booking) return;
     const preview = this.getDiscountPreview();
+    const previousTotal = Number(this.booking.total_amount) || 0;
     try {
       const { error } = await this.supabase
         .from('bookings')
@@ -750,6 +751,24 @@ export class BookingDetailsComponent implements OnInit {
         })
         .eq('id', this.booking.id);
       if (error) throw error;
+
+      // Fire the revised-receipt email after the row has been updated. We do
+      // this best-effort: a failed email must not roll back the discount.
+      // Skip if the total didn't actually change (e.g. admin re-saved the
+      // same discount) so we don't spam the customer.
+      if (preview.total !== previousTotal) {
+        try {
+          await this.emailService.sendDiscountAppliedEmail(
+            this.booking,
+            previousTotal,
+            preview.total,
+            preview.discountAmount
+          );
+        } catch (emailErr) {
+          console.error('Discount email send failed (non-fatal):', emailErr);
+        }
+      }
+
       await this.loadBookingDetails(this.booking.id);
       this.isEditingDiscount = false;
     } catch (err: any) {

@@ -564,6 +564,66 @@ export class EmailService {
   }
 
   /**
+   * Send a "discount applied" / revised receipt email to the customer when an
+   * admin updates the discount on a booking. Closes the previously silent gap
+   * where bookings.total_amount changed but the customer was never told.
+   */
+  async sendDiscountAppliedEmail(
+    booking: BookingWithDetails,
+    previousTotal: number,
+    newTotal: number,
+    discountAmount: number,
+    reason?: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      if (!booking.client?.email) {
+        return { success: false, error: 'Missing client email address' };
+      }
+
+      const payload = {
+        booking: {
+          id: booking.id,
+          scheduled_date: booking.scheduled_date,
+          scheduled_time_start: booking.scheduled_time_start,
+          scheduled_time_end: booking.scheduled_time_end,
+          address: booking.address,
+          city: booking.city,
+          state: booking.state,
+          service_name: booking.service_name,
+        },
+        client: {
+          first_name: booking.client.first_name,
+          last_name: booking.client.last_name,
+          email: booking.client.email,
+        },
+        petNames: (booking.pets || [])
+          .map((bp: any) => bp?.pet?.name)
+          .filter((n: any): n is string => typeof n === 'string' && n.length > 0),
+        previousTotal: Number(previousTotal) || 0,
+        newTotal: Number(newTotal) || 0,
+        discountAmount: Number(discountAmount) || 0,
+        reason: reason || undefined,
+      };
+
+      const response = await firstValueFrom(
+        this.http.post<EmailResponse>(
+          `${this.emailApiUrl}/send-discount-applied-email`,
+          payload
+        )
+      );
+
+      console.log('Discount applied email response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error sending discount applied email:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error sending discount email',
+      };
+    }
+  }
+
+  /**
    * Check if email service is healthy
    */
   async checkEmailServiceHealth(): Promise<boolean> {

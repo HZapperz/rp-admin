@@ -39,6 +39,11 @@ export class BookingService {
     // Apply filters
     if (filters?.status && filters.status.length > 0) {
       query = query.in('status', filters.status);
+    } else if (!filters?.includeCancelled) {
+      // Default: hide cancelled bookings from the dashboard so customer
+      // self-service cancellations don't pollute the operational view.
+      // Use a "Show cancelled" toggle (includeCancelled: true) to surface them.
+      query = query.neq('status', 'cancelled');
     }
 
     if (filters?.dateRange) {
