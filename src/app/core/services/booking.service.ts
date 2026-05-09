@@ -730,6 +730,10 @@ export class BookingService {
       // matches what the customer was shown — leaving it stale (as before) means
       // Stripe could capture more than the displayed total. See James Foster's
       // booking 222cda48 for the canonical example of this bug.
+      // credits_earned must move with subtotal_before_tax — Ben King 2026-04-29
+      // was paid out $20 instead of $13 because credits_earned wasn't recalculated
+      // when his service was downgraded from $200 to $130 mid-appointment.
+      const newCreditsEarned = Math.floor(subtotalBeforeTax * 0.10 * 100) / 100;
       const serviceName = this.getServiceNameFromPackage(newPackageType);
       const { error: updateBookingError } = await this.supabase
         .from('bookings')
@@ -741,6 +745,7 @@ export class BookingService {
           tax_amount: taxAmount,
           total_amount: newTotalAmount,
           authorized_amount: newTotalAmount,
+          credits_earned: newCreditsEarned,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId);
@@ -846,6 +851,8 @@ export class BookingService {
       // authorized_amount must mirror total_amount — same reason as
       // changeBookingService: leaving it stale causes Stripe holds that don't
       // match the displayed total, which is the actual trust break.
+      // credits_earned must move with subtotal_before_tax — see Ben King 2026-04-29.
+      const newCreditsEarned = Math.floor(newTotals.newSubtotalBeforeTax * 0.10 * 100) / 100;
       const { error: updateBookingError } = await this.supabase
         .from('bookings')
         .update({
@@ -855,6 +862,7 @@ export class BookingService {
           tax_amount: newTotals.newTaxAmount,
           total_amount: newTotals.newTotalAmount,
           authorized_amount: newTotals.newTotalAmount,
+          credits_earned: newCreditsEarned,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId);
