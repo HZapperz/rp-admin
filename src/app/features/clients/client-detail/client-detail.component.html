@@ -57,6 +57,43 @@
       </div>
     </div>
 
+    <!-- Dispute / Block Warning Banner -->
+    <div class="account-status-banner" *ngIf="hasOpenDisputes || clientData.client.blocked_at">
+      <div class="account-status-banner-row" *ngIf="hasOpenDisputes">
+        <div class="account-status-icon dispute">⚠️</div>
+        <div class="account-status-content">
+          <div class="account-status-title">
+            {{ openDisputes.length }} open Stripe chargeback{{ openDisputes.length === 1 ? '' : 's' }}
+          </div>
+          <div class="account-status-subtitle">
+            <ng-container *ngFor="let d of openDisputes; let i = index">
+              <span *ngIf="i > 0"> · </span>
+              <strong>{{ formatCurrency(d.amount) }}</strong>
+              ({{ formatDisputeReason(d.reason) }} · {{ d.status }})
+              <span *ngIf="d.evidence_due_by">
+                — evidence due {{ formatDate(d.evidence_due_by) }}
+              </span>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+      <div class="account-status-banner-row" *ngIf="clientData.client.blocked_at">
+        <div class="account-status-icon block">🚫</div>
+        <div class="account-status-content">
+          <div class="account-status-title">
+            Account blocked since {{ formatDate(clientData.client.blocked_at) }}
+          </div>
+          <div class="account-status-subtitle">
+            New bookings are blocked. Customer sees a message asking them to contact support.
+          </div>
+        </div>
+        <button class="btn-unblock" (click)="toggleClientBlock()">Unblock</button>
+      </div>
+      <div class="account-status-banner-row" *ngIf="!clientData.client.blocked_at && hasOpenDisputes">
+        <button class="btn-block" (click)="toggleClientBlock()">Block client</button>
+      </div>
+    </div>
+
     <!-- Top Row: Profile, Stats, Payment Methods (3-column) -->
     <div class="top-row">
       <!-- Profile Card -->

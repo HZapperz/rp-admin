@@ -62,6 +62,29 @@
       </div>
     </div>
 
+    <!-- Stripe Chargeback / Dispute Alert -->
+    <div *ngIf="bookingDisputes.length > 0" class="dispute-alert">
+      <div class="dispute-alert-icon">⚠️</div>
+      <div class="dispute-alert-body">
+        <div class="dispute-alert-title">
+          {{ bookingDisputes.length }} Stripe chargeback{{ bookingDisputes.length === 1 ? '' : 's' }} on this booking
+        </div>
+        <div class="dispute-alert-list">
+          <div *ngFor="let d of bookingDisputes" class="dispute-row">
+            <strong>${{ d.amount }}</strong>
+            <span class="dispute-reason">{{ d.reason || 'unspecified' }}</span>
+            <span class="dispute-status" [class.dispute-resolved]="d.resolved_at">{{ d.status }}</span>
+            <span *ngIf="d.evidence_due_by && !d.resolved_at" class="dispute-due">
+              evidence due {{ d.evidence_due_by | date:'MMM d, y' }}
+            </span>
+            <span *ngIf="d.resolved_at" class="dispute-resolved-at">
+              resolved {{ d.resolved_at | date:'MMM d, y' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Pending Change Request Alert -->
     <div *ngIf="pendingChangeRequest" class="change-request-alert">
       <div class="alert-header">

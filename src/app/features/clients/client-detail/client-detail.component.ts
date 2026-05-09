@@ -10,7 +10,8 @@ import {
   Address,
   PaymentMethod,
   Rating,
-  AdminNote
+  AdminNote,
+  Dispute
 } from '../../../core/services/client.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
@@ -137,6 +138,52 @@ export class ClientDetailComponent implements OnInit {
 
   goBack() {
     this.location.back();
+  }
+
+  get openDisputes(): Dispute[] {
+    return (this.clientData?.disputes || []).filter(d => !d.resolved_at);
+  }
+
+  get hasOpenDisputes(): boolean {
+    return this.openDisputes.length > 0;
+  }
+
+  formatDisputeReason(reason: string | null): string {
+    if (!reason) return 'unspecified';
+    return reason.replace(/_/g, ' ');
+  }
+
+  async toggleClientBlock(): Promise<void> {
+    if (!this.clientData) return;
+    const isBlocked = !!this.clientData.client.blocked_at;
+    const action = isBlocked ? 'unblock' : 'block';
+    const confirmed = confirm(
+      isBlocked
+        ? `Unblock ${this.clientData.client.first_name}? They'll be able to book again.`
+        : `Block ${this.clientData.client.first_name}? They will not be able to create new bookings until unblocked.`
+    );
+    if (!confirmed) return;
+
+    let success = false;
+    if (isBlocked) {
+      success = await this.clientService.unblockClient(this.clientData.client.id);
+    } else {
+      const reason = prompt(
+        'Reason for blocking (shown to the customer on their dashboard):',
+        'Please contact support so we can help resolve an issue with your account.'
+      );
+      if (reason === null) return;
+      success = await this.clientService.blockClientWithReason(
+        this.clientData.client.id,
+        reason
+      );
+    }
+
+    if (success) {
+      await this.loadClientData(this.clientData.client.id);
+    } else {
+      alert(`Failed to ${action} client. Please try again.`);
+    }
   }
 
   // Pet Modal methods (Add/Edit)

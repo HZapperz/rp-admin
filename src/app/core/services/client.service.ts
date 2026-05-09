@@ -49,6 +49,8 @@ export interface ClientWithStats {
   next_booking_date?: string;
   last_outreach_date?: string;
   blocked_at?: string;
+  blocked_reason?: string;
+  open_dispute_count?: number;
   last_sign_in_at?: string;
   pets?: { id: string; name: string }[];
   sms_enabled?: boolean;
@@ -305,6 +307,26 @@ export interface AdminNote {
   };
 }
 
+export interface Dispute {
+  id: string;
+  booking_id: string | null;
+  client_id: string;
+  stripe_dispute_id: string;
+  stripe_charge_id: string | null;
+  stripe_payment_intent_id: string | null;
+  amount: number;
+  currency: string;
+  reason: string | null;
+  status: string;
+  evidence_due_by: string | null;
+  evidence_submitted_at: string | null;
+  resolved_at: string | null;
+  outcome: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ClientDetailData {
   client: ClientWithStats;
   pets: Pet[];
@@ -315,6 +337,7 @@ export interface ClientDetailData {
   adminNotes: AdminNote[];
   userCredits: UserCredits | null;
   creditTransactions: CreditTransaction[];
+  disputes: Dispute[];
 }
 
 @Injectable({
@@ -896,7 +919,7 @@ export class ClientService {
 
   async getClientDetailData(clientId: string): Promise<ClientDetailData | null> {
     try {
-      const [client, pets, addresses, paymentMethods, bookings, ratings, adminNotes, userCredits, creditTransactions] = await Promise.all([
+      const [client, pets, addresses, paymentMethods, bookings, ratings, adminNotes, userCredits, creditTransactions, disputes] = await Promise.all([
         this.getClientById(clientId),
         this.getClientPets(clientId),
         this.getClientAddresses(clientId),
@@ -905,7 +928,8 @@ export class ClientService {
         this.getClientRatings(clientId),
         this.getClientAdminNotes(clientId),
         this.getClientCredits(clientId),
-        this.getClientCreditTransactions(clientId)
+        this.getClientCreditTransactions(clientId),
+        this.getClientDisputes(clientId)
       ]);
 
       if (!client) {
@@ -921,12 +945,43 @@ export class ClientService {
         ratings,
         adminNotes,
         userCredits,
-        creditTransactions
+        creditTransactions,
+        disputes
       };
     } catch (error) {
       console.error('Error fetching client detail data:', error);
       return null;
     }
+  }
+
+  async getClientDisputes(clientId: string): Promise<Dispute[]> {
+    const { data, error } = await this.supabase
+      .from('disputes')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching client disputes:', error);
+      return [];
+    }
+    return (data ?? []) as Dispute[];
+  }
+
+  async blockClientWithReason(clientId: string, reason: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('users')
+      .update({
+        blocked_at: new Date().toISOString(),
+        blocked_reason: reason
+      })
+      .eq('id', clientId);
+
+    if (error) {
+      console.error('Error blocking client with reason:', error);
+      return false;
+    }
+    return true;
   }
 
   // Upload file to Supabase Storage

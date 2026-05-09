@@ -10,7 +10,7 @@ import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../
 import { EmailService } from '../../../core/services/email.service';
 import { ChangeRequestService, ChangeRequest } from '../../../core/services/change-request.service';
 import { PackageService } from '../../../core/services/package.service';
-import { ClientService, PaymentMethod } from '../../../core/services/client.service';
+import { ClientService, PaymentMethod, Dispute } from '../../../core/services/client.service';
 import { BookingWithDetails } from '../../../core/models/types';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -208,6 +208,7 @@ export class BookingDetailsComponent implements OnInit {
   // Change payment method
   showChangePaymentModal = false;
   clientPaymentMethods: PaymentMethod[] = [];
+  bookingDisputes: Dispute[] = [];
   isLoadingPaymentMethods = false;
   isChangingPaymentMethod = false;
   selectedNewPaymentMethod: PaymentMethod | null = null;
@@ -433,6 +434,19 @@ export class BookingDetailsComponent implements OnInit {
       this.modifications = mods;
       this.pendingChangeRequest = pendingRequest;
       this.buildTimeline();
+
+      // Load disputes for this booking (chargebacks)
+      try {
+        const { data: disputes } = await this.supabase
+          .from('disputes')
+          .select('*')
+          .eq('booking_id', id)
+          .order('created_at', { ascending: false });
+        this.bookingDisputes = (disputes ?? []) as Dispute[];
+      } catch (e) {
+        console.warn('Could not load disputes for booking', id, e);
+        this.bookingDisputes = [];
+      }
 
       // Debug: Log photo data
       console.log('Booking photos loaded:', {
