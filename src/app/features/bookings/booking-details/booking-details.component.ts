@@ -168,10 +168,13 @@ export class BookingDetailsComponent implements OnInit {
     { id: 'deluxe', icon: '✨' }
   ];
 
+  // Fallback prices, used only until PackageService.getPackages() resolves in
+  // ngOnInit. Source of truth is the service_packages table — keep these in sync
+  // with lib/constants/services.ts so a slow DB call can't display stale numbers.
   packagePrices: Record<string, Record<string, number>> = {
-    basic: { small: 59, medium: 79, large: 99, xl: 119 },
-    premium: { small: 95, medium: 125, large: 150, xl: 175 },
-    deluxe: { small: 115, medium: 145, large: 175, xl: 205 }
+    basic: { small: 69, medium: 89, large: 109, xl: 129 },
+    premium: { small: 110, medium: 140, large: 165, xl: 195 },
+    deluxe: { small: 130, medium: 165, large: 195, xl: 225 }
   };
 
   // Time slots configuration
@@ -236,6 +239,22 @@ export class BookingDetailsComponent implements OnInit {
       this.error = 'Invalid booking ID';
       this.loading = false;
     }
+
+    this.packageService.getPackages().subscribe({
+      next: (packages) => {
+        for (const pkg of packages) {
+          if (pkg.packageType && pkg.prices) {
+            this.packagePrices[pkg.packageType] = {
+              small: pkg.prices.small,
+              medium: pkg.prices.medium,
+              large: pkg.prices.large,
+              xl: pkg.prices.xl,
+            };
+          }
+        }
+      },
+      error: (err) => console.error('Failed to load package prices, using fallback:', err),
+    });
   }
 
   canCancelBooking(): boolean {
