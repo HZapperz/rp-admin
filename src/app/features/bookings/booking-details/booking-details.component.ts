@@ -421,6 +421,15 @@ export class BookingDetailsComponent implements OnInit {
         .eq('id', this.booking.id);
 
       if (error) throw error;
+
+      // Cancel any queued reminders — otherwise a "your grooming is tomorrow"
+      // SMS will fire for a booking that is no longer confirmed.
+      await this.supabase
+        .from('sms_scheduled')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('booking_id', this.booking.id)
+        .eq('status', 'pending');
+
       await this.loadBookingDetails(this.booking.id);
     } catch (err: any) {
       console.error('Error reverting booking to pending:', err);
