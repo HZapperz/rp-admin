@@ -44,6 +44,10 @@ function fail(msg) {
   process.exitCode = 1;
 }
 
+function warn(msg) {
+  console.warn(`\n⚠ ${msg}`);
+}
+
 function ok(msg) {
   console.log(`✓ ${msg}`);
 }
@@ -55,7 +59,11 @@ function ok(msg) {
  */
 function readConstantPrices() {
   if (!fs.existsSync(CONSTANTS_FILE)) {
-    fail(`Cannot find canonical constant at ${CONSTANTS_FILE}`);
+    // Vercel only checks out admin-view, so the sibling client-groom-view repo
+    // isn't on disk in CI. The DB ↔ constant drift check is most valuable
+    // locally during development; in CI we still rely on the hardcoded-table
+    // scan below to catch admin-view regressions. Don't fail the build here.
+    warn(`Skipping constant ↔ DB comparison — canonical file not on disk at ${CONSTANTS_FILE}. (Expected in CI where client-groom-view isn't checked out.)`);
     return null;
   }
   const src = fs.readFileSync(CONSTANTS_FILE, 'utf8');
