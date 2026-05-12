@@ -69,7 +69,7 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   packages: PackageOption[] = [];
   loading = true;
   // Phase 2: cached breed data for coat-surcharge lookup
-  private breeds: Array<{ id: string; coat_category: string; name: string }> = [];
+  private breeds: Array<{ id: string; coat_category: string; name: string; aliases?: string[] }> = [];
   private breedPremiums: Array<{ coat_category: string; size: string; package_type: string; upcharge_amount: number }> = [];
 
   constructor(
@@ -150,16 +150,28 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Determine the effective coat_category for a pet (pet.coat_category_override beats
-   * breed.coat_category). Sets breed_id + coat_category on the PetServiceSelection.
+   * Determine the effective coat_category for a pet. Resolution order:
+   *   1) pet.coat_category_override (explicit admin override)
+   *   2) pet.breed_id → breeds.coat_category (linked record)
+   *   3) pet.breed free-text → breeds.name/aliases lookup (handles older pets where
+   *      the breed_id link was never backfilled — e.g. a Goldendoodle with breed_id=null
+   *      still gets POODLE_DOODLE so the surcharge isn't silently dropped)
+   *   4) STANDARD fallback
    */
   private resolveBreedContext(petService: PetServiceSelection): void {
     const pet = this.selectedPets.find((p) => p.id === petService.pet_id);
     if (!pet) return;
     const override = pet.coat_category_override;
-    const breed = pet.breed_id ? this.breeds.find((b) => b.id === pet.breed_id) : undefined;
+    let breed = pet.breed_id ? this.breeds.find((b) => b.id === pet.breed_id) : undefined;
+    if (!breed && !override && pet.breed) {
+      const text = pet.breed.toLowerCase().trim();
+      breed = this.breeds.find(b =>
+        b.name.toLowerCase().trim() === text ||
+        (b.aliases || []).some(a => a.toLowerCase().trim() === text)
+      );
+    }
     const category = (override || breed?.coat_category || 'STANDARD') as PetServiceSelection['coat_category'];
-    petService.breed_id = pet.breed_id;
+    petService.breed_id = breed?.id || pet.breed_id;
     petService.coat_category = category;
   }
 

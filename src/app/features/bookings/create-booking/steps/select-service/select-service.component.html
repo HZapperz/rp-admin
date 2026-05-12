@@ -61,6 +61,16 @@
           </div>
         </div>
 
+        <!-- Breed Premium Notice (Phase 2: shows when pet's coat has an upcharge) -->
+        <div class="breed-premium-notice" *ngIf="petService.package_type && getBreedPremium(petService) > 0">
+          <mat-icon class="premium-icon" inline>auto_awesome</mat-icon>
+          <div class="premium-info">
+            <span class="premium-label">{{ getCoatLabel(petService) }} surcharge</span>
+            <span class="premium-hint">Auto-applied based on pet's breed</span>
+          </div>
+          <span class="premium-price">+{{ formatCurrency(getBreedPremium(petService)) }}</span>
+        </div>
+
         <!-- Add-ons Selection -->
         <div class="addons-selection" *ngIf="petService.package_type">
           <h4>Add-ons (Optional)</h4>
@@ -112,6 +122,9 @@
             <span class="pet-name">{{ petService.pet_name }}</span>
             <span class="package-name" *ngIf="petService.package_type">
               - {{ getPackageName(petService.package_type) }}
+            </span>
+            <span class="breed-premium-tag" *ngIf="getBreedPremium(petService) > 0">
+              + {{ getCoatLabel(petService) }}
             </span>
             <span class="addons-count" *ngIf="petService.add_ons.length > 0">
               + {{ petService.add_ons.length }} add-on{{ petService.add_ons.length > 1 ? 's' : '' }}

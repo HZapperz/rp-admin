@@ -97,6 +97,9 @@
             <span class="pet-name">{{ service.pet_name }}</span>
             <span class="service-details">
               {{ getPackageDisplayName(service.package_type) }}
+              <span class="breed-premium-chip" *ngIf="service.breed_premium > 0" title="Coat-type surcharge auto-applied based on this pet's breed">
+                + {{ getCoatLabel(service) }} ({{ formatCurrency(service.breed_premium) }})
+              </span>
               <span *ngIf="service.add_ons.length > 0">+ {{ service.add_ons.length }} add-on(s)</span>
             </span>
           </div>
@@ -107,6 +110,14 @@
           <div class="breakdown-row subtotal">
             <span class="label">Subtotal</span>
             <span class="value">{{ formatCurrency(originalAmount) }}</span>
+          </div>
+
+          <div class="breakdown-row breed-premium-info" *ngIf="getTotalBreedPremium() > 0">
+            <span class="label">
+              <mat-icon class="info-icon" inline>info</mat-icon>
+              Includes breed surcharge ({{ getPetsWithBreedPremiumCount() }} pet{{ getPetsWithBreedPremiumCount() > 1 ? 's' : '' }})
+            </span>
+            <span class="value">{{ formatCurrency(getTotalBreedPremium()) }}</span>
           </div>
 
           <div class="breakdown-row discount" *ngIf="discountAmount > 0">

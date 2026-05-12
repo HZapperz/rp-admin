@@ -217,6 +217,27 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
     return Math.max(0, this.originalAmount - this.discountAmount - this.creditsApplied);
   }
 
+  /** Total breed coat-type surcharge across all pets in this booking. */
+  getTotalBreedPremium(): number {
+    return this.petServices.reduce((sum, ps) => sum + (Number(ps?.breed_premium) || 0), 0);
+  }
+
+  /** Count of pets that have a non-zero breed premium (used to pluralize the line item). */
+  getPetsWithBreedPremiumCount(): number {
+    return this.petServices.filter(ps => (Number(ps?.breed_premium) || 0) > 0).length;
+  }
+
+  /** Coat-category label for a pet (matches select-service's getCoatLabel). */
+  getCoatLabel(petService: any): string {
+    switch (petService?.coat_category) {
+      case 'POODLE_DOODLE': return 'Doodle / Poodle coat';
+      case 'DOUBLE_COAT': return 'Double coat';
+      case 'LONG_COAT_SPANIEL': return 'Long / silky coat';
+      case 'WIRE_COAT': return 'Wire coat';
+      default: return '';
+    }
+  }
+
   onRecurringChange(): void {
     if (this.recurringCount < 2) this.recurringCount = 2;
     if (this.recurringCount > 52) this.recurringCount = 52;

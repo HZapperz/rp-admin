@@ -2150,6 +2150,46 @@ export class BookingDetailsComponent implements OnInit {
     return this.packageService.getPackageNameByType(packageType);
   }
 
+  /**
+   * Human-readable label for a coat category (matches select-service / payment-summary
+   * so the same wording shows up at every stage of the booking lifecycle).
+   */
+  getCoatLabel(coatCategory: string | null | undefined): string {
+    switch (coatCategory) {
+      case 'POODLE_DOODLE': return 'Doodle / Poodle coat';
+      case 'DOUBLE_COAT': return 'Double coat';
+      case 'LONG_COAT_SPANIEL': return 'Long / silky coat';
+      case 'WIRE_COAT': return 'Wire coat';
+      default: return '';
+    }
+  }
+
+  /**
+   * Whether to render the per-pet price breakdown. We skip it for "trivial" bookings
+   * (no breed premium AND no add-ons) — there'd be nothing to break down beyond
+   * what the existing single-line total already shows.
+   */
+  hasPetPriceBreakdown(petBooking: any): boolean {
+    const hasPremium = Number(petBooking?.breed_premium_amount) > 0;
+    const hasAddons = Array.isArray(petBooking?.addons) && petBooking.addons.length > 0;
+    return hasPremium || hasAddons;
+  }
+
+  /** Total breed coat-type surcharge across all pets on this booking (for the summary row). */
+  getTotalBreedPremium(): number {
+    return (this.booking?.pets || []).reduce(
+      (sum, p) => sum + (Number(p?.breed_premium_amount) || 0),
+      0
+    );
+  }
+
+  /** Count of pets that have a non-zero breed premium (used to pluralize the line item). */
+  getPetsWithBreedPremiumCount(): number {
+    return (this.booking?.pets || []).filter(
+      p => (Number(p?.breed_premium_amount) || 0) > 0
+    ).length;
+  }
+
   async confirmServiceChange() {
     if (!this.booking || !this.selectedPetForServiceChange) return;
 
