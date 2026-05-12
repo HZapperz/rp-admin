@@ -67,111 +67,32 @@ export class ServicesListComponent implements OnInit {
     this.error = null;
 
     try {
-      // Try to fetch from service_packages table
       const { data, error } = await this.supabase
         .from('service_packages')
         .select('*')
         .order('display_order', { ascending: true });
 
       if (error) {
+        // This is the prices-editor page. Showing a hardcoded fallback here is
+        // the most dangerous scenario in the entire app: an admin might edit
+        // the stale numbers and overwrite the real DB. Fail loud instead.
         console.error('Error loading packages:', error);
-        // If table doesn't exist, use fallback data
-        this.packages = this.getFallbackPackages();
-      } else {
-        // Transform the data to match our interface
-        this.packages = (data || []).map((pkg: any) => ({
-          ...pkg,
-          includes: Array.isArray(pkg.includes) ? pkg.includes : (pkg.includes ? [pkg.includes] : []),
-        }));
+        this.packages = [];
+        this.error = 'Unable to load packages from the database. Editing is disabled until the connection recovers.';
+        return;
       }
+
+      this.packages = (data || []).map((pkg: any) => ({
+        ...pkg,
+        includes: Array.isArray(pkg.includes) ? pkg.includes : (pkg.includes ? [pkg.includes] : []),
+      }));
     } catch (err) {
       console.error('Error loading packages:', err);
-      // Use fallback data if Supabase query fails
-      this.packages = this.getFallbackPackages();
+      this.packages = [];
+      this.error = 'Unable to load packages from the database. Editing is disabled until the connection recovers.';
     } finally {
       this.loading = false;
     }
-  }
-
-  getFallbackPackages(): ServicePackage[] {
-    // Fallback packages if database table doesn't exist
-    return [
-      {
-        id: '1',
-        service_id: '1',
-        name: 'Royal Bath',
-        description: 'Essential grooming package with bath, nail care, and ear cleaning',
-        duration: 60,
-        price_small: 59,
-        price_medium: 79,
-        price_large: 99,
-        price_xl: 119,
-        includes: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning'],
-        icon: '🛁',
-        package_type: 'basic',
-        is_popular: false,
-        is_active: true,
-        display_order: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        service_id: '2',
-        name: 'Royal Groom',
-        description: 'Complete grooming service with haircut, teeth cleaning, and nail buffing',
-        duration: 90,
-        price_small: 95,
-        price_medium: 125,
-        price_large: 150,
-        price_xl: 175,
-        includes: [
-          'Bath & Brush',
-          'Gland Expression',
-          'Nail Trim',
-          'Ear Cleaning',
-          'Hair Trim',
-          'Teeth Cleaning',
-          'Nail Buffing',
-        ],
-        icon: '✂️',
-        package_type: 'premium',
-        is_popular: true,
-        is_active: true,
-        display_order: 2,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: '3',
-        service_id: '3',
-        name: 'Royal Spa',
-        description: 'Premium spa experience with aromatherapy, paw care, and all grooming services',
-        duration: 120,
-        price_small: 115,
-        price_medium: 145,
-        price_large: 175,
-        price_xl: 205,
-        includes: [
-          'Bath & Brush',
-          'Gland Expression',
-          'Nail Trim',
-          'Ear Cleaning',
-          'Hair Trim',
-          'Teeth Cleaning',
-          'Nose & Paws Treatment',
-          'Nail Buffing',
-          'Aromatherapy Oils & Essentials',
-        ],
-        icon: '✨',
-        package_type: 'deluxe',
-        is_popular: false,
-        is_active: true,
-        display_order: 3,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
   }
 
   async toggleStatus(pkg: ServicePackage): Promise<void> {

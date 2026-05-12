@@ -168,14 +168,13 @@ export class BookingDetailsComponent implements OnInit {
     { id: 'deluxe', icon: '✨' }
   ];
 
-  // Fallback prices, used only until PackageService.getPackages() resolves in
-  // ngOnInit. Source of truth is the service_packages table — keep these in sync
-  // with lib/constants/services.ts so a slow DB call can't display stale numbers.
-  packagePrices: Record<string, Record<string, number>> = {
-    basic: { small: 69, medium: 89, large: 109, xl: 129 },
-    premium: { small: 110, medium: 140, large: 165, xl: 195 },
-    deluxe: { small: 130, medium: 165, large: 195, xl: 225 }
-  };
+  // Populated from service_packages via PackageService.getPackages() in ngOnInit.
+  // Intentionally left empty — no hardcoded fallback. Drift between an admin-side
+  // price table and the DB is what corrupted booking f586cdd2 (Royal Groom Medium
+  // $125 vs $140). Modify-Package modal gates on packagePricesLoaded.
+  packagePrices: Record<string, Record<string, number>> = {};
+  packagePricesLoaded = false;
+  packagePricesError: string | null = null;
 
   // Time slots configuration
   morningSlots = [
@@ -242,9 +241,10 @@ export class BookingDetailsComponent implements OnInit {
 
     this.packageService.getPackages().subscribe({
       next: (packages) => {
+        const next: Record<string, Record<string, number>> = {};
         for (const pkg of packages) {
           if (pkg.packageType && pkg.prices) {
-            this.packagePrices[pkg.packageType] = {
+            next[pkg.packageType] = {
               small: pkg.prices.small,
               medium: pkg.prices.medium,
               large: pkg.prices.large,
@@ -252,8 +252,15 @@ export class BookingDetailsComponent implements OnInit {
             };
           }
         }
+        this.packagePrices = next;
+        this.packagePricesLoaded = true;
+        this.packagePricesError = null;
       },
-      error: (err) => console.error('Failed to load package prices, using fallback:', err),
+      error: (err) => {
+        console.error('Failed to load package prices:', err);
+        this.packagePricesLoaded = false;
+        this.packagePricesError = 'Unable to load service prices. Modify Package is disabled until prices load.';
+      },
     });
   }
 
@@ -1924,6 +1931,15 @@ export class BookingDetailsComponent implements OnInit {
   // Service Change Methods
   async openServiceChangeModal(bookingPet: any) {
     if (!this.booking) return;
+
+    // Refuse to open the modal until the DB-backed price table has loaded —
+    // otherwise calculateNewPackagePrice() returns 0 and we'd persist a $0
+    // service swap. The Modify button itself is disabled in the template,
+    // this is just belt + suspenders for any programmatic caller.
+    if (!this.packagePricesLoaded) {
+      alert(this.packagePricesError || 'Service prices are still loading. Please try again in a moment.');
+      return;
+    }
 
     // Load available addons from database
     try {

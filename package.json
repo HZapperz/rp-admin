@@ -5,10 +5,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "prebuild": "node scripts/set-env.cjs",
+    "prebuild": "node scripts/set-env.cjs && npm run check:prices",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "check:prices": "node scripts/check-prices.cjs",
     "email-server": "ts-node server.ts",
     "dev": "npm run email-server & npm run start"
   },

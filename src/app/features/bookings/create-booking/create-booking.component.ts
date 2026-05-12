@@ -193,8 +193,13 @@ export class CreateBookingComponent implements OnInit {
   }
 
   isStep3Complete(): boolean {
+    // Every pet must have a package AND a DB-resolved package price. If
+    // package_price is 0 after a package is selected, something is wrong with
+    // pricing loading — refuse to advance rather than ship $0 to the API.
     return this.petServices.length > 0 &&
-           this.petServices.every(ps => ps.package_type !== null);
+           this.petServices.every(ps =>
+             ps.package_type !== null && Number(ps.package_price) > 0
+           );
   }
 
   isStep4Complete(): boolean {
@@ -226,11 +231,12 @@ export class CreateBookingComponent implements OnInit {
     this.submitError = null;
 
     try {
-      // Build pets array with service details from petServices
+      // Build pets array with service details from petServices.
+      // package_price is resolved from the DB (service_packages table) by the
+      // select-service step and stored on ps.package_price — never recomputed here
+      // via a hardcoded table. Drift between an admin-side price table and the DB
+      // is what caused booking f586cdd2 (Royal Groom Medium $125 vs $140).
       const pets: PetBooking[] = this.petServices.map(ps => {
-        // Calculate package price (without addons)
-        const packagePrice = this.calculatePackagePrice(ps.package_type!, ps.pet_size);
-
         // Use the addon data resolved by the select-service step (names + sized prices).
         // Fallback to empty array if resolution somehow didn't run (shouldn't happen).
         const addons = (ps.addons_resolved || []).map((a) => ({
@@ -242,8 +248,8 @@ export class CreateBookingComponent implements OnInit {
           pet_id: ps.pet_id,
           service_size: ps.pet_size.toLowerCase() as 'small' | 'medium' | 'large' | 'xl',
           package_type: ps.package_type!.toLowerCase() as 'basic' | 'premium' | 'deluxe',
-          base_price: packagePrice,
-          package_price: packagePrice,
+          base_price: ps.package_price,
+          package_price: ps.package_price,
           total_price: ps.price,
           addons: addons.length > 0 ? addons : undefined,
           // Phase 2: breed coat-surcharge snapshot
@@ -323,19 +329,6 @@ export class CreateBookingComponent implements OnInit {
       this.isSubmitting = false;
     }
   }
-
-  // Helper methods for pricing calculations
-  private calculatePackagePrice(packageType: string, size: string): number {
-    // Package prices mapped from select-service component
-    const packages: Record<string, Record<string, number>> = {
-      'BASIC': { 'SMALL': 59, 'MEDIUM': 79, 'LARGE': 99, 'XL': 119 },
-      'PREMIUM': { 'SMALL': 95, 'MEDIUM': 125, 'LARGE': 150, 'XL': 175 },
-      'DELUXE': { 'SMALL': 115, 'MEDIUM': 145, 'LARGE': 175, 'XL': 205 }
-    };
-
-    return packages[packageType]?.[size] || 0;
-  }
-
 
   getSubmitButtonLabel(): string {
     const r = this.paymentConfig?.recurring;

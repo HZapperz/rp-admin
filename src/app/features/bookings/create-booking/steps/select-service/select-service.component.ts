@@ -19,6 +19,10 @@ export interface PetServiceSelection {
    */
   addons_resolved?: Array<{ id: string; name: string; price: number }>;
   price: number;
+  // DB-resolved package price for this pet's size+package combo. Stored separately
+  // from `price` (which includes breed premium + addons) so downstream consumers
+  // can persist booking_pets.package_price without re-deriving via a stale lookup.
+  package_price: number;
   // Phase 2 breed coat-type surcharge
   breed_id?: string;
   coat_category?: 'POODLE_DOODLE' | 'DOUBLE_COAT' | 'LONG_COAT_SPANIEL' | 'WIRE_COAT' | 'STANDARD';
@@ -68,6 +72,7 @@ export class SelectServiceComponent implements OnInit, OnChanges {
   petServices: PetServiceSelection[] = [];
   packages: PackageOption[] = [];
   loading = true;
+  loadError: string | null = null;
   // Phase 2: cached breed data for coat-surcharge lookup
   private breeds: Array<{ id: string; coat_category: string; name: string; aliases?: string[] }> = [];
   private breedPremiums: Array<{ coat_category: string; size: string; package_type: string; upcharge_amount: number }> = [];
@@ -177,6 +182,7 @@ export class SelectServiceComponent implements OnInit, OnChanges {
 
   loadPackages(): void {
     this.loading = true;
+    this.loadError = null;
     this.packageService.getPackages().subscribe({
       next: (packages: ServicePackage[]) => {
         this.packages = packages.map(pkg => ({
@@ -195,31 +201,12 @@ export class SelectServiceComponent implements OnInit, OnChanges {
       },
       error: (error: any) => {
         console.error('Error loading packages:', error);
+        // Do NOT install a hardcoded fallback. Showing stale prices and letting
+        // an admin submit a booking from them is exactly how booking f586cdd2 got
+        // corrupted. Surface the error and block the wizard until the API recovers.
         this.loading = false;
-        // Fallback to default packages if API fails
-        this.packages = [
-          {
-            type: 'BASIC',
-            name: 'Royal Bath',
-            description: 'Essential grooming package with bath, nail care, and ear cleaning',
-            features: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning'],
-            priceBySize: { SMALL: 59, MEDIUM: 79, LARGE: 99, XL: 119 }
-          },
-          {
-            type: 'PREMIUM',
-            name: 'Royal Groom',
-            description: 'Complete grooming service with haircut, teeth cleaning, and nail buffing',
-            features: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning', 'Hair Trim', 'Teeth Cleaning', 'Nail Buffing'],
-            priceBySize: { SMALL: 95, MEDIUM: 125, LARGE: 150, XL: 175 }
-          },
-          {
-            type: 'DELUXE',
-            name: 'Royal Spa',
-            description: 'Premium spa experience with aromatherapy, paw care, and all grooming services',
-            features: ['Bath & Brush', 'Gland Expression', 'Nail Trim', 'Ear Cleaning', 'Hair Trim', 'Teeth Cleaning', 'Nose & Paws Treatment', 'Nail Buffing', 'Aromatherapy Oils & Essentials'],
-            priceBySize: { SMALL: 115, MEDIUM: 145, LARGE: 175, XL: 205 }
-          }
-        ];
+        this.loadError = 'Unable to load service prices from the server. Refresh the page or try again in a moment.';
+        this.packages = [];
       }
     });
   }
@@ -241,6 +228,7 @@ export class SelectServiceComponent implements OnInit, OnChanges {
         package_type: null,
         add_ons: [],
         price: 0,
+        package_price: 0,
         breed_premium: 0,
       };
       this.resolveBreedContext(ps);
@@ -279,6 +267,7 @@ export class SelectServiceComponent implements OnInit, OnChanges {
 
   calculatePrice(petService: PetServiceSelection): void {
     let total = 0;
+    let packagePrice = 0;
 
     // Add package price
     if (petService.package_type) {
@@ -288,10 +277,12 @@ export class SelectServiceComponent implements OnInit, OnChanges {
         const sizeKey = petService.pet_size.toUpperCase() as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XL';
         const price = packageOption.priceBySize[sizeKey];
         if (price !== undefined) {
+          packagePrice = price;
           total += price;
         }
       }
     }
+    petService.package_price = packagePrice;
 
     // Phase 2: breed coat-type surcharge
     const pkgTypeLower = petService.package_type?.toLowerCase(); // 'basic' | 'premium' | 'deluxe'

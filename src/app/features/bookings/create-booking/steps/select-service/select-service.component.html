@@ -6,8 +6,15 @@
     <small>You must select at least one pet before choosing services</small>
   </div>
 
+  <!-- Pricing API error: do NOT show stale fallback prices, block the wizard -->
+  <div *ngIf="selectedPets.length > 0 && loadError" class="info-state error-state">
+    <mat-icon class="info-icon" style="color: #b00020;">error_outline</mat-icon>
+    <p>{{ loadError }}</p>
+    <button class="retry-btn" (click)="loadPackages()">Retry</button>
+  </div>
+
   <!-- Service Selection -->
-  <div *ngIf="selectedPets.length > 0" class="services-content">
+  <div *ngIf="selectedPets.length > 0 && !loadError" class="services-content">
     <div class="content-header">
       <h3>Select Services for Each Pet</h3>
       <div class="total-price">
