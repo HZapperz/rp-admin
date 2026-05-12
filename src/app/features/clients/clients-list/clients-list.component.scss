@@ -526,6 +526,135 @@
   font-weight: 500;
 }
 
+// ==================== MULTI-PET FILTER ROW ====================
+
+.pet-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-size: 0.8125rem;
+}
+
+.pet-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-weight: 600;
+  margin-right: 0.25rem;
+
+  svg {
+    color: #8b5cf6;
+  }
+}
+
+.pet-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.3125rem 0.625rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+  }
+
+  &.active {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+    color: white;
+
+    .chip-count {
+      background: rgba(255, 255, 255, 0.25);
+      color: white;
+    }
+  }
+
+  .chip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 0 6px;
+    height: 16px;
+    border-radius: 999px;
+    background: white;
+    color: #6b7280;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+}
+
+.pet-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.3125rem 0.625rem;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #374151;
+  }
+}
+
+// ==================== PET COUNT BADGE (card) ====================
+
+.pets-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pet-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+
+  &.tier-3 {
+    background: #ddd6fe;
+    color: #5b21b6;
+  }
+
+  &.tier-4 {
+    background: #c4b5fd;
+    color: #4c1d95;
+  }
+}
+
+.pet-names {
+  color: inherit;
+}
+
 // ==================== LOADING STATE ====================
 
 .loading-state {

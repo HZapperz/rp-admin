@@ -121,6 +121,38 @@
     }
   </div>
 
+  <!-- Multi-pet filter row (overlays on top of segment) -->
+  @if (selectedSegment !== 'retention') {
+    <div class="pet-filter-row">
+      <span class="pet-filter-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="14" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="6" cy="14" r="2"/>
+          <path d="M8 22h8a2 2 0 002-2 4 4 0 00-4-4h-4a4 4 0 00-4 4 2 2 0 002 2z"/>
+        </svg>
+        Multi-pet households
+      </span>
+      @for (opt of petCountOptions; track opt.threshold) {
+        <button
+          class="pet-filter-chip"
+          [class.active]="petCountFilter === opt.threshold"
+          (click)="setPetCountFilter(opt.threshold)"
+          [title]="'Filter to clients with ' + opt.label"
+        >
+          {{ opt.label }}
+          <span class="chip-count">{{ getMultiPetCount(opt.threshold) }}</span>
+        </button>
+      }
+      @if (petCountFilter !== null) {
+        <button class="pet-filter-clear" (click)="setPetCountFilter(petCountFilter)" title="Clear pet filter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Clear
+        </button>
+      }
+    </div>
+  }
+
   <!-- Retention Dashboard Tab -->
   @if (selectedSegment === 'retention') {
     <app-retention-dashboard></app-retention-dashboard>
@@ -204,9 +236,14 @@
           <div class="client-card-summary">
             <div class="summary-row">
               <span class="summary-label">Pets:</span>
-              <span class="summary-value">
+              <span class="summary-value pets-cell">
                 @if (client.pets && client.pets.length > 0) {
-                  {{ getPetNames(client.pets) }}
+                  @if (client.pets.length >= 2) {
+                    <span class="pet-count-badge" [class.tier-3]="client.pets.length >= 3" [class.tier-4]="client.pets.length >= 4" [title]="client.pets.length + ' pets'">
+                      {{ client.pets.length }} pets
+                    </span>
+                  }
+                  <span class="pet-names">{{ getPetNames(client.pets) }}</span>
                 } @else {
                   <span class="no-pets">No pets</span>
                 }

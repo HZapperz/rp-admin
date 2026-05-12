@@ -59,6 +59,25 @@
         >Low</button>
       </div>
 
+      <!-- Multi-pet Filter -->
+      <div class="pet-filter" title="Filter to multi-pet households (good for two-groomer trips)">
+        <span class="pet-filter-label">
+          <span class="material-icons">pets</span>
+          Pets:
+        </span>
+        @for (opt of petCountOptions; track opt.threshold) {
+          <button
+            class="filter-chip pet-chip"
+            [class.active]="petCountFilter === opt.threshold"
+            (click)="setPetCountFilter(opt.threshold)"
+            [title]="'Show only leads with ' + opt.label + ' pets in this stage'"
+          >
+            {{ opt.label }}
+            <span class="pet-chip-count">{{ getMultiPetCount(opt.threshold) }}</span>
+          </button>
+        }
+      </div>
+
       <!-- Bulk actions -->
       @if (selectionMode) {
         <div class="bulk-actions">
@@ -205,6 +224,15 @@
     <div class="stage-description-bar" [style.border-left-color]="currentStageConfig.color">
       <span class="material-icons stage-desc-icon" [style.color]="currentStageConfig.color">info_outline</span>
       <span class="stage-desc-text">{{ currentStageConfig.description }}</span>
+      @if (petCountFilter) {
+        <span class="active-pet-filter-pill">
+          <span class="material-icons">pets</span>
+          {{ petCountFilter }}+ pets only
+          <button class="clear-pet-filter" (click)="setPetCountFilter(petCountFilter)" title="Clear pet filter">
+            <span class="material-icons">close</span>
+          </button>
+        </span>
+      }
       <span class="stage-lead-count">{{ currentStageLeads.length }} lead{{ currentStageLeads.length !== 1 ? 's' : '' }}</span>
     </div>
 
@@ -297,7 +325,14 @@
                   <span class="stage-date">{{ formatStageDate(lead.stage_changed_at) }}</span>
                 </td>
                 <td class="col-phone">{{ formatPhone(lead.user.phone) }}</td>
-                <td class="col-pets">{{ getPetSummary(lead) }}</td>
+                <td class="col-pets">
+                  @if (getPetCount(lead) >= 2) {
+                    <span class="pet-count-pill" [class.tier-3]="getPetCount(lead) >= 3" [class.tier-4]="getPetCount(lead) >= 4">
+                      {{ getPetCount(lead) }}
+                    </span>
+                  }
+                  <span>{{ getPetSummary(lead) }}</span>
+                </td>
                 <td class="col-action">
                   @if (lead.computed_suggested_action) {
                     <div class="suggested-action" [class]="'priority-' + lead.computed_suggested_action.priority">
@@ -371,6 +406,11 @@
                   }
                 </div>
                 <div class="card-details-row">
+                  @if (getPetCount(lead) >= 2) {
+                    <span class="pet-count-pill" [class.tier-3]="getPetCount(lead) >= 3" [class.tier-4]="getPetCount(lead) >= 4">
+                      {{ getPetCount(lead) }}
+                    </span>
+                  }
                   <span class="card-pets">{{ getPetSummary(lead) }}</span>
                   <span class="card-divider">·</span>
                   <span class="card-phone">{{ formatPhone(lead.user.phone) }}</span>

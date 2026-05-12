@@ -56,6 +56,12 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
   error: string | null = null;
   searchTerm = '';
   priorityFilter: 'all' | 'high' | 'medium' | 'low' = 'all';
+  petCountFilter: 2 | 3 | 4 | null = null;
+  petCountOptions: { threshold: 2 | 3 | 4; label: string }[] = [
+    { threshold: 2, label: '2+' },
+    { threshold: 3, label: '3+' },
+    { threshold: 4, label: '4+' },
+  ];
   dismissedNudges: Set<string> = new Set();
 
   // Tab + Table State
@@ -257,7 +263,24 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
   }
 
   get currentStageLeads(): PipelineLeadWithDetails[] {
-    return this.sortLeads(this.leadsByStage[this.selectedStage] || []);
+    return this.sortLeads(this.applyPetFilter(this.leadsByStage[this.selectedStage] || []));
+  }
+
+  private applyPetFilter(leads: PipelineLeadWithDetails[]): PipelineLeadWithDetails[] {
+    if (!this.petCountFilter) return leads;
+    return leads.filter(l => (l.pets?.length || 0) >= this.petCountFilter!);
+  }
+
+  setPetCountFilter(threshold: 2 | 3 | 4 | null): void {
+    this.petCountFilter = this.petCountFilter === threshold ? null : threshold;
+  }
+
+  getPetCount(lead: PipelineLeadWithDetails): number {
+    return lead.pets?.length || 0;
+  }
+
+  getMultiPetCount(threshold: 2 | 3 | 4): number {
+    return (this.leadsByStage[this.selectedStage] || []).filter(l => this.getPetCount(l) >= threshold).length;
   }
 
   onSort(column: 'name' | 'priority_score' | 'days_in_stage'): void {
@@ -292,19 +315,19 @@ export class PipelineBoardComponent implements OnInit, OnDestroy {
   }
 
   selectAllCurrentStage(): void {
-    this.leadsByStage[this.selectedStage].forEach(lead => {
+    this.currentStageLeads.forEach(lead => {
       this.selectedLeads.add(lead.id);
     });
   }
 
   deselectAllCurrentStage(): void {
-    this.leadsByStage[this.selectedStage].forEach(lead => {
+    this.currentStageLeads.forEach(lead => {
       this.selectedLeads.delete(lead.id);
     });
   }
 
   get allCurrentSelected(): boolean {
-    const stageLeads = this.leadsByStage[this.selectedStage];
+    const stageLeads = this.currentStageLeads;
     if (stageLeads.length === 0) return false;
     return stageLeads.every(lead => this.selectedLeads.has(lead.id));
   }

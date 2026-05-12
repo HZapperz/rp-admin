@@ -167,6 +167,129 @@
   }
 }
 
+// Multi-pet Filter
+.pet-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 2px 2px 2px 8px;
+
+  .pet-filter-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-right: 2px;
+
+    .material-icons {
+      font-size: 14px;
+      color: #8b5cf6;
+    }
+  }
+
+  .pet-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    &.active {
+      background: #ede9fe;
+      color: #6d28d9;
+
+      .pet-chip-count {
+        background: #8b5cf6;
+        color: white;
+      }
+    }
+  }
+
+  .pet-chip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 14px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 10px;
+    font-weight: 700;
+  }
+}
+
+// Pet count pill (table + card)
+.pet-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 4px;
+
+  &.tier-3 {
+    background: #ddd6fe;
+    color: #5b21b6;
+  }
+
+  &.tier-4 {
+    background: #c4b5fd;
+    color: #4c1d95;
+  }
+}
+
+// Active pet filter pill (in stage description bar)
+.active-pet-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+
+  .material-icons {
+    font-size: 13px;
+  }
+
+  .clear-pet-filter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin-left: 2px;
+    background: transparent;
+    border: none;
+    color: #6d28d9;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(109, 40, 217, 0.15);
+    }
+
+    .material-icons {
+      font-size: 12px;
+    }
+  }
+}
+
 .action-btn {
   display: flex;
   align-items: center;

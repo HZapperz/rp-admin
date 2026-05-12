@@ -43,6 +43,14 @@ export class ClientsListComponent implements OnInit {
   sortColumn: 'engagement_score' | 'total_spent' | 'days_since_last_booking' | 'name' = 'engagement_score';
   sortDirection: 'asc' | 'desc' = 'desc';
 
+  // Multi-pet filter (overlays on top of selected segment)
+  petCountFilter: 2 | 3 | 4 | null = null;
+  petCountOptions: { threshold: 2 | 3 | 4; label: string }[] = [
+    { threshold: 2, label: '2+ pets' },
+    { threshold: 3, label: '3+ pets' },
+    { threshold: 4, label: '4+ pets' },
+  ];
+
   // Segment configurations
   segmentConfigs = CLIENT_SEGMENT_CONFIGS;
   segmentList: ClientSegment[] = ['all', 'vip', 'at_risk', 'upcoming', 'new', 'needs_review', 'retention'];
@@ -66,14 +74,12 @@ export class ClientsListComponent implements OnInit {
       this.clientService.getClientRelationsStats()
     ]).then(([clients, stats]) => {
       this.clients = clients || [];
-      this.filteredClients = [...this.clients];
       this.stats = stats;
       this.nudges = stats?.nudges || [];
       this.isLoading = false;
       this.failedAvatars.clear();
 
-      // Apply current sort
-      this.applySort();
+      this.applyFilters();
     }).catch(err => {
       console.error('Error loading client relations data:', err);
       this.isLoading = false;
@@ -90,9 +96,8 @@ export class ClientsListComponent implements OnInit {
     this.clientService.getClientsWithEngagement(this.searchTerm, segment).subscribe({
       next: (clients) => {
         this.clients = clients;
-        this.filteredClients = [...clients];
         this.isLoading = false;
-        this.applySort();
+        this.applyFilters();
       },
       error: (err) => {
         console.error('Error loading clients:', err);
@@ -145,6 +150,28 @@ export class ClientsListComponent implements OnInit {
       this.sortColumn = column;
       this.sortDirection = column === 'name' ? 'asc' : 'desc';
     }
+    this.applyFilters();
+  }
+
+  // Multi-pet filter
+  setPetCountFilter(threshold: 2 | 3 | 4 | null) {
+    this.petCountFilter = this.petCountFilter === threshold ? null : threshold;
+    this.applyFilters();
+  }
+
+  getPetCount(client: ClientWithEngagement): number {
+    return client.pets?.length || 0;
+  }
+
+  getMultiPetCount(threshold: 2 | 3 | 4): number {
+    return this.clients.filter(c => this.getPetCount(c) >= threshold).length;
+  }
+
+  private applyFilters() {
+    const source = this.petCountFilter
+      ? this.clients.filter(c => this.getPetCount(c) >= this.petCountFilter!)
+      : this.clients;
+    this.filteredClients = [...source];
     this.applySort();
   }
 
