@@ -120,6 +120,11 @@ export class BookingService {
         : Promise.resolve({ data: [], error: null })
     ]);
 
+    // Surface (don't swallow) bulk-read failures. A blocked/empty pets read is
+    // what makes the list's rabies + photo columns silently wrong, so log it loudly.
+    if (petsResult.error) console.error('Error fetching pets (rabies/photo status will be incomplete):', petsResult.error);
+    if (addonsResult.error) console.error('Error fetching booking addons:', addonsResult.error);
+
     // Step 5: Create lookup objects for O(1) access
     const groomersLookup: Record<string, any> = (groomersResult.data || []).reduce((acc, g) => {
       acc[g.id] = g;

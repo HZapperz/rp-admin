@@ -281,8 +281,29 @@ export class BookingsListComponent implements OnInit {
     window.open(url, '_blank');
   }
 
+  /**
+   * Per-booking rabies-certificate rollup used by both the row badge and the
+   * Has/Missing filter chips.
+   *  - 'ok'      every pet on the booking has a certificate on file
+   *  - 'missing' at least one pet has no certificate (or its pet record failed to load)
+   *  - 'none'    no pets are loaded for this booking, so the status is unknown
+   *
+   * The 'none' case matters: if the bulk pets read is blocked/empty we must NOT
+   * fall through to a green "✓ Rabies", which would hide a real compliance gap.
+   */
+  getRabiesStatus(booking: BookingWithDetails): 'ok' | 'missing' | 'none' {
+    const pets = booking.pets ?? [];
+    if (pets.length === 0) return 'none';
+    return pets.some(bp => !bp.pet?.rabies_certificate_url) ? 'missing' : 'ok';
+  }
+
+  /** How many pets on the booking are still missing a rabies certificate. */
+  getMissingRabiesCount(booking: BookingWithDetails): number {
+    return (booking.pets ?? []).filter(bp => !bp.pet?.rabies_certificate_url).length;
+  }
+
   hasMissingRabies(booking: BookingWithDetails): boolean {
-    return booking.pets?.some(bp => !bp.pet?.rabies_certificate_url) ?? false;
+    return this.getRabiesStatus(booking) === 'missing';
   }
 
   /** True when booking is confirmed, within 24h, and client explicitly declined SMS */

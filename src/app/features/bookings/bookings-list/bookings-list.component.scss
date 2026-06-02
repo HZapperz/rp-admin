@@ -523,7 +523,7 @@
   font-size: 0.9375rem;
 }
 
-.rabies-missing-badge {
+.rabies-badge {
   display: inline-block;
   margin-left: 0.375rem;
   padding: 0.25rem 0.5rem;
@@ -531,9 +531,25 @@
   font-size: 0.6875rem;
   font-weight: 600;
   white-space: nowrap;
-  background: #fef2f2;
-  color: #dc2626;
   vertical-align: middle;
+
+  // Green — every pet on the booking has a certificate on file
+  &--ok {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  // Red — one or more pets are missing a certificate
+  &--missing {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  // Grey — no pets loaded, status couldn't be determined (open to verify)
+  &--unknown {
+    background: #f1f5f9;
+    color: #64748b;
+  }
 }
 
 .status-badge {

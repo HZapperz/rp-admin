@@ -208,9 +208,17 @@
             >
               {{ getStatusLabel(booking.status) }}
             </span>
-            @if (hasMissingRabies(booking)) {
-            <span class="rabies-missing-badge" title="One or more pets are missing a rabies certificate">
-              ⚠ Rabies
+            @if (getRabiesStatus(booking) === 'ok') {
+            <span class="rabies-badge rabies-badge--ok" title="All pets have a rabies certificate on file">
+              ✓ Rabies
+            </span>
+            } @else if (getRabiesStatus(booking) === 'missing') {
+            <span class="rabies-badge rabies-badge--missing" [title]="getMissingRabiesCount(booking) + ' pet(s) missing a rabies certificate'">
+              ✗ Rabies@if (getMissingRabiesCount(booking) > 1) { ({{ getMissingRabiesCount(booking) }})}
+            </span>
+            } @else {
+            <span class="rabies-badge rabies-badge--unknown" title="No pets loaded for this booking — open it to verify rabies status">
+              ? Rabies
             </span>
             }
           </td>
@@ -301,9 +309,17 @@
           <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
             {{ getStatusLabel(booking.status) }}
           </span>
-          @if (hasMissingRabies(booking)) {
-          <span class="rabies-missing-badge" title="One or more pets are missing a rabies certificate">
-            ⚠ Rabies
+          @if (getRabiesStatus(booking) === 'ok') {
+          <span class="rabies-badge rabies-badge--ok" title="All pets have a rabies certificate on file">
+            ✓ Rabies
+          </span>
+          } @else if (getRabiesStatus(booking) === 'missing') {
+          <span class="rabies-badge rabies-badge--missing" [title]="getMissingRabiesCount(booking) + ' pet(s) missing a rabies certificate'">
+            ✗ Rabies@if (getMissingRabiesCount(booking) > 1) { ({{ getMissingRabiesCount(booking) }})}
+          </span>
+          } @else {
+          <span class="rabies-badge rabies-badge--unknown" title="No pets loaded for this booking — open it to verify rabies status">
+            ? Rabies
           </span>
           }
         </div>
