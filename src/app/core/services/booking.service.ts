@@ -29,6 +29,34 @@ export class BookingService {
     return from(this.fetchBookings(filters));
   }
 
+  /**
+   * Runs a `.in(column, ids)` query in safe-sized batches and concatenates the
+   * rows. One giant `.in()` across hundreds of ids creates a ~25KB URL and a
+   * single large RLS-filtered scan that intermittently fails in production
+   * (the bookings list then renders with no pets — blank rabies/photos). Small
+   * batches keep every request fast and reliable, and also sidestep PostgREST's
+   * default 1000-row response cap as the dataset grows.
+   */
+  private async fetchInChunks(
+    table: string,
+    columns: string,
+    column: string,
+    ids: (string | null | undefined)[],
+    chunkSize = 100
+  ): Promise<{ data: any[]; error: any }> {
+    const unique = [...new Set((ids || []).filter(Boolean) as string[])];
+    if (unique.length === 0) return { data: [], error: null };
+
+    const all: any[] = [];
+    for (let i = 0; i < unique.length; i += chunkSize) {
+      const batch = unique.slice(i, i + chunkSize);
+      const { data, error } = await this.supabase.from(table).select(columns).in(column, batch);
+      if (error) return { data: all, error }; // surface the failure; caller logs it
+      if (data) all.push(...data);
+    }
+    return { data: all, error: null };
+  }
+
   private async fetchBookings(filters?: BookingFilters): Promise<BookingWithDetails[]> {
     // Step 1: Fetch base bookings
     let query = this.supabase
@@ -85,39 +113,29 @@ export class BookingService {
     const clientIds = [...new Set(bookings.map(b => b.client_id).filter(Boolean))];
     const bookingIds = bookings.map(b => b.id);
 
-    // Step 3: Batch fetch all related data in parallel
+    // Step 3: Batch fetch all related data in parallel.
+    // NOTE: these use chunked `.in()` lookups (see fetchInChunks). A single
+    // `.in('booking_id', [all 600+ ids])` builds a ~25KB URL and forces PostgREST
+    // to RLS-scan every booking_pet row at once; in production that request
+    // intermittently fails during cold load, leaving the list with no pets
+    // (rabies/photos render blank). Small batches are fast and reliable.
     const [groomersResult, clientsResult, bookingPetsResult] = await Promise.all([
-      groomerIds.length > 0
-        ? this.supabase
-            .from('users')
-            .select('id, first_name, last_name, avatar_url, phone, email')
-            .in('id', groomerIds)
-        : Promise.resolve({ data: [], error: null }),
-      this.supabase
-        .from('users')
-        .select('id, first_name, last_name, avatar_url, phone, email, sms_consent')
-        .in('id', clientIds),
-      this.supabase
-        .from('booking_pets')
-        .select('*')
-        .in('booking_id', bookingIds)
+      this.fetchInChunks('users', 'id, first_name, last_name, avatar_url, phone, email', 'id', groomerIds),
+      this.fetchInChunks('users', 'id, first_name, last_name, avatar_url, phone, email, sms_consent', 'id', clientIds),
+      this.fetchInChunks('booking_pets', '*', 'booking_id', bookingIds)
     ]);
 
     if (groomersResult.error) console.error('Error fetching groomers:', groomersResult.error);
     if (clientsResult.error) console.error('Error fetching clients:', clientsResult.error);
     if (bookingPetsResult.error) console.error('Error fetching booking pets:', bookingPetsResult.error);
 
-    // Step 4: Fetch pets and addons
+    // Step 4: Fetch pets and addons (also chunked)
     const petIds = [...new Set((bookingPetsResult.data || []).map(bp => bp.pet_id).filter(Boolean))];
     const bookingPetIds = (bookingPetsResult.data || []).map(bp => bp.id);
 
     const [petsResult, addonsResult] = await Promise.all([
-      petIds.length > 0
-        ? this.supabase.from('pets').select('*').in('id', petIds)
-        : Promise.resolve({ data: [], error: null }),
-      bookingPetIds.length > 0
-        ? this.supabase.from('booking_addons').select('*').in('booking_pet_id', bookingPetIds)
-        : Promise.resolve({ data: [], error: null })
+      this.fetchInChunks('pets', '*', 'id', petIds),
+      this.fetchInChunks('booking_addons', '*', 'booking_pet_id', bookingPetIds)
     ]);
 
     // Surface (don't swallow) bulk-read failures. A blocked/empty pets read is
