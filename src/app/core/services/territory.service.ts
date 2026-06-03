@@ -57,20 +57,25 @@ export class TerritoryService {
         throw addressesError;
       }
 
-      // Fetch all bookings with geocoded addresses
+      // Fetch all qualifying bookings for these users. We intentionally do NOT
+      // require lat/lng here: bookings feed per-customer stats and the
+      // date-range membership test, and the marker location falls back to the
+      // default address (or a geocoded booking) further below.
       let bookingsQuery = this.supabase
         .from('bookings')
         .select('client_id, status, total_amount, scheduled_date, created_at, address, city, state, zip_code, latitude, longitude')
         .in('client_id', userIds)
-        .in('status', ['confirmed', 'completed', 'in_progress'])
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null);
+        .in('status', ['confirmed', 'completed', 'in_progress']);
 
-      // Apply date range filter if provided
-      if (filters?.date_range && filters.date_range.start && filters.date_range.end) {
-        bookingsQuery = bookingsQuery
-          .gte('scheduled_date', filters.date_range.start)
-          .lte('scheduled_date', filters.date_range.end);
+      // Apply each date bound independently so a single day (start == end) or an
+      // open-ended range still filters the bookings.
+      const hasStart = !!filters?.date_range?.start;
+      const hasEnd = !!filters?.date_range?.end;
+      if (hasStart) {
+        bookingsQuery = bookingsQuery.gte('scheduled_date', filters!.date_range!.start);
+      }
+      if (hasEnd) {
+        bookingsQuery = bookingsQuery.lte('scheduled_date', filters!.date_range!.end);
       }
 
       const { data: bookings, error: bookingsError } = await bookingsQuery;
@@ -109,8 +114,10 @@ export class TerritoryService {
         });
       });
 
-      // Then, add locations from bookings for users without addresses
+      // Then, add locations from bookings for users without addresses (only when
+      // the booking itself is geocoded, since the query no longer guarantees it)
       (bookings || []).forEach(booking => {
+        if (booking.latitude == null || booking.longitude == null) return;
         if (!locationByUserId.has(booking.client_id)) {
           locationByUserId.set(booking.client_id, {
             latitude: booking.latitude!,
@@ -123,9 +130,13 @@ export class TerritoryService {
         }
       });
 
-      // Transform users into TerritoryCustomer objects
+      // Transform users into TerritoryCustomer objects. When a date range is
+      // active, restrict the map to clients who actually had a booking in that
+      // window (bookingsByUserId is already date-filtered above).
+      const hasDateRange = hasStart || hasEnd;
       const customers: TerritoryCustomer[] = users
-        .filter(user => locationByUserId.has(user.id)) // Only include users with geocoded locations
+        .filter(user => locationByUserId.has(user.id)) // need a location to place a marker
+        .filter(user => !hasDateRange || bookingsByUserId.has(user.id)) // in-range booking when filtering by date
         .map(user => {
           const location = locationByUserId.get(user.id)!;
           const userBookings = bookingsByUserId.get(user.id) || [];

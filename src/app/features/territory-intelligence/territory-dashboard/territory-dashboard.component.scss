@@ -874,6 +874,17 @@
   }
 }
 
+// Pending scope toggle
+.day-pending-scope {
+  padding: $spacing-3 $spacing-4;
+  border-bottom: 1px solid $gray-200;
+
+  .filter-label {
+    display: block;
+    margin-bottom: $spacing-2;
+  }
+}
+
 // Day Summary
 .day-summary {
   display: flex;

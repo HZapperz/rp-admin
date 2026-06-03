@@ -77,6 +77,10 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   groomers: GroomerWithStats[] = [];
   groomersLoaded = false;
   selectedGroomerId = '';
+  // Pending bookings: scope to the selected day ('day') or show the full
+  // unscheduled backlog ('all'). Defaults to the selected day so the date
+  // picker actually controls what's on the map.
+  pendingScope: 'day' | 'all' = 'day';
 
   // Filter state
   filters: TerritoryFilters = {
@@ -290,10 +294,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
       dayFilters.groomerId = this.selectedGroomerId;
     }
 
-    // All pending bookings regardless of date (admin needs to see full backlog to reschedule)
+    // Pending bookings: scoped to the selected day by default, or the full
+    // backlog when the admin toggles "All pending" (e.g. to reschedule).
     const pendingFilters: BookingFilters = {
       status: ['pending']
     };
+    if (this.pendingScope === 'day') {
+      pendingFilters.dateRange = { start: this.selectedDate, end: this.selectedDate };
+    }
 
     forkJoin([
       this.bookingService.getAllBookings(dayFilters),
@@ -457,6 +465,14 @@ export class TerritoryDashboardComponent implements OnInit, OnDestroy, AfterView
   }
 
   onGroomerFilterChange(): void {
+    this.dayDataLoaded = false;
+    this.fillDataLoaded = false;
+    this.loadDayBookings();
+  }
+
+  onPendingScopeChange(scope: 'day' | 'all'): void {
+    if (this.pendingScope === scope) return;
+    this.pendingScope = scope;
     this.dayDataLoaded = false;
     this.fillDataLoaded = false;
     this.loadDayBookings();

@@ -383,6 +383,23 @@
       </select>
     </div>
 
+    <!-- Pending Scope Toggle -->
+    <div class="day-pending-scope">
+      <span class="filter-label">Pending requests</span>
+      <div class="type-toggle-group">
+        <button
+          class="type-toggle-btn"
+          [class.active]="pendingScope === 'day'"
+          (click)="onPendingScopeChange('day')"
+        >This day</button>
+        <button
+          class="type-toggle-btn"
+          [class.active]="pendingScope === 'all'"
+          (click)="onPendingScopeChange('all')"
+        >All pending</button>
+      </div>
+    </div>
+
     <!-- Day Summary -->
     <div class="day-summary">
       <span class="material-icons">event_note</span>
