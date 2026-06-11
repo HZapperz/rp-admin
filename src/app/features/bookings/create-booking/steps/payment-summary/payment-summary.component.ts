@@ -8,7 +8,8 @@ import { AdminBookingService } from '../../../../../core/services/admin-booking.
 
 export interface RecurringConfig {
   enabled: boolean;
-  frequency: 'weekly' | 'biweekly' | 'monthly';
+  /** Repeat interval in weeks (1–12). Replaces the old fixed weekly/biweekly/monthly enum. */
+  interval_weeks: number;
   count: number;
 }
 
@@ -64,8 +65,9 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
 
   // Recurring
   isRecurring: boolean = false;
-  recurringFrequency: 'weekly' | 'biweekly' | 'monthly' = 'weekly';
+  recurringIntervalWeeks: number = 6;
   recurringCount: number = 4;
+  readonly recurringIntervalOptions: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
   isLoadingPaymentMethods = false;
 
@@ -241,14 +243,15 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
   onRecurringChange(): void {
     if (this.recurringCount < 2) this.recurringCount = 2;
     if (this.recurringCount > 52) this.recurringCount = 52;
+    if (this.recurringIntervalWeeks < 1) this.recurringIntervalWeeks = 1;
+    if (this.recurringIntervalWeeks > 12) this.recurringIntervalWeeks = 12;
     this.emitPaymentConfig();
   }
 
   getLastRecurringDate(): string {
     if (!this.selectedDateTime?.date || this.recurringCount < 2) return '';
     const start = new Date(this.selectedDateTime.date + 'T00:00:00Z');
-    const daysPerOccurrence = this.recurringFrequency === 'weekly' ? 7
-      : this.recurringFrequency === 'biweekly' ? 14 : 28;
+    const daysPerOccurrence = this.recurringIntervalWeeks * 7;
     const lastDate = new Date(start);
     lastDate.setUTCDate(lastDate.getUTCDate() + daysPerOccurrence * (this.recurringCount - 1));
     return lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
@@ -265,7 +268,7 @@ export class PaymentSummaryComponent implements OnInit, OnChanges {
       discount_reason: this.discountReason || undefined,
       recurring: this.isRecurring ? {
         enabled: true,
-        frequency: this.recurringFrequency,
+        interval_weeks: this.recurringIntervalWeeks,
         count: this.recurringCount
       } : undefined
     };

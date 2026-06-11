@@ -235,11 +235,11 @@
       <div class="recurring-options" *ngIf="isRecurring">
         <div class="recurring-grid">
           <div class="input-group">
-            <label>Frequency</label>
-            <select [(ngModel)]="recurringFrequency" (change)="onRecurringChange()" class="recurring-select">
-              <option value="weekly">Weekly</option>
-              <option value="biweekly">Every 2 Weeks</option>
-              <option value="monthly">Monthly (every 4 weeks)</option>
+            <label>Repeats Every</label>
+            <select [(ngModel)]="recurringIntervalWeeks" (change)="onRecurringChange()" class="recurring-select">
+              <option *ngFor="let w of recurringIntervalOptions" [ngValue]="w">
+                {{ w === 1 ? 'Every week' : 'Every ' + w + ' weeks' }}
+              </option>
             </select>
           </div>
           <div class="input-group">

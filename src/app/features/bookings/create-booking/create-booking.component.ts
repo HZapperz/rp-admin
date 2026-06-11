@@ -280,11 +280,12 @@ export class CreateBookingComponent implements OnInit {
       // Check if recurring
       const recurring = this.paymentConfig?.recurring;
       if (recurring?.enabled && recurring.count > 1) {
-        const daysPerOccurrence = recurring.frequency === 'weekly' ? 7
-          : recurring.frequency === 'biweekly' ? 14 : 28;
+        // Admin-selected repeat interval in weeks (1–12, e.g. 6 = every 6 weeks)
+        const daysPerOccurrence = recurring.interval_weeks * 7;
 
         let successCount = 0;
         let failCount = 0;
+        const createdBookingIds: string[] = [];
 
         for (let i = 0; i < recurring.count; i++) {
           const offsetDate = new Date(this.bookingData.scheduled_date! + 'T00:00:00Z');
@@ -294,6 +295,9 @@ export class CreateBookingComponent implements OnInit {
           const recurringRequest = {
             ...bookingRequest,
             scheduled_date: dateStr,
+            // One consolidated confirmation goes out after the loop instead of
+            // N per-booking emails (a 4-visit series used to email the client 4 times)
+            suppress_confirmation_emails: true,
             // Only apply credits to the first booking
             credits_applied: i === 0 ? bookingRequest.credits_applied : 0,
             pricing_override: i === 0 ? bookingRequest.pricing_override : {
@@ -303,7 +307,10 @@ export class CreateBookingComponent implements OnInit {
           };
 
           try {
-            await this.adminBookingService.createBooking(recurringRequest).toPromise();
+            const result: any = await this.adminBookingService.createBooking(recurringRequest).toPromise();
+            if (result?.booking?.id) {
+              createdBookingIds.push(result.booking.id);
+            }
             successCount++;
           } catch (err) {
             console.error(`Failed to create booking ${i + 1}/${recurring.count}:`, err);
@@ -314,6 +321,21 @@ export class CreateBookingComponent implements OnInit {
         console.log(`Recurring bookings created: ${successCount} success, ${failCount} failed`);
         if (failCount > 0) {
           this.submitError = `Created ${successCount} of ${recurring.count} bookings. ${failCount} failed.`;
+        }
+
+        // One consolidated confirmation listing the dates that actually got
+        // created (client, groomer, and admins each get a single email).
+        // Also runs for a single surviving booking, since its per-booking
+        // email was suppressed above.
+        if (createdBookingIds.length >= 1) {
+          try {
+            await this.adminBookingService
+              .sendSeriesConfirmation(createdBookingIds, recurring.interval_weeks)
+              .toPromise();
+          } catch (err) {
+            // Bookings exist; only the summary email failed. Don't block navigation.
+            console.error('Failed to send series confirmation email:', err);
+          }
         }
       } else {
         const result = await this.adminBookingService.createBooking(bookingRequest).toPromise();

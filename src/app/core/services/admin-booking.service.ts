@@ -48,6 +48,8 @@ export interface AdminBookingRequest {
   notes?: string;
   pricing_override?: PricingOverride;
   credits_applied?: number;
+  /** Recurring series: skip per-booking emails; one consolidated email is sent via sendSeriesConfirmation. */
+  suppress_confirmation_emails?: boolean;
 }
 
 export interface PaymentMethod {
@@ -125,6 +127,19 @@ export class AdminBookingService {
     return this.http.post(
       `${this.apiUrl}/api/admin/bookings`,
       bookingData,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /**
+   * Send ONE consolidated confirmation (client + groomer + admin) for a
+   * recurring series whose bookings were created with
+   * suppress_confirmation_emails, instead of one email per booking.
+   */
+  sendSeriesConfirmation(bookingIds: string[], intervalWeeks: number): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/api/admin/bookings/series-confirmation`,
+      { booking_ids: bookingIds, interval_weeks: intervalWeeks },
       { headers: this.getAuthHeaders() }
     );
   }
