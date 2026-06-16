@@ -859,32 +859,94 @@ export class BookingService {
         return false;
       }
 
-      // 3. Delete the booking_pets record
-      const { error: deletePetError } = await this.supabase
+      // 3. Delete the booking_pets record — and VERIFY a row actually went away.
+      // Admins had no DELETE policy on booking_pets, so PostgREST silently
+      // filtered the delete to 0 rows and returned success: the pet (and its
+      // charge) stayed attached while the code below happily rewrote the
+      // booking total. .select() forces the deleted rows back so we can tell
+      // "deleted" apart from "blocked / not found" and bail BEFORE corrupting
+      // the total. (RLS policy "Admins can delete booking pets" must exist.)
+      const { data: deletedPets, error: deletePetError } = await this.supabase
         .from('booking_pets')
         .delete()
-        .eq('id', bookingPetId);
+        .eq('id', bookingPetId)
+        .select('id');
 
       if (deletePetError) {
         console.error('Error deleting booking pet:', deletePetError);
         return false;
       }
+      if (!deletedPets || deletedPets.length === 0) {
+        console.error(
+          `removePetFromBooking: delete affected 0 rows for booking_pet ${bookingPetId} ` +
+          `(booking ${bookingId}). Pet was NOT removed — refusing to update totals to avoid desync.`
+        );
+        return false;
+      }
 
-      // 4. Update the booking totals.
-      // authorized_amount must mirror total_amount — same reason as
-      // changeBookingService: leaving it stale causes Stripe holds that don't
-      // match the displayed total, which is the actual trust break.
+      // 4. Recompute the subtotal AUTHORITATIVELY from the pets that remain in
+      // the database. We never trust a client-supplied subtotal here: the old
+      // code subtracted the removed pet's total_price AND its add-ons even
+      // though total_price already includes add-ons, double-counting them
+      // ($390 - $260 - $70 = $60 instead of $130). Summing what's left can't
+      // hit that class of bug.
+      const { data: remainingPets, error: remainingError } = await this.supabase
+        .from('booking_pets')
+        .select('total_price')
+        .eq('booking_id', bookingId);
+
+      if (remainingError) {
+        console.error('Error fetching remaining pets:', remainingError);
+        return false;
+      }
+
+      const newOriginalSubtotal = Math.round(
+        (remainingPets || []).reduce((sum, p) => sum + (parseFloat(p.total_price) || 0), 0) * 100
+      ) / 100;
+
+      // Pull live fees/tax/credits so the derived fields use the canonical math.
+      const { data: currentBooking, error: fetchBookingError } = await this.supabase
+        .from('bookings')
+        .select('tax_rate, service_fee, processing_fee, rush_fee, credits_applied')
+        .eq('id', bookingId)
+        .single();
+
+      if (fetchBookingError || !currentBooking) {
+        console.error('Error fetching current booking:', fetchBookingError);
+        return false;
+      }
+
+      const taxRate = parseFloat(currentBooking.tax_rate) || 0.0825;
+      const serviceFee = parseFloat(currentBooking.service_fee) || 0;
+      const processingFee = parseFloat(currentBooking.processing_fee) || 0;
+      const rushFee = parseFloat(currentBooking.rush_fee) || 0;
+      const creditsApplied = parseFloat(currentBooking.credits_applied) || 0;
+      // The component still decides discount POLICY (keep / recalc % / remove),
+      // but it can never again drive the subtotal. Clamp to the new subtotal.
+      const discountAmount = Math.min(
+        Math.max(0, Number(newTotals?.newDiscountAmount) || 0),
+        newOriginalSubtotal
+      );
+
+      const subtotalBeforeTax = Math.max(
+        0,
+        Math.round((newOriginalSubtotal + serviceFee + rushFee - discountAmount - creditsApplied) * 100) / 100
+      );
+      const taxAmount = Math.round(subtotalBeforeTax * taxRate * 100) / 100;
+      const newTotalAmount = Math.round((subtotalBeforeTax + taxAmount + processingFee) * 100) / 100;
+      // authorized_amount must mirror total_amount (Stripe holds match display);
       // credits_earned must move with subtotal_before_tax — see Ben King 2026-04-29.
-      const newCreditsEarned = Math.floor(newTotals.newSubtotalBeforeTax * 0.10 * 100) / 100;
+      const newCreditsEarned = Math.floor(subtotalBeforeTax * 0.10 * 100) / 100;
+
       const { error: updateBookingError } = await this.supabase
         .from('bookings')
         .update({
-          original_subtotal: newTotals.newOriginalSubtotal,
-          discount_amount: newTotals.newDiscountAmount,
-          subtotal_before_tax: newTotals.newSubtotalBeforeTax,
-          tax_amount: newTotals.newTaxAmount,
-          total_amount: newTotals.newTotalAmount,
-          authorized_amount: newTotals.newTotalAmount,
+          original_subtotal: newOriginalSubtotal,
+          discount_amount: discountAmount,
+          subtotal_before_tax: subtotalBeforeTax,
+          tax_amount: taxAmount,
+          total_amount: newTotalAmount,
+          authorized_amount: newTotalAmount,
           credits_earned: newCreditsEarned,
           updated_at: new Date().toISOString()
         })
@@ -895,11 +957,11 @@ export class BookingService {
         return false;
       }
 
-      // 5. Log modification to booking_modifications table
+      // 5. Log modification. 'pet_removed' is now an allowed modification_type;
+      // surface a failure instead of swallowing it — a silently-rejected insert
+      // (the old 'pet_removed' CHECK-constraint violation) is exactly how the
+      // audit trail for this bug got lost.
       const petTotal = parseFloat(petInfo.total_price || '0');
-      const addonsTotal = (petInfo.addons || []).reduce((sum: number, a: any) => sum + parseFloat(a.addon_price || '0'), 0);
-      const priceChange = -(petTotal + addonsTotal);
-
       const { error: logError } = await this.supabase
         .from('booking_modifications')
         .insert({
@@ -913,14 +975,14 @@ export class BookingService {
             total_price: petInfo.total_price,
             addons: petInfo.addons?.map((a: any) => ({ name: a.addon_name, price: a.addon_price })) || []
           },
-          new_value: null,
-          price_change: priceChange,
+          new_value: { new_original_subtotal: newOriginalSubtotal, new_total_amount: newTotalAmount },
+          price_change: -petTotal,
           reason: reason
         });
 
       if (logError) {
-        console.error('Error logging pet removal:', logError);
-        // Don't fail the operation for logging error
+        // Non-fatal (the removal itself succeeded) but must be visible.
+        console.error('Error logging pet removal (non-fatal):', logError);
       }
 
       return true;

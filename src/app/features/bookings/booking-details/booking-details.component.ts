@@ -2321,21 +2321,24 @@ export class BookingDetailsComponent implements OnInit {
     this.removePetDiscountOption = 'recalculate';
   }
 
-  // Calculate new subtotal after removing pet (before discount and tax)
+  // Calculate new subtotal after removing pet (before discount and tax).
+  // We sum the total_price of every pet EXCEPT the one being removed, rather
+  // than subtracting the removed pet from original_subtotal. Each pet's
+  // total_price ALREADY includes its add-ons and breed premium, so the old
+  // "originalSubtotal - petTotal - petAddons" approach double-counted the
+  // removed pet's add-ons (e.g. $390 - $260 - $70 = $60 instead of $130) and
+  // also broke whenever original_subtotal had drifted from the pet rows.
+  // Summing what remains is immune to both problems.
   calculateRemovePetNewSubtotal(): number {
     if (!this.booking || !this.petToRemove) return 0;
 
-    const subtotalVal = this.booking.original_subtotal;
-    const originalSubtotal = typeof subtotalVal === 'number' ? subtotalVal : parseFloat(String(subtotalVal || '0')) || 0;
-    const petVal = this.petToRemove.total_price;
-    const petTotal = typeof petVal === 'number' ? petVal : parseFloat(String(petVal || '0')) || 0;
-
-    // Also subtract any addons for this pet
-    const petAddonsTotal = (this.petToRemove.addons || []).reduce((sum: number, addon: any) => {
-      return sum + (parseFloat(addon.addon_price) || 0);
-    }, 0);
-
-    return originalSubtotal - petTotal - petAddonsTotal;
+    const pets = this.booking.pets || [];
+    return pets
+      .filter((p: any) => p.id !== this.petToRemove.id)
+      .reduce((sum: number, p: any) => {
+        const v = p.total_price;
+        return sum + (typeof v === 'number' ? v : parseFloat(String(v || '0')) || 0);
+      }, 0);
   }
 
   // Calculate new discount based on option selected
