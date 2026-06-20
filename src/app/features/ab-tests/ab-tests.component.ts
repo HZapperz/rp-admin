@@ -42,6 +42,26 @@ interface InfoPlacementResult {
   abandonedAfterInfoB: number;
 }
 
+// ── Active test ───────────────────────────────────────────
+interface CheckoutReassuranceResult {
+  period: string;
+  totalEntered: number;
+  entriesA: number;
+  entriesB: number;
+  checkoutCountA: number;
+  checkoutCountB: number;
+  convertedCountA: number;
+  convertedCountB: number;
+  // checkout → booking (the hypothesis: B's bank-auth reassurance lifts this)
+  checkoutConvRateA: number;
+  checkoutConvRateB: number;
+  // entered → booking (overall)
+  convertedRateA: number;
+  convertedRateB: number;
+  avgValueA: number;
+  avgValueB: number;
+}
+
 type Period = '7d' | '30d' | 'all';
 
 @Component({
@@ -54,6 +74,7 @@ type Period = '7d' | '30d' | 'all';
 export class AbTestsComponent implements OnInit {
   introZip: IntroZipResult | null = null;
   infoPlacement: InfoPlacementResult | null = null;
+  checkoutReassurance: CheckoutReassuranceResult | null = null;
   isLoading = true;
   selectedPeriod: Period = '7d';
 
@@ -71,13 +92,15 @@ export class AbTestsComponent implements OnInit {
     this.isLoading = true;
     const cutoff = this.getCutoff(this.selectedPeriod);
 
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       this.loadIntroZip(cutoff),
       this.loadInfoPlacement(cutoff),
+      this.loadCheckoutReassurance(cutoff),
     ]);
 
     this.introZip = r1;
     this.infoPlacement = r2;
+    this.checkoutReassurance = r3;
     this.isLoading = false;
   }
 
@@ -172,6 +195,56 @@ export class AbTestsComponent implements OnInit {
       convertedRateB: eB > 0 ? cB / eB : 0,
       abandonedAfterInfoA: Math.max(0, lcA - cA),
       abandonedAfterInfoB: Math.max(0, lcB - cB),
+    };
+  }
+
+  // ── book_checkout_reassurance (active) ────────────────
+  private async loadCheckoutReassurance(cutoff: string | null): Promise<CheckoutReassuranceResult | null> {
+    let query = this.supabase
+      .from('ab_test_events')
+      .select('variant, event, session_id, metadata')
+      .eq('test_name', 'book_checkout_reassurance');
+    if (cutoff) query = query.gte('created_at', cutoff);
+    const { data, error } = await query;
+    if (error || !data) return null;
+
+    const sets: Record<'A' | 'B', Record<string, Set<string>>> = { A: {}, B: {} };
+    const values: Record<'A' | 'B', number[]> = { A: [], B: [] };
+
+    for (const row of data) {
+      const v = row.variant as 'A' | 'B';
+      if (v !== 'A' && v !== 'B') continue;
+      if (!sets[v][row.event]) sets[v][row.event] = new Set();
+      sets[v][row.event].add(row.session_id);
+      if (row.event === 'converted' && row.metadata?.total) {
+        values[v].push(Number(row.metadata.total));
+      }
+    }
+
+    const intersect = (s: Set<string>, base: Set<string>) =>
+      new Set([...s].filter(id => base.has(id)));
+    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    const enteredA = sets.A['entered'] ?? new Set<string>();
+    const enteredB = sets.B['entered'] ?? new Set<string>();
+    const eA = enteredA.size, eB = enteredB.size;
+    const chA = intersect(sets.A['checkout_reached'] ?? new Set(), enteredA).size;
+    const chB = intersect(sets.B['checkout_reached'] ?? new Set(), enteredB).size;
+    const cA = intersect(sets.A['converted'] ?? new Set(), enteredA).size;
+    const cB = intersect(sets.B['converted'] ?? new Set(), enteredB).size;
+
+    return {
+      period: this.periods.find(p => p.value === this.selectedPeriod)?.label ?? '',
+      totalEntered: eA + eB,
+      entriesA: eA, entriesB: eB,
+      checkoutCountA: chA, checkoutCountB: chB,
+      convertedCountA: cA, convertedCountB: cB,
+      checkoutConvRateA: chA > 0 ? cA / chA : 0,
+      checkoutConvRateB: chB > 0 ? cB / chB : 0,
+      convertedRateA: eA > 0 ? cA / eA : 0,
+      convertedRateB: eB > 0 ? cB / eB : 0,
+      avgValueA: avg(values.A),
+      avgValueB: avg(values.B),
     };
   }
 

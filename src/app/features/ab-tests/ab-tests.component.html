@@ -19,14 +19,60 @@
     </div>
   } @else {
 
-    <!-- ═══ NO ACTIVE TESTS ════════════════════════════════════ -->
+    <!-- ═══ ACTIVE TEST ════════════════════════════════════════ -->
     <div class="test-card">
       <div class="test-header">
         <div>
-          <div class="test-meta"><span class="status-badge status-concluded">No active tests</span></div>
-          <div class="test-desc">All experiments have concluded. See results below.</div>
+          <div class="test-meta"><span class="status-badge" style="background:#16a34a;color:#fff;">Running</span></div>
+          <div class="test-title">Checkout Reassurance — Bank-auth state</div>
+          <div class="test-desc">
+            <strong>A:</strong> current checkout &nbsp;|&nbsp;
+            <strong>B:</strong> adds a 3DS expectation note + a "confirming with your bank…" state to de-freeze the redirect stall
+          </div>
         </div>
+        @if (checkoutReassurance) {
+          <span class="period-badge">{{ checkoutReassurance.period }}</span>
+        }
       </div>
+
+      @if (!checkoutReassurance || checkoutReassurance.totalEntered === 0) {
+        <div class="empty-section">No data in this period.</div>
+      } @else {
+        <div class="card-section">
+          <div class="concluded-metrics">
+            <div class="concluded-metric">
+              <div class="cm-label">Sessions</div>
+              <div class="cm-value">{{ checkoutReassurance.totalEntered }}</div>
+              <div class="cm-sub">{{ checkoutReassurance.entriesA }} A / {{ checkoutReassurance.entriesB }} B</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Checkout→book A</div>
+              <div class="cm-value">{{ fmt(checkoutReassurance.checkoutConvRateA) }}</div>
+              <div class="cm-sub">{{ checkoutReassurance.convertedCountA }}/{{ checkoutReassurance.checkoutCountA }}</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Checkout→book B</div>
+              <div class="cm-value">{{ fmt(checkoutReassurance.checkoutConvRateB) }}</div>
+              <div class="cm-sub">{{ checkoutReassurance.convertedCountB }}/{{ checkoutReassurance.checkoutCountB }}</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Lift (B vs A)</div>
+              <div class="cm-value">{{ lift(checkoutReassurance.checkoutConvRateA, checkoutReassurance.checkoutConvRateB) }}</div>
+              <div class="cm-sub">checkout→book</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Conversion A</div>
+              <div class="cm-value">{{ fmt(checkoutReassurance.convertedRateA) }}</div>
+              <div class="cm-sub">{{ checkoutReassurance.convertedCountA }} bookings</div>
+            </div>
+            <div class="concluded-metric">
+              <div class="cm-label">Conversion B</div>
+              <div class="cm-value">{{ fmt(checkoutReassurance.convertedRateB) }}</div>
+              <div class="cm-sub">{{ checkoutReassurance.convertedCountB }} bookings</div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
 
     <!-- ═══ CONCLUDED TESTS ════════════════════════════════════ -->
