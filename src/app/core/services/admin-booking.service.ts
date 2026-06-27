@@ -36,6 +36,7 @@ export interface PricingOverride {
 export interface AdminBookingRequest {
   client_id: string;
   groomer_id: string;
+  van_id?: string | null;
   payment_type: 'pay_on_completion' | 'use_saved_card' | 'cash_on_service';
   payment_method_id?: string;
   scheduled_date: string;

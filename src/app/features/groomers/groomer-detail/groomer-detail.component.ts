@@ -63,6 +63,7 @@ export class GroomerDetailComponent implements OnInit {
   // Block date modal state
   showBlockDateModal = false;
   blockDateInput = '';
+  blockEndDateInput = '';
   blockDateReason = '';
   isBlockingDate = false;
 
@@ -334,6 +335,7 @@ export class GroomerDetailComponent implements OnInit {
 
   openBlockDateModal() {
     this.blockDateInput = '';
+    this.blockEndDateInput = '';
     this.blockDateReason = '';
     this.showBlockDateModal = true;
   }
@@ -345,7 +347,10 @@ export class GroomerDetailComponent implements OnInit {
   blockDate() {
     if (!this.blockDateInput) return;
     this.isBlockingDate = true;
-    this.groomerService.createDateException(this.groomerId, this.blockDateInput, this.blockDateReason || undefined).subscribe({
+    const endDate = this.blockEndDateInput && this.blockEndDateInput >= this.blockDateInput
+      ? this.blockEndDateInput
+      : null;
+    this.groomerService.createDateExceptionRange(this.groomerId, this.blockDateInput, endDate, 'blocked', this.blockDateReason || undefined).subscribe({
       next: () => {
         this.isBlockingDate = false;
         this.closeBlockDateModal();

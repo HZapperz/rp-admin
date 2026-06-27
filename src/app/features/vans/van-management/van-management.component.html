@@ -1,0 +1,175 @@
+<div class="van-mgmt">
+  <header class="page-head">
+    <div>
+      <h1>Vans</h1>
+      <p class="subtitle">Manage your fleet, each van's weekly schedule, and one-off day closures.</p>
+    </div>
+    <a routerLink="/vans/roster" class="btn btn-secondary">
+      <span class="material-icons">groups</span> Daily Roster
+    </a>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <nav class="tabs">
+    <button [class.active]="activeTab === 'vans'" (click)="activeTab = 'vans'">Vans</button>
+    <button [class.active]="activeTab === 'weekly'" (click)="activeTab = 'weekly'">Weekly Schedule</button>
+    <button [class.active]="activeTab === 'overrides'" (click)="activeTab = 'overrides'">Day On/Off</button>
+  </nav>
+
+  <div *ngIf="loading" class="muted">Loading…</div>
+
+  <!-- ============ VANS TAB ============ -->
+  <section *ngIf="activeTab === 'vans' && !loading" class="tab-body">
+    <div class="row-head">
+      <h2>Fleet</h2>
+      <button class="btn btn-primary" (click)="startAddVan()" *ngIf="!showVanForm">
+        <span class="material-icons">add</span> Add Van
+      </button>
+    </div>
+
+    <!-- Add / edit form -->
+    <div class="card form-card" *ngIf="showVanForm">
+      <h3>{{ editingVanId ? 'Edit Van' : 'Add Van' }}</h3>
+      <div class="grid2">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" [(ngModel)]="vanForm.name" placeholder="e.g. Van 2" />
+        </label>
+        <label class="field">
+          <span>Color</span>
+          <input type="color" [(ngModel)]="vanForm.color" />
+        </label>
+        <label class="field">
+          <span>Daily capacity <em>(reference only)</em></span>
+          <input type="number" min="0" [(ngModel)]="vanForm.daily_capacity" placeholder="optional" />
+        </label>
+        <label class="field">
+          <span>Sort order</span>
+          <input type="number" [(ngModel)]="vanForm.sort_order" />
+        </label>
+      </div>
+      <label class="field">
+        <span>Notes</span>
+        <input type="text" [(ngModel)]="vanForm.notes" placeholder="optional" />
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" [(ngModel)]="vanForm.is_active" /> Active
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-ghost" (click)="cancelVanForm()" [disabled]="savingVan">Cancel</button>
+        <button class="btn btn-primary" (click)="saveVan()" [disabled]="savingVan">
+          {{ savingVan ? 'Saving…' : (editingVanId ? 'Save Changes' : 'Create Van') }}
+        </button>
+      </div>
+    </div>
+
+    <div class="empty" *ngIf="!vans.length">No vans yet. Add your first van.</div>
+
+    <div class="van-list">
+      <div class="card van-row" *ngFor="let v of vans" [class.inactive]="!v.is_active">
+        <span class="swatch" [style.background]="v.color || '#9ca3af'"></span>
+        <div class="van-info">
+          <div class="van-name">{{ v.name }}
+            <span class="pill" *ngIf="!v.is_active">Inactive</span>
+          </div>
+          <div class="van-meta">
+            <span *ngIf="v.daily_capacity != null">Capacity {{ v.daily_capacity }}</span>
+            <span *ngIf="v.notes">{{ v.notes }}</span>
+          </div>
+        </div>
+        <div class="van-actions">
+          <button class="btn btn-ghost" (click)="startEditVan(v)">Edit</button>
+          <button class="btn btn-ghost" (click)="toggleVanActive(v)">
+            {{ v.is_active ? 'Disable' : 'Enable' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WEEKLY TAB ============ -->
+  <section *ngIf="activeTab === 'weekly' && !loading" class="tab-body">
+    <h2>Weekly Schedule</h2>
+    <p class="muted">Which weekdays does this van normally run? The public booking calendar shows a day as
+      available if <strong>any</strong> active van is open that day.</p>
+
+    <label class="field van-select">
+      <span>Van</span>
+      <select [ngModel]="selectedWeeklyVanId" (ngModelChange)="selectVanForWeekly($event)">
+        <option *ngFor="let v of vans" [value]="v.id">{{ v.name }}</option>
+      </select>
+    </label>
+
+    <div class="card" *ngIf="selectedWeeklyVanId">
+      <div class="day-grid">
+        <label class="day-toggle" *ngFor="let d of weeklyDays" [class.on]="d.is_open">
+          <input type="checkbox" [checked]="d.is_open" (change)="toggleWeeklyDay(d.day_of_week)" />
+          <span>{{ dayName(d.day_of_week) }}</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="saveWeekly()" [disabled]="savingWeekly">
+          {{ savingWeekly ? 'Saving…' : 'Save Weekly Schedule' }}
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OVERRIDES TAB ============ -->
+  <section *ngIf="activeTab === 'overrides' && !loading" class="tab-body">
+    <h2>Day On/Off Overrides</h2>
+    <p class="muted">Turn a van on or off for a specific date. Overrides win over the weekly schedule and are
+      reflected on the public booking calendar.</p>
+
+    <label class="field van-select">
+      <span>Van</span>
+      <select [ngModel]="selectedOverrideVanId" (ngModelChange)="selectVanForOverrides($event)">
+        <option *ngFor="let v of vans" [value]="v.id">{{ v.name }}</option>
+      </select>
+    </label>
+
+    <div class="card form-card" *ngIf="selectedOverrideVanId">
+      <div class="grid2">
+        <label class="field">
+          <span>Date</span>
+          <input type="date" [(ngModel)]="overrideForm.date" />
+        </label>
+        <label class="field">
+          <span>Status</span>
+          <select [(ngModel)]="overrideForm.is_open">
+            <option [ngValue]="false">Closed (van off)</option>
+            <option [ngValue]="true">Open (van on)</option>
+          </select>
+        </label>
+      </div>
+      <label class="field">
+        <span>Reason <em>(optional)</em></span>
+        <input type="text" [(ngModel)]="overrideForm.reason" placeholder="e.g. Maintenance" />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="addOverride()" [disabled]="savingOverride">
+          {{ savingOverride ? 'Saving…' : 'Save Override' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="empty" *ngIf="selectedOverrideVanId && !overrides.length">
+      No upcoming overrides for {{ vanName(selectedOverrideVanId) }}.
+    </div>
+
+    <div class="override-list">
+      <div class="card override-row" *ngFor="let o of overrides">
+        <span class="status-dot" [class.open]="o.is_open" [class.closed]="!o.is_open"></span>
+        <div class="override-info">
+          <div class="override-date">{{ o.date }}</div>
+          <div class="override-meta">
+            {{ o.is_open ? 'Open' : 'Closed' }}<span *ngIf="o.reason"> · {{ o.reason }}</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost danger" (click)="deleteOverride(o)">Remove</button>
+      </div>
+    </div>
+  </section>
+</div>

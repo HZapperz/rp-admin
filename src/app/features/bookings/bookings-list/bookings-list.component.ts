@@ -5,7 +5,8 @@ import { Router } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { BookingService } from '../../../core/services/booking.service';
 import { GroomerService } from '../../../core/services/groomer.service';
-import { BookingWithDetails, BookingStatus } from '../../../core/models/types';
+import { VanService } from '../../../core/services/van.service';
+import { BookingWithDetails, BookingStatus, Van } from '../../../core/models/types';
 
 @Component({
   selector: 'app-bookings-list',
@@ -24,17 +25,28 @@ export class BookingsListComponent implements OnInit {
   searchTerm: string = '';
   dateFilter: string = 'all';
   rabiesFilter: 'all' | 'has' | 'missing' = 'all';
+  vanFilter: string = 'all'; // 'all' | 'unassigned' | <vanId>
+  vans: Van[] = [];
   expandedCards: Set<string> = new Set();
 
   constructor(
     private bookingService: BookingService,
     private groomerService: GroomerService,
+    private vanService: VanService,
     private router: Router,
     private sanitizer: DomSanitizer
   ) {}
 
   async ngOnInit() {
+    this.loadVans();
     await this.loadBookings();
+  }
+
+  loadVans() {
+    this.vanService.getVans(false).subscribe({
+      next: (vans) => (this.vans = vans),
+      error: (err) => console.error('Error loading vans:', err),
+    });
   }
 
   async loadBookings() {
@@ -99,6 +111,13 @@ export class BookingsListComponent implements OnInit {
       filtered = filtered.filter(b => this.hasMissingRabies(b));
     }
 
+    // Filter by van
+    if (this.vanFilter !== 'all') {
+      filtered = filtered.filter(b =>
+        this.vanFilter === 'unassigned' ? !b.van_id : b.van_id === this.vanFilter
+      );
+    }
+
     // Filter by search term
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
@@ -150,6 +169,11 @@ export class BookingsListComponent implements OnInit {
 
   setRabiesFilter(value: 'all' | 'has' | 'missing') {
     this.rabiesFilter = value;
+    this.applyFilters();
+  }
+
+  setVanFilter(value: string) {
+    this.vanFilter = value;
     this.applyFilters();
   }
 

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { GroomerService } from '../../../../../core/services/groomer.service';
+import { VanService } from '../../../../../core/services/van.service';
+import { Van } from '../../../../../core/models/types';
 
 export interface Groomer {
   id: string;
@@ -26,6 +28,7 @@ export interface Groomer {
 })
 export class SelectGroomerComponent implements OnInit {
   @Output() groomerSelected = new EventEmitter<Groomer>();
+  @Output() vanSelected = new EventEmitter<Van | null>();
 
   groomers: Groomer[] = [];
   filteredGroomers: Groomer[] = [];
@@ -34,10 +37,37 @@ export class SelectGroomerComponent implements OnInit {
   isLoading = false;
   error: string | null = null;
 
-  constructor(private groomerService: GroomerService) {}
+  vans: Van[] = [];
+  selectedVanId: string = '';
+
+  constructor(
+    private groomerService: GroomerService,
+    private vanService: VanService
+  ) {}
 
   ngOnInit(): void {
     this.loadGroomers();
+    this.loadVans();
+  }
+
+  loadVans(): void {
+    this.vanService.getVans(true).subscribe({
+      next: (vans) => {
+        this.vans = vans;
+        // Default to the first active van so new bookings get a van by default.
+        if (!this.selectedVanId && vans.length) {
+          this.selectedVanId = vans[0].id;
+          this.vanSelected.emit(vans[0]);
+        }
+      },
+      error: (err) => console.error('Error loading vans:', err),
+    });
+  }
+
+  onVanChange(vanId: string): void {
+    this.selectedVanId = vanId;
+    const van = this.vans.find((v) => v.id === vanId) || null;
+    this.vanSelected.emit(van);
   }
 
   async loadGroomers(): Promise<void> {

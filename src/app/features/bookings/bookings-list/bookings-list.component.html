@@ -93,6 +93,18 @@
         <button class="date-chip" [class.date-chip--active]="rabiesFilter === 'missing'" (click)="setRabiesFilter('missing')">⚠ Missing Rabies</button>
       </div>
 
+      @if (vans.length) {
+      <div class="date-chips van-chips">
+        <button class="date-chip" [class.date-chip--active]="vanFilter === 'all'" (click)="setVanFilter('all')">All Vans</button>
+        @for (v of vans; track v.id) {
+        <button class="date-chip" [class.date-chip--active]="vanFilter === v.id" (click)="setVanFilter(v.id)">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;" [style.background]="v.color || '#9ca3af'"></span>{{ v.name }}
+        </button>
+        }
+        <button class="date-chip" [class.date-chip--active]="vanFilter === 'unassigned'" (click)="setVanFilter('unassigned')">Unassigned</button>
+      </div>
+      }
+
       <div class="filter-search">
         <input
           type="text"
@@ -171,6 +183,11 @@
             </div>
             } @else {
             <span class="not-assigned">Not assigned</span>
+            }
+            @if (booking.van) {
+            <div style="font-size:11px;color:#6b7280;margin-top:2px;" [title]="booking.van.name">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;" [style.background]="booking.van.color || '#9ca3af'"></span>{{ booking.van.name }}
+            </div>
             }
           </td>
           <td>

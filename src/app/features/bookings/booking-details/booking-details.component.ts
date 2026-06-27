@@ -7,11 +7,12 @@ import { AdminBookingService } from '../../../core/services/admin-booking.servic
 import { AdminNotesService, AdminNote } from '../../../core/services/admin-notes.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../../core/services/groomer.service';
+import { VanService } from '../../../core/services/van.service';
 import { EmailService } from '../../../core/services/email.service';
 import { ChangeRequestService, ChangeRequest } from '../../../core/services/change-request.service';
 import { PackageService } from '../../../core/services/package.service';
 import { ClientService, PaymentMethod, Dispute } from '../../../core/services/client.service';
-import { BookingWithDetails } from '../../../core/models/types';
+import { BookingWithDetails, Van } from '../../../core/models/types';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -52,6 +53,7 @@ export class BookingDetailsComponent implements OnInit {
   private adminNotesService = inject(AdminNotesService);
   private supabase = inject(SupabaseService);
   private groomerService = inject(GroomerService);
+  private vanService = inject(VanService);
   private emailService = inject(EmailService);
   private changeRequestService = inject(ChangeRequestService);
   private packageService = inject(PackageService);
@@ -95,6 +97,8 @@ export class BookingDetailsComponent implements OnInit {
   isChangeGroomerMode = false;
   availableGroomers: any[] = [];
   selectedGroomerId: string = '';
+  vans: Van[] = [];
+  selectedVanId: string = '';
   selectedTimeSlot: { label: string; start: string; end: string } | null = null;
   selectedDate: string = '';
   minDate: string = '';
@@ -1086,6 +1090,13 @@ export class BookingDetailsComponent implements OnInit {
   }
 
   // Groomer Assignment Methods
+  private loadVansForAssignment(): void {
+    this.vanService.getVans(true).subscribe((v) => {
+      this.vans = v;
+      if (!this.selectedVanId && v.length) this.selectedVanId = v[0].id;
+    });
+  }
+
   async showGroomerAssignment() {
     if (!this.booking) return;
 
@@ -1096,6 +1107,8 @@ export class BookingDetailsComponent implements OnInit {
     this.dynamicAvailableSlots = [];
     this.groomerAvailabilityInfo = null;
     this.groomerUnavailableReason = '';
+    this.selectedVanId = this.booking.van_id || '';
+    this.loadVansForAssignment();
 
     // Set date constraints
     const today = new Date();
@@ -1126,6 +1139,8 @@ export class BookingDetailsComponent implements OnInit {
 
     // Pre-populate with existing booking data
     this.selectedGroomerId = this.booking.groomer_id || '';
+    this.selectedVanId = this.booking.van_id || '';
+    this.loadVansForAssignment();
     this.selectedDate = this.booking.scheduled_date || '';
     this.selectedTimeSlot = null;
     this.dynamicAvailableSlots = [];
@@ -1179,7 +1194,8 @@ export class BookingDetailsComponent implements OnInit {
         this.selectedGroomerId,
         this.selectedDate || undefined,
         timeSlotStart,
-        timeSlotEnd
+        timeSlotEnd,
+        this.selectedVanId || null
       );
 
       if (!success) {
@@ -1203,6 +1219,7 @@ export class BookingDetailsComponent implements OnInit {
     this.showAssignmentForm = false;
     this.isChangeGroomerMode = false;
     this.selectedGroomerId = '';
+    this.selectedVanId = '';
     this.selectedTimeSlot = null;
     this.selectedDate = '';
     // Reset custom time state
@@ -1557,7 +1574,8 @@ export class BookingDetailsComponent implements OnInit {
         this.selectedGroomerId,
         this.selectedDate,
         timeSlotStart,
-        timeSlotEnd
+        timeSlotEnd,
+        this.selectedVanId || null
       );
 
       if (!success) {

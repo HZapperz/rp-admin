@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { GroomerService, AvailableSlot, GroomerAvailableSlotsData } from '../../../../../core/services/groomer.service';
+import { VanService } from '../../../../../core/services/van.service';
+import { Van } from '../../../../../core/models/types';
+import { forkJoin } from 'rxjs';
 
 export interface DateTimeSelection {
   date: string;
@@ -21,6 +24,7 @@ export interface DateTimeSelection {
 })
 export class SelectDateTimeComponent implements OnInit, OnChanges {
   @Input() selectedGroomer: any = null;
+  @Input() selectedVan: Van | null = null;
   @Output() dateTimeSelected = new EventEmitter<DateTimeSelection>();
 
   selectedDate: Date | null = null;
@@ -44,10 +48,11 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
   isLoadingSlots = false;
   groomerAvailabilityInfo: GroomerAvailableSlotsData | null = null;
   groomerUnavailableReason: string = '';
+  vanWarning: string = '';
   selectedSlot: AvailableSlot | null = null;
   useCustomTime = false;
 
-  constructor(private groomerService: GroomerService) {}
+  constructor(private groomerService: GroomerService, private vanService: VanService) {}
 
   ngOnInit(): void {
     this.generateCalendar();
@@ -62,6 +67,7 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
       this.availableSlots = [];
       this.groomerAvailabilityInfo = null;
       this.groomerUnavailableReason = '';
+      this.vanWarning = '';
       this.selectedSlot = null;
       this.useCustomTime = false;
     }
@@ -123,11 +129,14 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
     this.endTime = '';
     this.availableSlots = [];
     this.groomerUnavailableReason = '';
+    this.vanWarning = '';
 
     // Load available slots for the selected groomer and date
     if (this.selectedGroomer) {
       this.loadAvailableSlots();
     }
+    // Surface soft (non-blocking) van/roster warnings for this date.
+    this.checkVanWarnings();
   }
 
   async loadAvailableSlots(): Promise<void> {
@@ -155,6 +164,33 @@ export class SelectDateTimeComponent implements OnInit, OnChanges {
         this.groomerUnavailableReason = 'Failed to load available time slots';
         this.isLoadingSlots = false;
       }
+    });
+  }
+
+  /** Soft, non-blocking warnings: van closed this date, or groomer not on the van's roster. */
+  private checkVanWarnings(): void {
+    this.vanWarning = '';
+    const van = this.selectedVan;
+    if (!van || !this.selectedDate) return;
+    const dateStr = this.formatDateForAPI(this.selectedDate);
+    forkJoin({
+      weekly: this.vanService.getVanOperatingDays(van.id),
+      overrides: this.vanService.getVanDateOverrides(van.id, dateStr, dateStr),
+      roster: this.vanService.getRosterForVanDate(van.id, dateStr),
+    }).subscribe(({ weekly, overrides, roster }) => {
+      const warnings: string[] = [];
+      if (!this.vanService.isVanOpenOn(weekly, overrides, dateStr)) {
+        warnings.push(`${van.name} is marked closed on this date.`);
+      }
+      if (this.selectedGroomer && roster.length) {
+        const rosteredIds = roster.map((r) => r.groomer_id);
+        if (!rosteredIds.includes(this.selectedGroomer.id)) {
+          warnings.push(
+            `${this.selectedGroomer.first_name} ${this.selectedGroomer.last_name} isn't on ${van.name}'s roster for this date.`
+          );
+        }
+      }
+      this.vanWarning = warnings.join(' ');
     });
   }
 

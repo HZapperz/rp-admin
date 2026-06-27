@@ -1,0 +1,65 @@
+<div class="roster">
+  <header class="page-head">
+    <div>
+      <h1>Daily Roster</h1>
+      <p class="subtitle">Assign which groomer drives each van. Whole-day by default, or split by shift.</p>
+    </div>
+    <a routerLink="/vans" class="btn btn-secondary">
+      <span class="material-icons">airport_shuttle</span> Manage Vans
+    </a>
+  </header>
+
+  <div class="alert alert-success" *ngIf="success">{{ success }}</div>
+  <div class="alert alert-error" *ngIf="error">{{ error }}</div>
+
+  <label class="field date-field">
+    <span>Date</span>
+    <input type="date" [(ngModel)]="selectedDate" (ngModelChange)="onDateChange()" />
+  </label>
+
+  <div *ngIf="loading" class="muted">Loading…</div>
+  <div *ngIf="!loading && !vans.length" class="empty">No active vans. Add one in Manage Vans.</div>
+
+  <div class="van-grid" *ngIf="!loading">
+    <div class="card van-card" *ngFor="let view of views" [class.is-closed]="!view.isOpen">
+      <div class="van-head">
+        <span class="swatch" [style.background]="view.van.color || '#9ca3af'"></span>
+        <span class="van-name">{{ view.van.name }}</span>
+        <span class="badge" [class.open]="view.isOpen" [class.off]="!view.isOpen">
+          {{ view.isOpen ? 'Running' : 'Closed this date' }}
+        </span>
+        <button class="link" (click)="toggleSplit(view)">
+          {{ view.splitMode ? 'Use whole day' : 'Split shifts' }}
+        </button>
+      </div>
+
+      <!-- whole day -->
+      <ng-container *ngIf="!view.splitMode">
+        <label class="field">
+          <span>Driver (whole day)</span>
+          <select [ngModel]="view.wholeDayGroomerId" (ngModelChange)="onWholeDayChange(view, $event)">
+            <option value="">— Unassigned —</option>
+            <option *ngFor="let g of groomers" [value]="g.id">{{ g.first_name }} {{ g.last_name }}</option>
+          </select>
+        </label>
+        <p class="warn" *ngIf="warningFor(view.van.id, 'day')">
+          <span class="material-icons">warning</span> {{ warningFor(view.van.id, 'day') }}
+        </p>
+      </ng-container>
+
+      <!-- split shifts -->
+      <ng-container *ngIf="view.splitMode">
+        <div class="field shift-row" *ngFor="let s of SHIFTS">
+          <span class="shift-label">{{ s }}</span>
+          <select [ngModel]="shiftGroomerId(view, s)" (ngModelChange)="onShiftChange(view, s, $event)">
+            <option value="">— Unassigned —</option>
+            <option *ngFor="let g of groomers" [value]="g.id">{{ g.first_name }} {{ g.last_name }}</option>
+          </select>
+          <span class="warn inline" *ngIf="warningFor(view.van.id, s)">
+            <span class="material-icons">warning</span> {{ warningFor(view.van.id, s) }}
+          </span>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

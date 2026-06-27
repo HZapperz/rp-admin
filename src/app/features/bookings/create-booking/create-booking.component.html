@@ -115,6 +115,7 @@
         <div class="step-content">
           <app-select-groomer
             (groomerSelected)="onGroomerSelected($event)"
+            (vanSelected)="onVanSelected($event)"
           ></app-select-groomer>
         </div>
         }
@@ -124,6 +125,7 @@
         <div class="step-content">
           <app-select-date-time
             [selectedGroomer]="selectedGroomer"
+            [selectedVan]="selectedVan"
             (dateTimeSelected)="onDateTimeSelected($event)"
           ></app-select-date-time>
         </div>

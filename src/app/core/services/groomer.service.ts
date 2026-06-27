@@ -84,6 +84,8 @@ export interface GroomerAvailabilitySlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
+  effective_from?: string | null;
+  effective_to?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +94,7 @@ export interface GroomerDateException {
   id: string;
   groomer_id: string;
   exception_date: string;
+  end_date: string | null;
   exception_type: 'blocked' | 'vacation' | 'sick' | 'custom';
   start_time: string | null;
   end_time: string | null;
@@ -1322,6 +1325,48 @@ export class GroomerService {
     return from(this.insertDateException(groomerId, date, reason));
   }
 
+  /**
+   * Block a date RANGE for a groomer (admin). endDate omitted/equal = single day.
+   */
+  createDateExceptionRange(
+    groomerId: string,
+    startDate: string,
+    endDate: string | null,
+    exceptionType: 'blocked' | 'vacation' | 'sick' | 'custom' = 'blocked',
+    reason?: string
+  ): Observable<GroomerDateException> {
+    return from(this.insertDateExceptionRange(groomerId, startDate, endDate, exceptionType, reason));
+  }
+
+  private async insertDateExceptionRange(
+    groomerId: string,
+    startDate: string,
+    endDate: string | null,
+    exceptionType: string,
+    reason?: string
+  ): Promise<GroomerDateException> {
+    const { data, error } = await this.supabase
+      .from('groomer_date_exceptions')
+      .insert({
+        groomer_id: groomerId,
+        exception_date: startDate,
+        end_date: endDate && endDate !== startDate ? endDate : null,
+        exception_type: exceptionType,
+        start_time: null,
+        end_time: null,
+        reason: reason || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating date exception range:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
   private async insertDateException(groomerId: string, date: string, reason?: string): Promise<GroomerDateException> {
     const { data, error } = await this.supabase
       .from('groomer_date_exceptions')
@@ -1417,13 +1462,14 @@ export class GroomerService {
     toDate.setDate(toDate.getDate() + days);
     const toDateStr = toDate.toISOString().split('T')[0];
 
-    // Fetch date exceptions
+    // Fetch date exceptions whose [exception_date, COALESCE(end_date, exception_date)]
+    // range overlaps the requested window (so multi-day time-off shows for every day it covers).
     const { data: exceptions, error: excError } = await this.supabase
       .from('groomer_date_exceptions')
       .select('*')
       .eq('groomer_id', groomerId)
-      .gte('exception_date', fromDate)
       .lte('exception_date', toDateStr)
+      .or(`end_date.gte.${fromDate},and(end_date.is.null,exception_date.gte.${fromDate})`)
       .order('exception_date', { ascending: true });
 
     if (excError) {
@@ -1493,6 +1539,10 @@ export class GroomerService {
       .eq('groomer_id', groomerId)
       .eq('day_of_week', dayOfWeek)
       .eq('is_available', true)
+      // Respect the effective window: a weekly row applies to `date` only when
+      // (effective_from IS NULL OR <= date) AND (effective_to IS NULL OR >= date)
+      .or(`effective_from.is.null,effective_from.lte.${date}`)
+      .or(`effective_to.is.null,effective_to.gte.${date}`)
       .order('start_time', { ascending: true });
 
     if (weeklyError) {
@@ -1500,17 +1550,24 @@ export class GroomerService {
       throw weeklyError;
     }
 
-    // Check for date exceptions
-    const { data: exceptions, error: excError } = await this.supabase
+    // Check for date exceptions covering this date (single day OR multi-day range).
+    // A row covers `date` when exception_date <= date <= COALESCE(end_date, exception_date).
+    const { data: exceptionCandidates, error: excError } = await this.supabase
       .from('groomer_date_exceptions')
       .select('*')
       .eq('groomer_id', groomerId)
-      .eq('exception_date', date);
+      .lte('exception_date', date)
+      .or(`end_date.gte.${date},end_date.is.null`);
 
     if (excError) {
       console.error('Error fetching exceptions:', excError);
       throw excError;
     }
+
+    const exceptions = (exceptionCandidates || []).filter((e: any) => {
+      const end = e.end_date || e.exception_date;
+      return e.exception_date <= date && end >= date;
+    });
 
     // Check for all-day exception
     const allDayException = (exceptions || []).find(

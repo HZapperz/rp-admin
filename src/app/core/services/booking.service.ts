@@ -93,6 +93,15 @@ export class BookingService {
       query = query.eq('client_id', filters.clientId);
     }
 
+    if (filters?.vanId !== undefined) {
+      // Support filtering by a specific van and by unassigned (null) bookings.
+      if (filters.vanId === null || filters.vanId === '') {
+        query = query.is('van_id', null);
+      } else {
+        query = query.eq('van_id', filters.vanId);
+      }
+    }
+
     const { data: bookings, error } = await query;
 
     if (error) {
@@ -119,15 +128,17 @@ export class BookingService {
     // to RLS-scan every booking_pet row at once; in production that request
     // intermittently fails during cold load, leaving the list with no pets
     // (rabies/photos render blank). Small batches are fast and reliable.
-    const [groomersResult, clientsResult, bookingPetsResult] = await Promise.all([
+    const [groomersResult, clientsResult, bookingPetsResult, vansResult] = await Promise.all([
       this.fetchInChunks('users', 'id, first_name, last_name, avatar_url, phone, email', 'id', groomerIds),
       this.fetchInChunks('users', 'id, first_name, last_name, avatar_url, phone, email, sms_consent', 'id', clientIds),
-      this.fetchInChunks('booking_pets', '*', 'booking_id', bookingIds)
+      this.fetchInChunks('booking_pets', '*', 'booking_id', bookingIds),
+      this.supabase.from('vans').select('id, name, color')
     ]);
 
     if (groomersResult.error) console.error('Error fetching groomers:', groomersResult.error);
     if (clientsResult.error) console.error('Error fetching clients:', clientsResult.error);
     if (bookingPetsResult.error) console.error('Error fetching booking pets:', bookingPetsResult.error);
+    if (vansResult.error) console.error('Error fetching vans:', vansResult.error);
 
     // Step 4: Fetch pets and addons (also chunked)
     const petIds = [...new Set((bookingPetsResult.data || []).map(bp => bp.pet_id).filter(Boolean))];
@@ -151,6 +162,11 @@ export class BookingService {
 
     const clientsLookup: Record<string, any> = (clientsResult.data || []).reduce((acc, c) => {
       acc[c.id] = c;
+      return acc;
+    }, {} as Record<string, any>);
+
+    const vansLookup: Record<string, any> = (vansResult.data || []).reduce((acc, v) => {
+      acc[v.id] = v;
       return acc;
     }, {} as Record<string, any>);
 
@@ -184,6 +200,7 @@ export class BookingService {
       ...booking,
       groomer: groomersLookup[booking.groomer_id] || undefined,
       client: clientsLookup[booking.client_id] || undefined,
+      van: booking.van_id ? (vansLookup[booking.van_id] || undefined) : undefined,
       pets: bookingPetsByBookingId[booking.id] || []
     }));
 
@@ -300,11 +317,12 @@ export class BookingService {
     };
   }
 
-  async approveBooking(bookingId: string, groomerId: string, scheduledDate: string, timeSlotStart: string, timeSlotEnd: string): Promise<boolean> {
+  async approveBooking(bookingId: string, groomerId: string, scheduledDate: string, timeSlotStart: string, timeSlotEnd: string, vanId?: string | null): Promise<boolean> {
     try {
       console.log('Attempting to approve booking...', {
         bookingId,
         groomerId,
+        vanId,
         scheduledDate,
         timeSlotStart,
         timeSlotEnd,
@@ -312,16 +330,19 @@ export class BookingService {
       });
 
       // Update booking with groomer assignment, date, time slots, and confirm status
+      const update: any = {
+        groomer_id: groomerId,
+        scheduled_date: scheduledDate,
+        scheduled_time_start: timeSlotStart,
+        scheduled_time_end: timeSlotEnd,
+        status: 'confirmed',
+        updated_at: new Date().toISOString()
+      };
+      if (vanId !== undefined) update.van_id = vanId;
+
       const { data, error } = await this.supabase
         .from('bookings')
-        .update({
-          groomer_id: groomerId,
-          scheduled_date: scheduledDate,
-          scheduled_time_start: timeSlotStart,
-          scheduled_time_end: timeSlotEnd,
-          status: 'confirmed',
-          updated_at: new Date().toISOString()
-        })
+        .update(update)
         .eq('id', bookingId)
         .select();
 
@@ -385,7 +406,7 @@ export class BookingService {
     return true;
   }
 
-  async reassignGroomer(bookingId: string, groomerId: string, scheduledDate?: string, timeSlotStart?: string, timeSlotEnd?: string): Promise<boolean> {
+  async reassignGroomer(bookingId: string, groomerId: string, scheduledDate?: string, timeSlotStart?: string, timeSlotEnd?: string, vanId?: string | null): Promise<boolean> {
     const updateData: any = {
       groomer_id: groomerId,
       updated_at: new Date().toISOString()
@@ -393,6 +414,7 @@ export class BookingService {
     if (scheduledDate) updateData.scheduled_date = scheduledDate;
     if (timeSlotStart) updateData.scheduled_time_start = timeSlotStart;
     if (timeSlotEnd) updateData.scheduled_time_end = timeSlotEnd;
+    if (vanId !== undefined) updateData.van_id = vanId;
 
     const { error } = await this.supabase
       .from('bookings')

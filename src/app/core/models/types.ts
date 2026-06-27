@@ -170,6 +170,7 @@ export interface Booking {
   id: string;
   client_id: string;
   groomer_id: string | null;
+  van_id?: string | null;
   service_id: string | null;
   status: BookingStatus;
   scheduled_date: string;
@@ -277,6 +278,11 @@ export interface BookingWithDetails extends Booking {
     avatar_url?: string;
     phone?: string;
     email?: string;
+  };
+  van?: {
+    id: string;
+    name: string;
+    color: string | null;
   };
   client?: {
     id: string;
@@ -478,12 +484,61 @@ export interface BookingFilters {
   };
   groomerId?: string;
   clientId?: string;
+  /** Filter by van. Use 'unassigned' to surface bookings with no van. */
+  vanId?: string | null;
   /**
    * When omitted (or false), cancelled bookings are excluded from the result.
    * Set to true on a "Cancelled" tab/filter to surface them explicitly.
    * Ignored when `status` is provided — that overrides the default.
    */
   includeCancelled?: boolean;
+}
+
+// =======================
+// VAN / FLEET TYPES
+// =======================
+
+export type RosterShift = 'morning' | 'afternoon' | 'evening';
+
+export interface Van {
+  id: string;
+  name: string;
+  color: string | null;
+  is_active: boolean;
+  daily_capacity: number | null; // display only — never gates availability
+  sort_order: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VanOperatingDay {
+  id?: string;
+  van_id: string;
+  day_of_week: number; // 0 = Sunday, 6 = Saturday
+  is_open: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface VanDateOverride {
+  id: string;
+  van_id: string;
+  date: string; // YYYY-MM-DD
+  is_open: boolean;
+  reason: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface VanRoster {
+  id: string;
+  van_id: string;
+  groomer_id: string;
+  roster_date: string; // YYYY-MM-DD
+  shift: RosterShift | null; // null = whole day
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface UserFilters {

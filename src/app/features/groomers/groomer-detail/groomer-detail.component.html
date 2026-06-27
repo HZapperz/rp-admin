@@ -277,6 +277,9 @@
                     <div class="exception-date">
                       <span class="material-icons">event</span>
                       {{ formatExceptionDate(exception.exception_date) }}
+                      @if (exception.end_date && exception.end_date !== exception.exception_date) {
+                        – {{ formatExceptionDate(exception.end_date) }}
+                      }
                     </div>
                     <div class="exception-details">
                       <span class="exception-badge" [ngClass]="getExceptionTypeClass(exception.exception_type)">
@@ -312,18 +315,28 @@
         <div *ngIf="showBlockDateModal" class="modal-overlay" (click)="closeBlockDateModal()">
           <div class="modal-dialog" (click)="$event.stopPropagation()">
             <div class="modal-header">
-              <h4>Block a Date</h4>
+              <h4>Block Date(s)</h4>
               <button class="modal-close-btn" (click)="closeBlockDateModal()">
                 <span class="material-icons">close</span>
               </button>
             </div>
             <div class="modal-body">
               <div class="form-group">
-                <label for="block-date-input">Date</label>
+                <label for="block-date-input">Start date</label>
                 <input
                   id="block-date-input"
                   type="date"
                   [(ngModel)]="blockDateInput"
+                  class="form-control"
+                />
+              </div>
+              <div class="form-group">
+                <label for="block-end-date-input">End date (optional — for multi-day time off)</label>
+                <input
+                  id="block-end-date-input"
+                  type="date"
+                  [(ngModel)]="blockEndDateInput"
+                  [min]="blockDateInput"
                   class="form-control"
                 />
               </div>

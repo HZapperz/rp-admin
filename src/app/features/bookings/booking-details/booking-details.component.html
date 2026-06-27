@@ -1403,6 +1403,15 @@
       <div class="assignment-modal-body">
         <!-- Left Column: Form -->
         <div class="assignment-col-main">
+          <!-- Van -->
+          <div class="form-row" *ngIf="vans.length">
+            <label>Van</label>
+            <select [(ngModel)]="selectedVanId" class="form-select-compact">
+              <option value="">No van</option>
+              <option *ngFor="let v of vans" [value]="v.id">{{ v.name }}</option>
+            </select>
+          </div>
+
           <!-- Step 1: Select Groomer -->
           <div class="form-row">
             <label>1. Groomer</label>

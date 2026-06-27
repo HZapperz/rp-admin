@@ -15,6 +15,7 @@ import { SelectGroomerComponent } from './steps/select-groomer/select-groomer.co
 import { SelectDateTimeComponent, DateTimeSelection } from './steps/select-date-time/select-date-time.component';
 import { SelectAddressComponent } from './steps/select-address/select-address.component';
 import { PaymentSummaryComponent, PaymentConfig } from './steps/payment-summary/payment-summary.component';
+import { Van } from '../../../core/models/types';
 
 @Component({
   selector: 'app-create-booking',
@@ -48,6 +49,7 @@ export class CreateBookingComponent implements OnInit {
   selectedPets: any[] = [];
   petServices: PetServiceSelection[] = [];
   selectedGroomer: any = null;
+  selectedVan: Van | null = null;
   selectedDateTime: DateTimeSelection | null = null;
   selectedAddress: any = null;
   paymentConfig: PaymentConfig | null = null;
@@ -62,7 +64,7 @@ export class CreateBookingComponent implements OnInit {
     { index: 0, label: 'Client' },
     { index: 1, label: 'Pets' },
     { index: 2, label: 'Services' },
-    { index: 3, label: 'Groomer' },
+    { index: 3, label: 'Van & Groomer' },
     { index: 4, label: 'Date & Time' },
     { index: 5, label: 'Address' },
     { index: 6, label: 'Review' }
@@ -134,6 +136,11 @@ export class CreateBookingComponent implements OnInit {
   }
 
   // Step 4: Groomer selected
+  onVanSelected(van: Van | null): void {
+    this.selectedVan = van;
+    this.bookingData.van_id = van?.id ?? null;
+  }
+
   onGroomerSelected(groomer: any): void {
     this.selectedGroomer = groomer;
     this.bookingData.groomer_id = groomer.id;
@@ -262,6 +269,7 @@ export class CreateBookingComponent implements OnInit {
       const bookingRequest: AdminBookingRequest = {
         client_id: this.bookingData.client_id!,
         groomer_id: this.bookingData.groomer_id!,
+        van_id: this.bookingData.van_id ?? null,
         payment_type: this.bookingData.payment_type!,
         payment_method_id: this.bookingData.payment_method_id,
         scheduled_date: this.bookingData.scheduled_date!,

@@ -1,4 +1,13 @@
 <div class="select-groomer-step">
+  <!-- Van picker -->
+  <div class="van-picker" *ngIf="vans.length" style="margin-bottom:16px;">
+    <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Van</label>
+    <select [ngModel]="selectedVanId" (ngModelChange)="onVanChange($event)"
+      style="width:100%;max-width:360px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+      <option *ngFor="let v of vans" [value]="v.id">{{ v.name }}</option>
+    </select>
+  </div>
+
   <!-- Search Bar -->
   <div class="search-section">
     <div class="search-box">
