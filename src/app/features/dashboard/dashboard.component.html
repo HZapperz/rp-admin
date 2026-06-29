@@ -145,6 +145,29 @@
       </div>
     </div>
 
+    <!-- Fleet — today's vans -->
+    @if (fleetToday.length > 0) {
+      <div class="fleet-strip">
+        <div class="fleet-head">
+          <span class="fleet-title">Fleet — Today</span>
+          <span class="fleet-links">
+            <a routerLink="/vans/roster">Roster</a>
+            <a routerLink="/vans">Manage</a>
+          </span>
+        </div>
+        <div class="fleet-vans">
+          @for (f of fleetToday; track f.van.id) {
+            <div class="fleet-van" [class.closed]="!f.openToday">
+              <span class="fleet-swatch" [style.background]="f.van.color || '#9ca3af'"></span>
+              <span class="fleet-name">{{ f.van.name }}</span>
+              <span class="fleet-pill" [class.open]="f.openToday">{{ f.openToday ? 'Open' : 'Closed' }}</span>
+              <span class="fleet-driver">🧑‍🔧 {{ f.groomerName || 'No driver' }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     <!-- Action Needed: readiness panel -->
     <app-booking-readiness-panel
       [blocked]="blockedBookings"
@@ -208,6 +231,35 @@
               [attr.aria-selected]="readinessFilter === 'confirmed'"
               (click)="setReadinessFilter('confirmed')">Confirmed</button>
           </div>
+          @if (activeVans.length > 0) {
+            <div class="van-filter" role="tablist" aria-label="Filter schedule by van">
+              <button
+                type="button"
+                role="tab"
+                class="vf-btn"
+                [class.active]="vanFilter === 'all'"
+                [attr.aria-selected]="vanFilter === 'all'"
+                (click)="setVanFilter('all')">Both</button>
+              @for (v of activeVans; track v.id) {
+                <button
+                  type="button"
+                  role="tab"
+                  class="vf-btn"
+                  [class.active]="vanFilter === v.id"
+                  [attr.aria-selected]="vanFilter === v.id"
+                  (click)="setVanFilter(v.id)">
+                  <span class="vf-dot" [style.background]="v.color || '#9ca3af'"></span>{{ v.name }}
+                </button>
+              }
+              <button
+                type="button"
+                role="tab"
+                class="vf-btn"
+                [class.active]="vanFilter === 'unassigned'"
+                [attr.aria-selected]="vanFilter === 'unassigned'"
+                (click)="setVanFilter('unassigned')">Unassigned</button>
+            </div>
+          }
           <div class="period-label">{{ getPeriodLabel() }}</div>
         </div>
       </div>
@@ -247,6 +299,7 @@
                     [style.z-index]="getBookingZIndex(booking.id)"
                     [title]="getReadinessTooltip(booking)"
                     (click)="openBookingDetail(booking)">
+                    <span class="tgb-van-bar" [style.background]="vanColor(booking)"></span>
                     @if (hasMissingRabies(booking)) {
                       <span class="tgb-rabies-shield" aria-label="Missing rabies certificate" title="Missing rabies certificate">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -357,6 +410,7 @@
                     [style.z-index]="getBookingZIndex(booking.id)"
                     [title]="getReadinessTooltip(booking) + ' · ' + booking.service_name + ' (' + getBookingDuration(booking.scheduled_time_start, booking.scheduled_time_end) + ')'"
                     (click)="openBookingDetail(booking)">
+                    <span class="tgb-van-bar" [style.background]="vanColor(booking)"></span>
                     @if (hasMissingRabies(booking)) {
                       <span class="tgb-rabies-shield" aria-label="Missing rabies certificate" title="Missing rabies certificate">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

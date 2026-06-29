@@ -4,7 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { BookingService } from '../../core/services/booking.service';
-import { KPIData, BookingWithDetails, Readiness, ReadinessFilter } from '../../core/models/types';
+import { VanService } from '../../core/services/van.service';
+import { GroomerService } from '../../core/services/groomer.service';
+import { forkJoin } from 'rxjs';
+import { KPIData, BookingWithDetails, Readiness, ReadinessFilter, Van } from '../../core/models/types';
 import { BusinessSettingsModalComponent } from '../../shared/components/business-settings-modal/business-settings-modal.component';
 import { BusinessSettingsService, OperatingDay, OperatingHours, ShiftDateAvailability } from '../../core/services/business-settings.service';
 import { TerritoryDashboardComponent } from '../territory-intelligence/territory-dashboard/territory-dashboard.component';
@@ -74,6 +77,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   scheduleSlots: DaySlot[] = [];
   allBookings: BookingWithDetails[] = [];
 
+  // Fleet (vans) overview + schedule filter
+  vans: Van[] = [];
+  vanById = new Map<string, Van>();
+  fleetToday: { van: Van; openToday: boolean; groomerName: string | null }[] = [];
+  vanFilter: string = 'all'; // 'all' | 'unassigned' | <vanId>
+
   // Shift availability
   shiftAvailabilityMap = new Map<string, ShiftAvailability>();
   savingShifts = new Set<string>();
@@ -100,6 +109,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     private analyticsService: AnalyticsService,
     private bookingService: BookingService,
     private businessSettingsService: BusinessSettingsService,
+    private vanService: VanService,
+    private groomerService: GroomerService,
     private router: Router,
     private route: ActivatedRoute,
     private location: Location
@@ -118,6 +129,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       this.loadSchedule()
     ]);
     this.loadBusinessSettingsSummary();
+    this.loadFleet();
   }
 
   ngAfterViewInit(): void {
@@ -315,6 +327,59 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       },
       error: (err) => console.error('Error loading shift availability:', err)
     });
+  }
+
+  // ===== Fleet (vans) =====
+  get activeVans(): Van[] {
+    return this.vans.filter(v => v.is_active);
+  }
+
+  /**
+   * Load the fleet, plus today's open/closed state and rostered driver per van.
+   * Mirrors the forkJoin in van-roster.component.ts load(). Loads ALL vans (not
+   * active-only) so vanById can color-code bookings on now-inactive vans too.
+   */
+  private loadFleet(): void {
+    const today = this.getDateStr(new Date());
+    forkJoin({
+      vans: this.vanService.getVans(false),
+      groomers: this.groomerService.getAllGroomers(),
+      roster: this.vanService.getRosterForDate(today),
+      weekly: this.vanService.getAllOperatingDays(),
+      overrides: this.vanService.getDateOverridesForRange(today, today),
+    }).subscribe({
+      next: ({ vans, groomers, roster, weekly, overrides }) => {
+        this.vans = vans;
+        this.vanById = new Map(vans.map(v => [v.id, v] as [string, Van]));
+        const nameOf = (id: string | null): string | null => {
+          if (!id) return null;
+          const g = groomers.find(x => x.id === id);
+          return g ? `${g.first_name} ${g.last_name}` : 'Unknown';
+        };
+        this.fleetToday = vans
+          .filter(v => v.is_active)
+          .map(van => {
+            const weeklyForVan = weekly.filter(w => w.van_id === van.id);
+            const overridesForVan = overrides.filter(o => o.van_id === van.id);
+            const driverId = this.vanService.rosteredGroomerFor(roster, van.id, today, null);
+            return {
+              van,
+              openToday: this.vanService.isVanOpenOn(weeklyForVan, overridesForVan, today),
+              groomerName: nameOf(driverId),
+            };
+          });
+      },
+      error: (err) => console.error('Error loading fleet:', err),
+    });
+  }
+
+  /** Van accent color for a booking card (transparent when unassigned/unknown). */
+  vanColor(booking: BookingWithDetails): string {
+    return (booking.van_id ? this.vanById.get(booking.van_id)?.color : null) || 'transparent';
+  }
+
+  setVanFilter(value: string): void {
+    this.vanFilter = value;
   }
 
   changeView(view: ScheduleView): void {
@@ -820,14 +885,22 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   getVisibleBookings(slot: DaySlot): BookingWithDetails[] {
-    if (this.readinessFilter === 'all') return slot.bookings;
-    return slot.bookings.filter(b => {
-      const r = this.getReadiness(b);
-      if (this.readinessFilter === 'blocked') return r === 'blocked';
-      if (this.readinessFilter === 'ready') return r === 'ready_to_confirm';
-      if (this.readinessFilter === 'confirmed') return r === 'confirmed' || r === 'in_progress';
-      return true;
-    });
+    let bookings = slot.bookings;
+    if (this.vanFilter !== 'all') {
+      bookings = bookings.filter(b =>
+        this.vanFilter === 'unassigned' ? !b.van_id : b.van_id === this.vanFilter
+      );
+    }
+    if (this.readinessFilter !== 'all') {
+      bookings = bookings.filter(b => {
+        const r = this.getReadiness(b);
+        if (this.readinessFilter === 'blocked') return r === 'blocked';
+        if (this.readinessFilter === 'ready') return r === 'ready_to_confirm';
+        if (this.readinessFilter === 'confirmed') return r === 'confirmed' || r === 'in_progress';
+        return true;
+      });
+    }
+    return bookings;
   }
 
   getMonthDotClass(booking: BookingWithDetails): string {
