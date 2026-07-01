@@ -98,6 +98,50 @@ export class SessionRecordingService {
   constructor(private supabase: SupabaseService) {}
 
   /**
+   * Internal users (admins + groomers). Their sessions and abandoned bookings
+   * are excluded from the recordings dashboard so the funnel reflects real
+   * visitors, not staff testing the site. Cached for the app lifetime — the
+   * staff roster changes rarely.
+   */
+  private staffPromise: Promise<{ ids: string[]; emails: Set<string> }> | null = null;
+
+  private getStaff(): Promise<{ ids: string[]; emails: Set<string> }> {
+    if (!this.staffPromise) {
+      this.staffPromise = this.fetchStaff();
+    }
+    return this.staffPromise;
+  }
+
+  private async fetchStaff(): Promise<{ ids: string[]; emails: Set<string> }> {
+    const { data, error } = await this.supabase.from('users')
+      .select('id, email')
+      .in('role', ['ADMIN', 'GROOMER']);
+
+    if (error || !data) {
+      console.error('Error fetching staff users:', error);
+      return { ids: [], emails: new Set() };
+    }
+
+    return {
+      ids: data.map((u: any) => u.id),
+      emails: new Set(
+        data.map((u: any) => (u.email || '').toLowerCase()).filter(Boolean)
+      ),
+    };
+  }
+
+  /**
+   * PostgREST `or` filter that drops sessions owned by staff while keeping
+   * anonymous (user_id IS NULL) sessions. Returns '' when there are no staff
+   * ids so callers can skip the filter entirely.
+   */
+  private staffSessionFilter(staffIds: string[]): string {
+    return staffIds.length
+      ? `user_id.is.null,user_id.not.in.(${staffIds.join(',')})`
+      : '';
+  }
+
+  /**
    * Get list of recording sessions with optional filters
    */
   getSessions(filters?: SessionFilters, limit = 50): Observable<RecordingSession[]> {
@@ -105,10 +149,18 @@ export class SessionRecordingService {
   }
 
   private async fetchSessions(filters?: SessionFilters, limit = 50): Promise<RecordingSession[]> {
+    const { ids: staffIds } = await this.getStaff();
+
     let query = this.supabase.from('recording_sessions')
       .select('*')
       .order('started_at', { ascending: false })
       .limit(limit);
+
+    // Exclude internal staff (admins/groomers); keep anonymous visitors
+    const staffFilter = this.staffSessionFilter(staffIds);
+    if (staffFilter) {
+      query = query.or(staffFilter);
+    }
 
     // Apply filters
     if (filters?.status === 'converted') {
@@ -172,6 +224,8 @@ export class SessionRecordingService {
   }
 
   private async fetchAbandonedBookings(limit: number): Promise<AbandonedBooking[]> {
+    const { emails: staffEmails } = await this.getStaff();
+
     const { data, error } = await this.supabase.from('abandoned_bookings')
       .select('*')
       .is('recovered_at', null)
@@ -183,7 +237,10 @@ export class SessionRecordingService {
       throw error;
     }
 
-    const bookings: AbandonedBooking[] = (data || []).map((b: any) => ({ ...b, user: null }));
+    // Drop bookings started by internal staff (admins/groomers)
+    const bookings: AbandonedBooking[] = (data || [])
+      .filter((b: any) => !(b.email && staffEmails.has(String(b.email).toLowerCase())))
+      .map((b: any) => ({ ...b, user: null }));
     return this.attachUsersToAbandoned(bookings);
   }
 
@@ -270,12 +327,21 @@ export class SessionRecordingService {
   }
 
   private async fetchFunnelStats(days: number) {
+    const { ids: staffIds } = await this.getStaff();
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const { data, error } = await this.supabase.from('recording_sessions')
+    let query = this.supabase.from('recording_sessions')
       .select('is_converted, rage_clicks, pages_visited, initial_url')
       .gte('started_at', startDate.toISOString());
+
+    const staffFilter = this.staffSessionFilter(staffIds);
+    if (staffFilter) {
+      query = query.or(staffFilter);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching funnel stats:', error);
@@ -313,6 +379,7 @@ export class SessionRecordingService {
   }
 
   private async fetchAnalytics(period: 'week' | 'month' | 'quarter' | 'year' | 'all'): Promise<SessionAnalytics> {
+    const { ids: staffIds } = await this.getStaff();
     const startDate = this.calculateStartDate(period);
 
     let query = this.supabase.from('recording_sessions')
@@ -320,6 +387,11 @@ export class SessionRecordingService {
 
     if (startDate) {
       query = query.gte('started_at', startDate.toISOString());
+    }
+
+    const staffFilter = this.staffSessionFilter(staffIds);
+    if (staffFilter) {
+      query = query.or(staffFilter);
     }
 
     const { data, error } = await query;
